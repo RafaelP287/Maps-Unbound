@@ -1,54 +1,58 @@
-require('dotenv').config();
-const mongoose = require('mongoose');
-const readline = require('readline'); // Built-in Node module
 const inquirer = require('inquirer');
-const connectDB = require('./config/db');
-const User = require('./models/User');
+const { spawn } = require('child_process');
 
-// Setup Interface to read from terminal
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+// Helper function to run a script
+const runScript = (scriptPath) => {
+  return new Promise((resolve, reject) => {
+    // 'node' is the command, [scriptPath] are the arguments
+    // stdio: 'inherit' lets the child script print directly to your main terminal
+    const process = spawn('node', [scriptPath], { stdio: 'inherit' });
 
-const runInteraction = async () => {
+    process.on('close', (code) => {
+      if (code === 0) {
+        resolve(); // Script finished successfully
+      } else {
+        reject(new Error(`Script exited with code ${code}`));
+      }
+    });
+  });
+};
+
+const main = async () => {
+  console.log("Starting the test cases...\n");
+
   try {
-    // Connect to Database
-    await connectDB();
-
-    console.log('\n--- Create New User ---');
-
-    // Prompt User for Input
-    const answers = await inquirer.prompt([
-      { type: 'input', name: 'username', message: 'Enter Username:' },
-      { type: 'input', name: 'email', message: 'Enter Email:' },
-      { type: 'password', name: 'password', message: 'Enter Password:', mask: '*' }
+    // 'rawlist' gives you a numbered list (1, 2, 3...) automatically
+    const answer = await inquirer.prompt([
+      {
+        type: 'rawlist', 
+        name: 'choice',
+        message: 'Which script do you want to run?',
+        choices: [
+          { name: 'User: Register User', value: 'register_user.js' },
+          { name: 'Admin: Delete User', value: 'delete_user.js' },
+          { name: 'Exit', value: 'exit' }
+        ]
+      }
     ]);
 
-    const { username, email, password } = answers;
+    if (answer.choice === 'exit') {
+      console.log('Exited. Closing Program.');
+      return;
+    }
 
-    console.log('\nCreating user...');
+    console.log(`\n🚀 Launching ${answer.choice}...`);
+    
+    // Run the selected file
+    await runScript(answer.choice);
 
-    // Save to MongoDB
-    // (The User model handles the hashing automatically!)
-    const newUser = new User({ username, email, password });
-    await newUser.save();
-
-    console.log('✅ User successfully saved to database!');
-    console.log(newUser);
+    console.log(`\n✅ ${answer.choice} finished. Returning to menu...`);
+    
+    main();
 
   } catch (error) {
-    if (error.code === 11000) {
-      console.error('❌ Error: That username or email is already taken.');
-    } else {
-      console.error('❌ Error:', error.message);
-    }
-  } finally {
-    // Cleanup
-    rl.close(); // Stop listening to keyboard
-    mongoose.connection.close(); // Close DB connection
-    process.exit(0);
+    console.error('Error:', error.message);
   }
 };
 
-runInteraction();
+main();
