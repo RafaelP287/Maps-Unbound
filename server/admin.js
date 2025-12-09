@@ -16,33 +16,29 @@ const runInteraction = async () => {
     // Connect to Database
     await connectDB();
 
-    console.log('\n--- Create New User ---');
+    console.log('\n--- Admin: Delete User by Username ---');
 
-    // Prompt User for Input
+    // Prompt Admin for Input
     const answers = await inquirer.prompt([
       { type: 'input', name: 'username', message: 'Enter Username:' },
-      { type: 'input', name: 'email', message: 'Enter Email:' },
-      { type: 'password', name: 'password', message: 'Enter Password:', mask: '*' }
     ]);
 
-    const { username, email, password } = answers;
+    const { username } = answers;
 
-    console.log('\nCreating user...');
+    console.log('\nDeleting user...');
+    
+    // Delete from database and save to MongoDB
+    const query = { username: username }; 
+    const deletedDocument = await User.findOneAndDelete(query);
 
-    // Save to MongoDB
-    // (The User model handles the hashing automatically!)
-    const newUser = new User({ username, email, password });
-    await newUser.save();
-
-    console.log('✅ User successfully saved to database!');
-    console.log(newUser);
-
-  } catch (error) {
-    if (error.code === 11000) {
-      console.error('❌ Error: That username or email is already taken.');
+    // Verifies if it is deleted 
+    if (deletedDocument) {
+      console.log("Document found and deleted:", deletedDocument);
     } else {
-      console.error('❌ Error:', error.message);
+      console.log("No document found matching the criteria.");
     }
+  } catch (error) {
+    console.error('❌ Error:', error.message);
   } finally {
     // Cleanup
     rl.close(); // Stop listening to keyboard
