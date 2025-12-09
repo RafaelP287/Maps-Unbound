@@ -2,8 +2,8 @@ require('dotenv').config();
 const mongoose = require('mongoose');
 const readline = require('readline'); // Built-in Node module
 const inquirer = require('inquirer');
-const connectDB = require('./config/db');
-const User = require('./models/User');
+const connectDB = require('../config/db');
+const User = require('../models/User');
 
 // Setup Interface to read from terminal
 const rl = readline.createInterface({
