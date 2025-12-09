@@ -14,7 +14,7 @@ use('mongodbVSCodePlaygroundDB');
 
 // Insert a few documents into the sales collection.
 db.getCollection('users').insertMany([
-  { 'user': 'tensofu', 'role': 'admin', 'date': new Date('2025-11-23T20:20:07Z') },
+  { 'user': 'user-2', 'role': 'user', 'date': new Date('2025-12-2T20:12:00Z') },
 ]);
 
 // Run a find command on all users registered 
