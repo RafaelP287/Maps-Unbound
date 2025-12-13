@@ -2,7 +2,18 @@
 
 Test out the following api calls, and send JSON data to them. The server listens on port 3000, and you can use `localhost` to access it. The server should output what kind of data it receives as well, for debugging purposes.
 
+So far, all api calls are implemented for admin control. Endpoitns for the average user will be implemented in the future, and will consist of more limited control
+
 ## User Management
+
+### Testing GET method to get all users
+
+This method fetches all available users and their information as an array of JSON entries.
+
+```bash
+curl --request GET \
+  http://localhost:3000/api/users
+```
 
 ### Testing POST method to create a new user
 
@@ -23,3 +34,19 @@ curl --header "Content-Type: application/json" \
 ```
 
 Similarly, you can test with other inputs by simply editing the fields within the data requests.
+
+### Testing DELETE method to delete a user
+
+This DELETE method takes in an endpoint in the form of `/api/user/{username}` in order to delete a user specified by their username.
+
+```bash
+# Deletes a user with the username "tofu"
+curl --request DELETE \
+  http://localhost:3000/api/user/tofu
+
+# Deletes a user with the username "miso"
+curl --request DELETE \
+  http://localhost:3000/api/user/miso
+```
+
+Similarly, you can test with other inputs by changing the value that takes place of the `username`.

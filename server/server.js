@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
-const { createUser, deleteUser } = require("./controllers/userController.js");
+const { getUsers, createUser, deleteUser } = require("./controllers/userController.js");
 
 const app = express();
 
@@ -23,6 +23,18 @@ app.use((req, res, next) => {
 });
 
 connectDB();
+
+// GET Route: /api/users
+app.get("/api/users", async (req, res) => {
+  try {
+    const savedUsers = await getUsers();
+
+    // 3. Send response back to frontend
+    res.status(200).json({ message: "Fetched all users.", user: savedUsers });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
 // POST Route: /api/register
 app.post("/api/register", async (req, res) => {
