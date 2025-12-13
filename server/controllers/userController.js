@@ -1,8 +1,13 @@
 const User = require("../models/User");
 
 // Returns a query of all users
-async function getUsers() {
+async function getAllUsers() {
   return User.find({})
+}
+
+// Returns a query for a single user
+async function getUser(username) {
+  return User.findOne({username: username})
 }
 
 // Creates a new user
@@ -18,4 +23,4 @@ async function deleteUser(username) {
   });
 }
 
-module.exports = { getUsers, createUser, deleteUser };
+module.exports = { getAllUsers, getUser, createUser, deleteUser };

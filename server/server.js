@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
-const { getUsers, createUser, deleteUser } = require("./controllers/userController.js");
+const { getAllUsers, getUser, createUser, deleteUser } = require("./controllers/userController.js");
 
 const app = express();
 
@@ -27,26 +27,29 @@ connectDB();
 // GET Route: /api/users
 app.get("/api/users", async (req, res) => {
   try {
-    const savedUsers = await getUsers();
+    const savedUsers = await getAllUsers();
 
-    // 3. Send response back to frontend
+    // Send response back to frontend
     res.status(200).json({ message: "Fetched all users.", user: savedUsers });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-// POST Route: /api/register
-app.post("/api/register", async (req, res) => {
+// GET Route: /api/user/{username}
+app.get("/api/user/:username", async (req, res) => {
   try {
-    // 1. Receive data directly from the request body (no terminal input needed)
-    const { username, email, password } = req.body;
+    const targetUsername = req.params.username;
+    const targetUser = await getUser(targetUsername);
 
-    // 2. Run the logic
-    const savedUser = await createUser(username, email, password);
+    if (!targetUser) {
+      return res.status(404).json({
+        message: `User '${targetUsername}' not found.`,
+      });
+    }
 
-    // 3. Send response back to frontend
-    res.status(201).json({ message: "User created!", user: savedUser });
+    // Send response back to frontend
+    res.status(200).json({ message: "Successfully fetched a user:", user: targetUser });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -73,6 +76,22 @@ app.delete("/api/user/:username", async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// POST Route: /api/register
+app.post("/api/register", async (req, res) => {
+  try {
+    // Receive data directly from the request body (no terminal input needed)
+    const { username, email, password } = req.body;
+
+    // Run the logic
+    const savedUser = await createUser(username, email, password);
+
+    // Send response back to frontend
+    res.status(201).json({ message: "User created!", user: savedUser });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 

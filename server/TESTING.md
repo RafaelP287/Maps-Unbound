@@ -8,11 +8,22 @@ So far, all api calls are implemented for admin control. Endpoitns for the avera
 
 ### Testing GET method to get all users
 
-This method fetches all available users and their information as an array of JSON entries.
+This GET method fetches all available users and their information as an array of JSON entries.
 
 ```bash
+# Fetches all available users
 curl --request GET \
   http://localhost:3000/api/users
+```
+
+### Testing GET method to get a single user
+
+This GET method fetches the information of a single user by username, using the endpoint `/api/user/{username}`.
+
+```bash
+# Fetches the information for a user named "tofu"
+curl --request GET \
+  http://localhost:3000/api/user/tofu
 ```
 
 ### Testing POST method to create a new user
