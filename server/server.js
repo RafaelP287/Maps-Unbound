@@ -1,30 +1,31 @@
 // server.js
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors'); // Allows frontend to talk to backend
-const connectDB = require('./config/db');
-const { createUser } = require('./controllers/userController.js');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors"); // Allows frontend to talk to backend
+const connectDB = require("./config/db");
+const { createUser, deleteUser } = require("./controllers/userController.js");
 
 const app = express();
 
 // Middleware to parse JSON bodies (The data sent by frontend)
-app.use(express.urlencoded({ extended: false }))
+app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cors());
 
 // Debugging Middleware (Add this to see what is happening)
 app.use((req, res, next) => {
-  console.log('---------------------');
-  console.log('Incoming Request Method:', req.method);
-  console.log('Incoming Headers:', req.headers['content-type']);
-  console.log('Incoming Body:', req.body);
+  console.log("---------------------");
+  console.log("Incoming Request Method:", req.method);
+  console.log("Incoming URL:", req.url); // <--- Added this line
+  console.log("Incoming Headers:", req.headers["content-type"]);
+  console.log("Incoming Body:", req.body);
   next();
 });
 
 connectDB();
 
-// The "Endpoint"
-app.post('/api/register', async (req, res) => {
+// POST Route: /api/register
+app.post("/api/register", async (req, res) => {
   try {
     // 1. Receive data directly from the request body (no terminal input needed)
     const { username, email, password } = req.body;
@@ -33,10 +34,34 @@ app.post('/api/register', async (req, res) => {
     const savedUser = await createUser(username, email, password);
 
     // 3. Send response back to frontend
-    res.status(201).json({ message: 'User created!', user: savedUser });
+    res.status(201).json({ message: "User created!", user: savedUser });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-app.listen(3000, () => console.log('Server running on port 3000'));
+// DELETE Route: /api/user/:username
+app.delete("/api/user/:username", async (req, res) => {
+  try {
+    // Capture the username from the URL
+    const targetUsername = req.params.username;
+    const deletedUser = await deleteUser(targetUsername);
+
+    // Should return an error if the user was not found in the database.
+    if (!deletedUser) {
+      return res.status(404).json({
+        message: `User '${targetUsername}' not found.`,
+      });
+    }
+
+    // Success
+    return res.status(200).json({
+      message: "User deleted successfully",
+      deletedUser: deletedUser, // useful for confirmation/logs
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
