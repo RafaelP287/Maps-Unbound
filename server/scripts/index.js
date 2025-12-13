@@ -44,7 +44,7 @@ const main = async () => {
     console.log(`\n🚀 Launching ${answer.choice}...`);
     
     // Run the selected file
-    await runScript("scripts/" + answer.choice);
+    await runScript(answer.choice);
 
     console.log(`\n✅ ${answer.choice} finished. Returning to menu...`);
     
