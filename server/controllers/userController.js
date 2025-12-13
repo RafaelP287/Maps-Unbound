@@ -1,7 +1,7 @@
 const User = require("../models/User");
 
 // Returns a query of all users
-async function getAllUsers() {
+async function getUsers() {
   return User.find({})
 }
 
@@ -23,4 +23,4 @@ async function deleteUser(username) {
   });
 }
 
-module.exports = { getAllUsers, getUser, createUser, deleteUser };
+module.exports = { getUsers, getUser, createUser, deleteUser };

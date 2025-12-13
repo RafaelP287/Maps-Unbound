@@ -30,7 +30,7 @@ userSchema.pre("save", async function () {
   }
 });
 
-// Optional: Helper method to compare passwords later (for login)
+// Helper method to compare passwords later (for login)
 userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

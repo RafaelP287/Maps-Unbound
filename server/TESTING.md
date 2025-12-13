@@ -26,7 +26,23 @@ curl --request GET \
   http://localhost:3000/api/user/tofu
 ```
 
-### Testing POST method to create a new user
+### Testing DELETE method to delete a user
+
+This DELETE method takes in an endpoint in the form of `/api/user/{username}` in order to delete a user specified by their username.
+
+```bash
+# Deletes a user with the username "tofu"
+curl --request DELETE \
+  http://localhost:3000/api/user/tofu
+
+# Deletes a user with the username "miso"
+curl --request DELETE \
+  http://localhost:3000/api/user/miso
+```
+
+Similarly, you can test with other inputs by changing the value that takes place of the `username`.
+
+### Testing POST method to register a new user
 
 This method takes in JSON data with `username`, `email`, and `password` fields. The data that is sent and returned should include a hashed version of the user's password, which should be stored in the database. The `username` and `email` fields should also be unique, and return errors if you attempt to send a duplicate value of one of these fields.
 
@@ -46,18 +62,22 @@ curl --header "Content-Type: application/json" \
 
 Similarly, you can test with other inputs by simply editing the fields within the data requests.
 
-### Testing DELETE method to delete a user
+### Testing POST method to validate a new user
 
-This DELETE method takes in an endpoint in the form of `/api/user/{username}` in order to delete a user specified by their username.
+This method takes in JSON data with `username` and `password` fields. Upon a successful login, we should be able to see a a status code 200 as an OK response. Else, we should see a 4XX error code on invalid credentials.
 
 ```bash
-# Deletes a user with the username "tofu"
-curl --request DELETE \
-  http://localhost:3000/api/user/tofu
+# Attempts to validate a user "tofu" with password "123" (OK)
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{ "username": "tofu", "password": "123" }' \
+  http://localhost:3000/api/login/ 
 
-# Deletes a user with the username "miso"
-curl --request DELETE \
-  http://localhost:3000/api/user/miso
+# Attempts to validate a user "tofu" with password "1234" (ERROR)
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{ "username": "tofu", "password": "1234" }' \
+  http://localhost:3000/api/login/ 
 ```
 
-Similarly, you can test with other inputs by changing the value that takes place of the `username`.
+Similarly, you can test with other inputs by simply editing the fields within the data requests.

@@ -3,7 +3,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
-const { getAllUsers, getUser, createUser, deleteUser } = require("./controllers/userController.js");
+const { getUsers, getUser, createUser, deleteUser } = require("./controllers/userController.js")
+const { login } = require("./controllers/authController.js")
 
 const app = express();
 
@@ -27,9 +28,7 @@ connectDB();
 // GET Route: /api/users
 app.get("/api/users", async (req, res) => {
   try {
-    const savedUsers = await getAllUsers();
-
-    // Send response back to frontend
+    const savedUsers = await getUsers();
     res.status(200).json({ message: "Fetched all users.", user: savedUsers });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -92,6 +91,23 @@ app.post("/api/register", async (req, res) => {
     res.status(201).json({ message: "User created!", user: savedUser });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// POST Route: /api/login
+app.post("/api/login", async (req, res) => {
+  try {
+    // Receive data directly from the request body (no terminal input needed)
+    const { username, password } = req.body;
+
+    // Run the logic
+    const loginUser = await login(username, password);
+
+    // Send response back to frontend
+    res.status(200).json({ message: "User successfuly logged in!", user: loginUser });
+  } catch (error) {
+    const statusCode = error.status || 500;
+    res.status(statusCode).json({ error: error.message });
   }
 });
 
