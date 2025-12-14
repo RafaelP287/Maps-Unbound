@@ -5,7 +5,6 @@ const Schema = mongoose.Schema;
 
 const SALT_WORK_FACTOR = 10; 
 
-// userModel.js - Update schema to include email
 const userSchema = new Schema({
     username: { 
         type: String, 
@@ -13,48 +12,57 @@ const userSchema = new Schema({
         unique: true,
         trim: true 
     },
-    email: {  // Add this field
-        type: String,
-        unique: true,
-        sparse: true,  // Allows null values without duplicate key errors
-        trim: true,
-        lowercase: true
-    },
     password: { 
         type: String, 
         required: true 
     }
 });
 
-
-userSchema.pre('save', function(next) {
-    const user = this;
+// ALTERNATIVE APPROACH: Hash password before saving
+userSchema.pre('save', async function() {
+    console.log('\n=== PRE-SAVE MIDDLEWARE ===');
+    console.log('Username:', this.username);
+    console.log('Password to hash:', this.password);
+    console.log('Is password modified?', this.isModified('password'));
     
-    // Only hash the password if it has been modified (or is new)
     if (!user.isModified('password')) return next();
+    // Skip if password is not modified
+    if (!this.isModified('password')) {
+        console.log('Skipping hash (password not modified)');
+        return;
+    }
     
-    // Generate a salt
-    bcrypt.genSalt(SALT_WORK_FACTOR, function(err, salt) {
-        if (err) return next(err);
+    try {
+        console.log('Generating salt...');
+        const salt = await bcrypt.genSalt(SALT_WORK_FACTOR);
+        console.log('Salt generated');
         
-        // Hash the password using our new salt
-        bcrypt.hash(user.password, salt, function(err, hash) {
-            if (err) return next(err);
-            
-            // Override the cleartext password with the hashed one
-            user.password = hash;
-            next();
-        });
-    });
+        console.log('Hashing password...');
+        const hash = await bcrypt.hash(this.password, salt);
+        this.password = hash;
+        console.log('✅ Password hashed successfully');
+        console.log('Hash length:', hash.length);
+    } catch (error) {
+        console.error('❌ Error hashing password:', error);
+        throw error;
+    }
 });
 
-// comparePassword is fine as an arrow function as it does not use 'next'
+// Password comparison method
 userSchema.methods.comparePassword = async function(candidatePassword) {
+    console.log('\n=== COMPARE PASSWORD ===');
+    console.log('Username:', this.username);
+    console.log('Candidate password:', candidatePassword);
+    console.log('Stored hash exists:', !!this.password);
+    console.log('Stored hash length:', this.password ? this.password.length : 0);
+    
     try {
         const isMatch = await bcrypt.compare(candidatePassword, this.password);
+        console.log('bcrypt.compare result:', isMatch);
         return isMatch;
-    } catch (err) {
-        throw err;
+    } catch (error) {
+        console.error('❌ Error comparing passwords:', error);
+        throw error;
     }
 };
 

@@ -5,8 +5,8 @@ POST http://localhost:3000/signup
 Content-Type: application/json
 
 {
-  "username": "raff_is_the_goat",
-  "password": "InitialPassword12345"
+  "username": "rafff",
+  "password": "1234"
 }
 
 ### 2. Login and Verify Password (POST /login)
@@ -15,8 +15,8 @@ POST http://localhost:3000/login
 Content-Type: application/json
 
 {
-  "username": "raff_is_the_goat",
-  "password": "InitialPassword12345"
+  "username": "rafff",
+  "password": "1234"
 }
 
 ### 3. Change Password (PUT /profile/change-password)
@@ -26,9 +26,9 @@ PUT http://localhost:3000/profile/change-password
 Content-Type: application/json
 
 {
-  "username": "raff_is_the_goat",
-  "oldPassword": "InitialPassword12345",
-  "newPassword": "MyNewStrongPassword4567"
+  "username": "rafff",
+  "oldPassword": "1234",
+  "newPassword": "Password1234"
 }
 
 ### 4. Change Username (PUT /profile/change-username)
@@ -38,9 +38,9 @@ PUT http://localhost:3000/profile/change-username
 Content-Type: application/json
 
 {
-  "currentUsername": "raff_is_the_goat",
-  "password": "MyNewStrongPassword4567",
-  "newUsername": "bailey_kwok_final"
+  "currentUsername": "rafff",
+  "password": "Password1234",
+  "newUsername": "bailey_here"
 }
 
 ### 5. Delete Account (DELETE /profile/delete)
@@ -50,7 +50,7 @@ DELETE http://localhost:3000/profile/delete
 Content-Type: application/json
 
 {
-  "username": "raff_is_the_goat_final",
-  "password": "MyNewStrongPassword456"
+  "username": "bailey_here",
+  "password": "Password1234"
 }
 
