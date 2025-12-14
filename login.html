@@ -5,6 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Maps Unbound - Log In</title>
         <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     </head>
     <body>
         <!-- Navigation Bar -->
@@ -27,18 +28,48 @@
         </nav>
 
         <!-- Login Form -->
-        <div class="login">
-            <h1>Log In to Your Account</h1>
-            <form action="/submit_login" method="POST" class="login__form">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+        <div class="accform">
+            <div class="accform__container">
+                <h1>Log In to Your Account</h1>
+                <form action="/submit_login" method="POST" class="accform__form">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
 
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
 
-                <button type="submit" class="login__btn">Log In</button>
-            </form>
-            <p>Don't have an account? <a href="signup.html">Sign up here</a>.</p>
+                    <button type="submit" class="accform__btn">Log In</button>
+                </form>
+                <p>Don't have an account? <a href="signup.html">Sign up here</a>.</p>
+            </div>
+        </div>
+
+        <!-- Minimal Footer -->
+        <div class="footer__container">
+            <section class="social__media">
+                <div class="social__media--wrap">
+                    <div class="footer__logo">
+                        <a href="index.html" id="footer__logo">Maps Unbound</a>
+                    </div>
+                    <p class="website__rights">© Maps Unbound 2024. All Rights Reserved.</p>
+                    <div class="social__icons">
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Youtube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                    </div>
+                </div>
         </div>
 
         <script src="app.js"></script>

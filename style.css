@@ -457,7 +457,7 @@
 /* Footer Section */
 .footer__container {
     background-color: #131313;
-    padding: 5rem 0;
+    padding: 5.25rem 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -582,5 +582,89 @@
         margin: 0;
         padding: 10px;
         width: 100%;
+    }
+}
+
+/* Signup/Login Forms */
+.accform__container {
+    background-color: #131313;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    padding: 2rem;
+    box-sizing: border-box;
+}   
+
+.accform__container h1 {
+    background-color: #00ffff;
+    background-image: linear-gradient(to top, #00aaaa 0%, #00ffff 100%);
+    background-size: 100%;
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -moz-text-fill-color: transparent;
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.accform__form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 400px;
+}
+
+.accform__form label {
+    color: #fff;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.accform__form input {
+    padding: 12px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.accform__form button {
+    padding: 14px;
+    margin-top: 12px;
+    border: none;
+    border-radius: 4px;
+    background-color: #007272;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.accform__form button:hover {
+    background-color: #992400;
+}
+
+.accform__container p {
+    color: #fff;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.accform__container a {
+    color: #00ffff;
+    text-decoration: none;
+}
+
+@media screen and (max-width: 480px) {
+    .accform__container {
+        padding: 3rem 1rem;
+    }
+
+    .accform__container h1 {
+        font-size: 2rem;
+        margin-bottom: 1.5rem;
     }
 }
