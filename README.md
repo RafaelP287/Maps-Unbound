@@ -8,4 +8,4 @@ Dependencies
 > npm install
 
 Running Server
-> npm run devStart
+> npm run dev
