@@ -1,0 +1,56 @@
+GET http://localhost:3000/users
+### 1. Register a New User (POST /signup)
+
+POST http://localhost:3000/signup
+Content-Type: application/json
+
+{
+  "username": "raff_is_the_goat",
+  "password": "InitialPassword12345"
+}
+
+### 2. Login and Verify Password (POST /login)
+
+POST http://localhost:3000/login
+Content-Type: application/json
+
+{
+  "username": "raff_is_the_goat",
+  "password": "InitialPassword12345"
+}
+
+### 3. Change Password (PUT /profile/change-password)
+
+# Note: This test requires the user above to exist first.
+PUT http://localhost:3000/profile/change-password
+Content-Type: application/json
+
+{
+  "username": "raff_is_the_goat",
+  "oldPassword": "InitialPassword12345",
+  "newPassword": "MyNewStrongPassword4567"
+}
+
+### 4. Change Username (PUT /profile/change-username)
+
+# Note: This uses the new password defined in the previous step.
+PUT http://localhost:3000/profile/change-username
+Content-Type: application/json
+
+{
+  "currentUsername": "raff_is_the_goat",
+  "password": "MyNewStrongPassword4567",
+  "newUsername": "bailey_kwok_final"
+}
+
+### 5. Delete Account (DELETE /profile/delete)
+
+# Note: This uses the new username defined in the previous step.
+DELETE http://localhost:3000/profile/delete
+Content-Type: application/json
+
+{
+  "username": "raff_is_the_goat_final",
+  "password": "MyNewStrongPassword456"
+}
+
