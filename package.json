@@ -1,14 +1,17 @@
 {
   "scripts": {
-    "devStart": "nodemon server.js",
+    "localdev": "nodemon server.js",
+    "dev": "nodemon server1.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "dependencies": {
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "mongoose": "^8.20.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.11"
   }
 }
