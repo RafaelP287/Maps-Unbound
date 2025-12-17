@@ -22,7 +22,7 @@ Content-Type: application/json
 
 ### Connects to MongoDB and performs user authentication operations
 ### 1. Register a New User
-POST http://localhost:5000/api/auth/register
+POST http://localhost:5001/api/auth/register
 Content-Type: application/json
 
 {
@@ -32,7 +32,7 @@ Content-Type: application/json
 }
 
 ### 2. Login (Success)
-POST http://localhost:5000/api/auth/login
+POST http://localhost:5001/api/auth/login
 Content-Type: application/json
 
 {
@@ -41,7 +41,7 @@ Content-Type: application/json
 }
 
 ### 3. Login (Fail - Wrong Password)
-POST http://localhost:5000/api/auth/login
+POST http://localhost:5001/api/auth/login
 Content-Type: application/json
 
 {
