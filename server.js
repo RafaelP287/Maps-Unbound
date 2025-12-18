@@ -7,7 +7,7 @@ const User = require('./userModel'); // Import the User model
 const app = express();
 const PORT = 3000;
 const SALT_WORK_FACTOR = 10; // Keep this
-const MONGODB_URI = "mongodb+srv://Boss:Password1234@mapsunbound.pcg1nnj.mongodb.net/test"; 
+const MONGODB_URI = "test"; 
 
 // Middleware to parse JSON bodies from requests
 app.use(express.json());
