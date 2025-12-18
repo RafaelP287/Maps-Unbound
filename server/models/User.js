@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const Profile = require('./Profile'); // Import Profile
 
 const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true},
@@ -7,12 +8,22 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   is_admin: { type: Boolean, required: true, default: false },
   dateCreated: { type: Date, default: Date.now },
+  profileId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Profile' 
+  }
 });
 
 // Mongoose "Pre-Save" Hook
 // This function runs before saving a document to the database
 userSchema.pre("save", async function () {
   const user = this;
+
+  if (user.isNew) {
+    // Create a blank profile
+    const newProfile = await Profile.create({ bio: "No bio provided." });
+    this.profileId = newProfile._id;
+  }
 
   // Only hash the password if it has been modified (or is new)
   if (!user.isModified("password")) return;
