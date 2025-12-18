@@ -5,6 +5,7 @@ const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
 const { getUsers, getUser, createUser, deleteUser } = require("./controllers/userController.js")
 const { login } = require("./controllers/authController.js")
+const { updateBio } = require("./controllers/profileController.js")
 
 const app = express();
 
@@ -108,6 +109,31 @@ app.post("/api/login", async (req, res) => {
   } catch (error) {
     const statusCode = error.status || 500;
     res.status(statusCode).json({ error: error.message });
+  }
+});
+
+// PUT Route: /api/profile/:username
+app.put("/api/profile/:username", async (req, res) => {
+  try {
+    const username = req.params.username
+
+    // Receive data directly from the request body (no terminal input needed)
+    const { bio } = req.body;
+    
+    // Run the logic
+    const editedProfile = await updateBio(username, bio );
+
+    // Should return an error if the user was not found in the database.
+    if (!editedProfile) {
+      return res.status(404).json({
+        message: `User '${username}' not found.`,
+      });
+    }
+
+    // Send response back to frontend
+    res.status(200).json({ message: "Bio updated!", profile: editedProfile });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 

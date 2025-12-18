@@ -81,3 +81,21 @@ curl --header "Content-Type: application/json" \
 ```
 
 Similarly, you can test with other inputs by simply editing the fields within the data requests.
+
+### Testing PUT method to edit a user's profile bio
+
+This method takes in JSON data with `username` and `bio` fields. It should change the bio property of a user's profile to whatever was sent.
+
+```bash
+# Edits the bio of "tofu"
+curl --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{ "bio": "Hello, I am a tofu"}' \
+  http://localhost:3000/api/profile/tofu
+
+# Edits the bio of "miso"
+curl --header "Content-Type: application/json" \
+  --request PUT \
+  --data '{ "bio": "I am a cup of miso." }' \
+  http://localhost:3000/api/profile/miso
+```
