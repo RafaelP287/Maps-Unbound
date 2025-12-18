@@ -1,17 +1,23 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const Profile = require('./Profile'); // Import Profile
+const Profile = require("./Profile"); // Import Profile
 
 const userSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true},
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   is_admin: { type: Boolean, required: true, default: false },
   dateCreated: { type: Date, default: Date.now },
-  profileId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'Profile' 
-  }
+  profileId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Profile",
+  },
 });
 
 // Mongoose "Pre-Save" Hook
@@ -21,7 +27,10 @@ userSchema.pre("save", async function () {
 
   if (user.isNew) {
     // Create a blank profile
-    const newProfile = await Profile.create({ bio: "No bio provided." });
+    const newProfile = await Profile.create({
+      user: user.username,
+      bio: "No bio provided.",
+    });
     this.profileId = newProfile._id;
   }
 
@@ -38,6 +47,18 @@ userSchema.pre("save", async function () {
     user.password = hash;
   } catch (error) {
     return next(error);
+  }
+});
+
+// CASCADE DELETE HOOK
+// Runs after a user is successfully deleted via findOneAndDelete
+userSchema.post('findOneAndDelete', async function(doc) {  
+  // Check if a document was actually deleted
+  if (doc) {
+    // Delete the associated Profile
+    await mongoose.model('Profile').deleteOne({ _id: doc.profileId });
+    
+    console.log(`Associated profile ${doc.profileId} was deleted.`);
   }
 });
 
