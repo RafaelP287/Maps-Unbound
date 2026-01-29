@@ -139,3 +139,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# misc
+test_data/
+*.DS_Store

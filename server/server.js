@@ -20,7 +20,7 @@ app.use((req, res, next) => {
   console.log("Incoming Request Method:", req.method);
   console.log("Incoming URL:", req.url); // <--- Added this line
   console.log("Incoming Headers:", req.headers["content-type"]);
-  console.log("Incoming Body:", req.body);
+  // console.log("Incoming Body:", req.body);
   next();
 });
 
