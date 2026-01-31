@@ -15,7 +15,7 @@ const styles = {
         padding: '50px 20px',
     },
     heading: {
-        fontSize: '36px',
+        fontSize: '42px',
         marginBottom: '20px',
     },
     paragraph: {
