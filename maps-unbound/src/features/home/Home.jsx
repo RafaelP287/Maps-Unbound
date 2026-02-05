@@ -20,7 +20,7 @@ const styles = {
     },
     paragraph: {
         fontSize: '18px',
-        color: '#555',
+        color: '#ffffff',
     },
 };
 

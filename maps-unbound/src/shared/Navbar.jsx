@@ -21,10 +21,10 @@ const styles = {
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: '10px 20px',
-        backgroundColor: '#282c34',
+        backgroundColor: '#111',
     },
     title: {
-        color: 'white',
+        color: '#00FFFF',
         margin: 0,
     },
     links: {

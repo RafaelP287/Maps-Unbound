@@ -10,7 +10,7 @@ const styles = {
     footer: {
         textAlign: 'center',
         padding: '15px 0',
-        backgroundColor: '#282c34',
+        backgroundColor: '#111',
         position: 'fixed',
         width: '100%',
         bottom: 0,

@@ -1,34 +1,29 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Navbar from "./components/Navbar.jsx";
-import Footer from "./components/Footer.jsx";
-import Home from "./pages/Home.jsx";
-import Maps from "./pages/Maps.jsx";
-import Campaigns from "./pages/Campaigns.jsx";
-import CreateCampaign from "./pages/CreateCampaign.jsx";
-import PartyFinder from "./pages/PartyFinder.jsx";
-import Signup from "./pages/Signup.jsx";
-import Login from "./pages/Login.jsx";
+import AppLayout from "./layout/AppLayout.jsx";
+
+import Home from "./features/home/Home.jsx";
+import Maps from "./features/maps/Maps.jsx";
+import Campaigns from "./features/campaigns/Campaigns.jsx";
+import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
+import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+
+import Signup from "./features/auth/Signup.jsx";
+import Login from "./features/auth/Login.jsx";
 
 function App() {
   return (
     <BrowserRouter>
-      <div style={styles.page}>
-        <Navbar />
-
-        <main style={styles.main}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/maps" element={<Maps />} />
-            <Route path="/campaigns" element={<Campaigns />} />
-            <Route path="/create-campaign" element={<CreateCampaign />} />
-            <Route path="/party-finder" element={<PartyFinder />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/login" element={<Login />} />
-          </Routes>
-        </main>
-
-        <Footer />
-      </div>
+      <Routes>
+        <Route path="/" element={<AppLayout />}>
+          <Route index element={<Home />} />
+          <Route path="maps" element={<Maps />} />
+          <Route path="campaigns" element={<Campaigns />} />
+          <Route path="create-campaign" element={<CreateCampaign />} />
+          <Route path="party-finder" element={<PartyFinder />} />
+        </Route>
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={<Login />} />
+      </Routes>
     </BrowserRouter>
   );
 }

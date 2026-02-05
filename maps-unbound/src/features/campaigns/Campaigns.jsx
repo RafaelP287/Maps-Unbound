@@ -1,7 +1,7 @@
 import { useState } from "react";
-import CampaignCard from "../components/CampaignCard";
+import CampaignCard from "../campaigns/CampaignCard";
 import { Link } from "react-router-dom";
-import placeholderImage from "../images/placeholder.jpg";
+import placeholderImage from "../campaigns/images/placeholder.jpg";
 
 const Campaigns = () => {
   const currentUser = "Alice"; // Example logged-in user
