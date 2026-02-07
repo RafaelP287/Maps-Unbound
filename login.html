@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Maps Unbound - Log In</title>
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    </head>
+    <body>
+        
+        <nav class="navbar">
+            <div class="navbar__container">
+                <a href="/" id="navbar__logo">Maps Unbound</a>
+                <div class="navbar__toggle" id="mobile-menu">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+                <ul class="navbar__menu">
+                    <li class="navbar__item"><a href="profile.html" class="navbar__links">Profile</a></li>
+                    <li class="navbar__item"><a href="index.html" class="navbar__links">Home</a></li>
+                    <li class="navbar__item"><a href="maps.html" class="navbar__links">Maps</a></li>
+                    <li class="navbar__item"><a href="campaigns.html" class="navbar__links">Campaigns</a></li>
+                    <li class="navbar__item"><a href="partyfinder.html" class="navbar__links">Party Finder</a></li>
+                    <li class="navbar__btn"><a href="signup.html" class="button">Sign Up</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <div class="accform">
+            <div class="accform__container">
+                <h1>Log In to Your Account</h1>
+                <form id="login-form" class="accform__form" novalidate>
+                    <label for="name">Username:</label>
+                    <input type="text" id="name" name="name" autocomplete="username" required>
+
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" autocomplete="current-password" required>
+
+                    <button type="submit" class="accform__btn">Log In</button>
+                </form>
+                <p id="login-status" class="accform__status" aria-live="polite"></p>
+                <p>Don't have an account? <a href="signup.html">Sign up here</a>.</p>
+            </div>
+        </div>
+
+        <div class="footer__container">
+            <section class="social__media">
+                <div class="social__media--wrap">
+                    <div class="footer__logo">
+                        <a href="index.html" id="footer__logo">Maps Unbound</a>
+                    </div>
+                    <p class="website__rights">© Maps Unbound 2024. All Rights Reserved.</p>
+                    <div class="social__icons">
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Facebook">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Instagram">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Youtube">
+                            <i class="fab fa-youtube"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="Twitter">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="/" class="social__icon--link" target="_blank" aria-label="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                    </div>
+                </div>
+        </div>
+
+        <script src="app.js"></script>
+        <script>
+            const loginForm = document.getElementById('login-form');
+            const loginStatus = document.getElementById('login-status');
+            const API_BASE = 'http://localhost:3000';
+
+            loginForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                loginStatus.textContent = 'Signing in...';
+
+                const name = document.getElementById('name').value.trim();
+                const password = document.getElementById('password').value;
+
+                try {
+                    const response = await fetch(`${API_BASE}/users/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, password })
+                    });
+
+                    const message = await response.text();
+                    if (response.ok && message === 'Success') {
+                        loginStatus.textContent = 'Logged in successfully. Redirecting...';
+                        loginStatus.style.color = '#22c55e';
+                        
+                        // NEW: Redirect to home page after 1 second
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1000);
+
+                    } else {
+                        loginStatus.textContent = message || 'Login failed.';
+                        loginStatus.style.color = '#ef4444';
+                    }
+                } catch (error) {
+                    loginStatus.textContent = 'Network error. Please try again.';
+                    loginStatus.style.color = '#ef4444';
+                }
+            });
+        </script>
+    </body>
+</html>

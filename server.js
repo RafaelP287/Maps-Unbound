@@ -17,6 +17,7 @@ mongoose.connect(MONGODB_URI)
     .then(() => console.log('MongoDB connected successfully'))
     .catch(err => console.error('MongoDB connection error:', err));
 
+<<<<<<< Updated upstream
 // Simple test route
 app.get('/', (req, res) => {
     res.send('Server is running. Use /signup to register, /login to login.');
@@ -35,6 +36,25 @@ app.post('/signup', async (req, res) => {
     if (!username || !password) {
         console.log('❌ Missing username or password');
         return res.status(400).send('Username and password are required');
+=======
+// Endpoint to create a new user
+app.post('/users', async (req, res) => {
+    try {
+      const hashedPassword = await bcrypt.hash(req.body.password, 10); 
+      const user = { name: req.body.name, password: hashedPassword };
+      users.push(user);
+      res.status(201).send();
+    } catch {
+      res.status(500).send();
+    }
+})
+
+// Endpoint to login a user
+app.post('/users/login', async (req, res) => {
+    const user = users.find(user => user.name === req.body.name); 
+    if (user == null) {
+        return res.status(400).send('Cannot find user');
+>>>>>>> Stashed changes
     }
     
     try {
@@ -95,6 +115,7 @@ app.post('/login', async (req, res) => {
         console.error('❌ Login error:', err.message);
         res.status(500).send(err.message);
     }
+<<<<<<< Updated upstream
 });
 
 // 3. EDIT / CHANGE PASSWORD (PUT)
@@ -182,3 +203,41 @@ app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     console.log('Database:', MONGODB_URI);
 });
+=======
+})
+
+// --- NEW STUFF BELOW ---
+
+// Update Username
+app.patch('/users/username', (req, res) => {
+    const user = users.find(u => u.name === req.body.oldName);
+    if (!user) return res.status(404).send('User not found');
+    
+    user.name = req.body.newName;
+    res.send('Username updated');
+});
+
+// Update Password
+app.patch('/users/password', async (req, res) => {
+    const user = users.find(u => u.name === req.body.name);
+    if (!user) return res.status(404).send('User not found');
+
+    try {
+        user.password = await bcrypt.hash(req.body.newPassword, 10);
+        res.send('Password updated');
+    } catch {
+        res.status(500).send();
+    }
+});
+
+// Delete User
+app.delete('/users', (req, res) => {
+    const index = users.findIndex(u => u.name === req.body.name);
+    if (index === -1) return res.status(404).send('User not found');
+
+    users.splice(index, 1);
+    res.send('User deleted');
+});
+
+app.listen(3000);
+>>>>>>> Stashed changes

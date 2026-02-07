@@ -1,0 +1,92 @@
+GET http://localhost:3000/users
+
+### for local testing purposes
+
+POST http://localhost:3000/users
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "password": "securepassword123"
+}
+
+###
+
+POST http://localhost:3000/users/login
+Content-Type: application/json
+
+{
+    "name": "John Doe",
+    "password": "securepassword123"
+}
+
+### Connects to MongoDB and performs user authentication operations
+### 1. Register a New User
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+    "username": "DemoStudent",
+    "email": "student@csulb.edu",
+    "password": "securePassword123"
+}
+
+### 2. Login (Success)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "student@csulb.edu",
+    "password": "securePassword123"
+}
+
+### 3. Login (Fail - Wrong Password)
+POST http://localhost:5000/api/auth/login
+Content-Type: application/json
+
+{
+    "email": "student@csulb.edu",
+    "password": "WrongPassword"
+}
+
+
+
+
+###4. Change Password (PUT /profile/change-password)
+
+# Note: This test requires the user above to exist first. PUT http://localhost:3000/profile/change-password Content-Type: application/json
+
+{
+    "username": "rafff", "oldPassword": "1234", "newPassword": "Password1234"
+
+}
+
+### 5. Change Username (PUT /profile/change-username)
+
+# Note: This uses the new password defined in the previous step. PUT http://localhost:3000/profile/change-username Content-Type: application/json
+
+{
+    "currentUsername": "rafff", "password": "Password1234", "newUsername": "bailey_here"
+
+}
+
+### 6. Delete Account (DELETE /profile/delete)
+
+# Note: This uses the new username defined in the previous step. DELETE http://localhost:3000/profile/delete Content-Type: application/json
+
+{
+    "username": "bailey_here", "password": "Password1234"
+
+}
+
+
+
+
+
+
+
+
+
+
+### 4. Get All Users (Demo)
+GET http://localhost:5000/api/auth/all

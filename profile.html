@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+     <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Maps Unbound - Log In</title>
+        <link rel="stylesheet" href="style.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+        <nav class="navbar">
+            <div class="navbar__container">
+                <a href="/" id="navbar__logo">Maps Unbound</a>
+                <div class="navbar__toggle" id="mobile-menu">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                </div>
+                <ul class="navbar__menu">
+                    <li class="navbar__item"><a href="profile.html" class="navbar__links">Profile</a></li>
+                    <li class="navbar__item"><a href="index.html" class="navbar__links">Home</a></li>
+                    <li class="navbar__item"><a href="maps.html" class="navbar__links">Maps</a></li>
+                    <li class="navbar__item"><a href="campaigns.html" class="navbar__links">Campaigns</a></li>
+                    <li class="navbar__item"><a href="partyfinder.html" class="navbar__links">Party Finder</a></li>
+                    <li class="navbar__btn"><a href="signup.html" class="button">Sign Up</a></li>
+                </ul>
+            </div>
+        <nav>
+
+     <div class="accform">
+        <div class="accform__container">
+            <h1>Manage Your Account</h1>
+            
+            <h3>Update Username</h3>
+            <input type="text" id="oldName" placeholder="Current Username">
+            <input type="text" id="newName" placeholder="New Username">
+            <button onclick="updateUsername()" class="accform__btn">Change Username</button>
+
+            <h3>Update Password</h3>
+            <input type="text" id="userPass" placeholder="Username">
+            <input type="password" id="newPass" placeholder="New Password">
+            <button onclick="updatePassword()" class="accform__btn">Change Password</button>
+
+            <h3>Danger Zone</h3>
+            <input type="text" id="delName" placeholder="Username to Delete">
+            <button onclick="deleteUser()" class="accform__btn" style="background-color: #ef4444;">Delete Account</button>
+            
+            <p id="status"></p>
+        </div>
+     </div>
+
+     <script>
+        const API_BASE = 'http://localhost:3000';
+        const status = document.getElementById('status');
+
+        async function updateUsername() {
+            const oldName = document.getElementById('oldName').value;
+            const newName = document.getElementById('newName').value;
+            const res = await fetch(`${API_BASE}/users/username`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ oldName, newName })
+            });
+            status.textContent = await res.text();
+        }
+
+        async function updatePassword() {
+            const name = document.getElementById('userPass').value;
+            const newPassword = document.getElementById('newPass').value;
+            const res = await fetch(`${API_BASE}/users/password`, {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, newPassword })
+            });
+            status.textContent = await res.text();
+        }
+
+        async function deleteUser() {
+            if(!confirm("Are you sure?")) return;
+            const name = document.getElementById('delName').value;
+            const res = await fetch(`${API_BASE}/users`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name })
+            });
+            status.textContent = await res.text();
+        }
+      </script>
+     </body>
+</html>
