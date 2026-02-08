@@ -1,11 +1,22 @@
+import Button from "../../shared/Button";
+import "./home.css";
+
 function Home() {
     return (
-        <div style={styles.container}>
-            <h1 style={styles.heading}>Welcome to Maps Unbound</h1>
-            <p style={styles.paragraph}>
-                Your personal virtual tabletop for TTRPGs.
-            </p>
-        </div>
+        <>
+            {/* Hero Section */}
+            <div style={styles.container}>
+                <h1 style={styles.heading}>Welcome to Maps Unbound</h1>
+                <p style={styles.paragraph}>
+                    Your personal vitrual tabletop RPG destination!
+                </p>
+                <Button onClick={() => alert('Get Started clicked!')}>
+                    Get Started
+                </Button>
+            </div>
+
+            {/* Services Section */}
+        </>
     );
 }
 

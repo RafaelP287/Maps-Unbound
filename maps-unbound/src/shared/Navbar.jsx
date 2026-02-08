@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import Button from "./Button";
 
 function Navbar() {
     return (
@@ -9,7 +10,9 @@ function Navbar() {
                 <Link to="/maps" style={styles.link}>Maps</Link>
                 <Link to="/campaigns" style={styles.link}>Campaigns</Link>
                 <Link to="/party-finder" style={styles.link}>Party Finder</Link>
-                <Link to="/signup" style={styles.link}>Sign Up</Link>
+                <Link to="/signup" style={{textDecoration: 'none'}}>
+                    <Button>Sign Up</Button>
+                </Link>
             </div>
         </nav>
     );
@@ -30,6 +33,7 @@ const styles = {
     links: {
         display: 'flex',
         gap: '20px',
+        alignItems: 'center',
     },
     link: {
         color: 'white',
