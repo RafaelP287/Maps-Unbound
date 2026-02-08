@@ -6,6 +6,7 @@ function Navbar() {
             <h2 style={styles.title}>Maps Unbound</h2>
             <div style={styles.links}>
                 <Link to="/" style={styles.link}>Home</Link>
+                <Link to="/player" style={styles.link}>Player</Link>
                 <Link to="/maps" style={styles.link}>Maps</Link>
                 <Link to="/campaigns" style={styles.link}>Campaigns</Link>
                 <Link to="/party-finder" style={styles.link}>Party Finder</Link>
