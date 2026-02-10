@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
-const Profile = require("./Profile"); // Import Profile
+const Profile = require("./Profile");
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -12,8 +12,11 @@ const userSchema = new mongoose.Schema({
   },
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  is_admin: { type: Boolean, required: true, default: false },
+  isAdmin: { type: Boolean, required: true, default: false },
   dateCreated: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+  profileImageUrl: {type: String },               // The S3 URL
+  s3Key: {type: String},                          // The file path in the bucket (useful for deleting later)
   profileId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Profile",

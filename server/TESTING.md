@@ -2,7 +2,7 @@
 
 Test out the following api calls, and send JSON data to them. The server listens on port 3000, and you can use `localhost` to access it. The server should output what kind of data it receives as well, for debugging purposes.
 
-So far, all api calls are implemented for admin control. Endpoitns for the average user will be implemented in the future, and will consist of more limited control
+So far, all api calls are implemented for admin control. Endpoints for the average user will be implemented in the future, and will consist of more limited control
 
 ## User Management
 
@@ -98,4 +98,52 @@ curl --header "Content-Type: application/json" \
   --request PUT \
   --data '{ "bio": "I am a cup of miso." }' \
   http://localhost:3000/api/profile/miso
+```
+
+<!-- Characters and etc. -->
+
+```bash
+# Creates a Character
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{
+    "name": "John Helldiver",
+    "user": "tofu", 
+    "race": "Human",
+    "class": "Wizard",
+    "level": 3,
+    "maxLevel": 20,
+    "experience": 1500,
+    "hp": {
+      "current": 24,
+      "max": 24
+    },
+    "mana": {
+      "current": 10,
+      "max": 10
+    },
+    "attributes": {
+      "strength": 8,
+      "dexterity": 14,
+      "constitution": 12,
+      "intelligence": 18,
+      "wisdom": 14,
+      "charisma": 10
+    },
+    "skills": {
+      "name": "Arcana",
+      "level": 2,
+      "desc": "Knowledge of magical signs"
+    },
+    "spellbook": []
+  }' \
+  http://localhost:3000/api/characters
+```
+
+```bash
+# Add a spell
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{ "spellIndex": "fireball" }' \
+  http://localhost:3000/character/2/spells
 ```
