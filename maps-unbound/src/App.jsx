@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./layout/AppLayout.jsx";
-import AuthLayout from "./layout/AuthLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 import Maps from "./features/maps/Maps.jsx";
@@ -21,8 +20,6 @@ function App() {
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="create-campaign" element={<CreateCampaign />} />
           <Route path="party-finder" element={<PartyFinder />} />
-        </Route>
-        <Route path="/" element={<AuthLayout />}>
           <Route path="signup" element={<Signup />} />
           <Route path="login" element={<Login />} />
         </Route>
