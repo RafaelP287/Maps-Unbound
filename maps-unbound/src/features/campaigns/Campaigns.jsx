@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import CampaignCard from "../campaigns/CampaignCard";
 import Button from "../../shared/Button.jsx";
-import placeholderImage from "../campaigns/images/placeholder.jpg";
+import placeholderImage from "../campaigns/images/DnD.jpg";
 
 const Campaigns = () => {
 
