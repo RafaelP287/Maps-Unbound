@@ -1,5 +1,6 @@
 // server.js
 require("dotenv").config();
+const { CONFIG } = require("./config.js");
 const express = require("express");
 const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
@@ -19,8 +20,6 @@ const Character = require("./models/Character.js");
 const User = require("./models/User.js");
 const { parseSpellData } = require("./models/Spell.js");
 
-const apiBase = "http://localhost:3000/api/";
-const api5e = "http://localhost:3001/api/2014/";
 const app = express();
 
 // Middleware to parse JSON bodies (The data sent by frontend)
@@ -159,8 +158,8 @@ app.put("/api/profile/:username", async (req, res) => {
 app.post("/api/characters", async (req, res) => {
   try {
     // Destructure data from the request body
-    // Separate 'user' to enforce logged-in user logic later
-    const { user, ...charData } = req.body;
+    // Separate certain fields for calculations + log-in logic
+    const { user, race, ...charData } = req.body;
 
     //  Verify the User exists before creating character
     const userDoc = await User.findOne({ username: user });
@@ -173,6 +172,10 @@ app.post("/api/characters", async (req, res) => {
         ...req.body,
         user: userDoc._id // <--- Correct: Passing the ObjectId
     });
+    await newCharacter.save();
+
+    // Calculate the bonus attributes, depending on race and etc.
+    
     await newCharacter.save();
 
     // 5. Respond
@@ -189,25 +192,45 @@ app.post("/api/characters", async (req, res) => {
   }
 });
 
+// GET /api/characters/{:id}
+app.get("/api/characters/:id", async (req, res) => {
+  try {
+    const character = await Character.findOne({ characterId: req.params.id });
+
+    const raceData = await character.getRace();
+    const classData = await character.getClass();
+    console.log("Race:", raceData);
+    console.log("Class:", classData);
+
+    res.status(201).json({
+      message: `Obtained the data of ${character.name}!`,
+      character: character,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Character Spells
-app.post("/character/:id/spells", async (req, res) => {
+app.post("/api/characters/:id/spells", async (req, res) => {
   try {
     const { spellIndex } = req.body;
 
     // Fetch
-    const apiURL = `${api5e}spells/${spellIndex}`
+    const apiURL = `${CONFIG.api5e}/api/2014/spells/${spellIndex}`
     console.log(`Attempting to fetch from URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
 
     const character = await Character.findOne({ characterId: req.params.id });
 
-    // 3. Parse & Push (The clean part!)
+    // Parse & Push
     const newSpell = parseSpellData(apiJson);
-
+    
     character.spellbook.push(newSpell);
     await character.save();
-
+    
+    console.log(`Successfully added spell "${newSpell.name}" to ${character.name} (ID '${character.characterId}')`)
     res.status(200).json(character);
   } catch (error) {
     res.status(500).json({ error: error.message });

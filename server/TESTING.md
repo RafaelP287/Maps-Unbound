@@ -123,12 +123,12 @@ curl --header "Content-Type: application/json" \
       "max": 10
     },
     "attributes": {
-      "strength": 8,
-      "dexterity": 14,
-      "constitution": 12,
-      "intelligence": 18,
-      "wisdom": 14,
-      "charisma": 10
+      "str": 8,
+      "dex": 14,
+      "con": 12,
+      "int": 18,
+      "wis": 14,
+      "cha": 10
     },
     "skills": {
       "name": "Arcana",
@@ -141,9 +141,16 @@ curl --header "Content-Type: application/json" \
 ```
 
 ```bash
+# Get a character
+curl --header "Content-Type: application/json" \
+  --request GET \
+  http://localhost:3000/api/characters/4
+```
+
+```bash
 # Add a spell
 curl --header "Content-Type: application/json" \
   --request POST \
   --data '{ "spellIndex": "fireball" }' \
-  http://localhost:3000/character/2/spells
+  http://localhost:3000/api/characters/4/spells
 ```

@@ -1,3 +1,4 @@
+const { CONFIG } = require("../config.js");
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const Counter = require("./Counter");
@@ -66,12 +67,22 @@ const characterSchema = new Schema(
 
     // --- Attributes (Stats) ---
     attributes: {
-      strength: { type: Number, min: 1, max: 30, default: 10 },
-      dexterity: { type: Number, min: 1, max: 30, default: 10 },
-      constitution: { type: Number, min: 1, max: 30, default: 10 },
-      intelligence: { type: Number, min: 1, max: 30, default: 10 },
-      wisdom: { type: Number, min: 1, max: 30, default: 10 },
-      charisma: { type: Number, min: 1, max: 30, default: 10 },
+      str: { type: Number, min: 1, max: 30, default: 10 },
+      dex: { type: Number, min: 1, max: 30, default: 10 },
+      con: { type: Number, min: 1, max: 30, default: 10 },
+      int: { type: Number, min: 1, max: 30, default: 10 },
+      wis: { type: Number, min: 1, max: 30, default: 10 },
+      cha: { type: Number, min: 1, max: 30, default: 10 },
+    },
+
+    // --- Bonus Attributes (Calculated from race, ) ---
+    bonusAttributes: {
+      str: { type: Number, min: 0, default: 0},
+      dex: { type: Number, min: 0, default: 0},
+      con: { type: Number, min: 0, default: 0},
+      int: { type: Number, min: 0, default: 0},
+      wis: { type: Number, min: 0, default: 0},
+      cha: { type: Number, min: 0, default: 0},
     },
 
     // --- Skills ---
@@ -116,6 +127,34 @@ characterSchema.virtual("inventory", {
   localField: "_id", // Find items where `localField`
   foreignField: "owner", // is equal to `foreignField`
 });
+
+// --- Get Method: Gets race from database ---
+characterSchema.methods.getRace = async function () {
+  try {
+    const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.toLowerCase()}`
+    console.log(`Attempting to fetch race from URL: ${apiURL}`);
+    const response = await fetch(apiURL);
+    const apiJson = await response.json();
+    console.log(`Successfully obtained the race of ${this.name} (ID: ${this.characterId}): ${this.race}`);
+    return apiJson;
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
+
+// --- Get Method: Gets class from database ---
+characterSchema.methods.getClass = async function () {
+  try {
+    const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.toLowerCase()}`
+    console.log(`Attempting to fetch class URL: ${apiURL}`);
+    const response = await fetch(apiURL);
+    const apiJson = await response.json();
+    console.log(`Successfully obtained the class of ${this.name} (ID: ${this.characterId}): ${this.class}`);
+    return apiJson;
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
 
 // --- Instance Method: Apply Damage ---
 characterSchema.methods.takeDamage = async function (amount) {
