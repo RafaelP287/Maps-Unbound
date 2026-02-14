@@ -55,10 +55,16 @@ function Navbar() {
 
 const styles = {
     navbar: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        zIndex: 1000,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '10px 20px',
+        padding: '6px 20px',
         backgroundColor: '#111',
     },
     title: {

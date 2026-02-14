@@ -1,55 +1,59 @@
 import { useState } from "react";
-import CampaignCard from "../campaigns/CampaignCard";
 import { Link } from "react-router-dom";
+import CampaignCard from "../campaigns/CampaignCard";
+import Button from "../../shared/Button.jsx";
 import placeholderImage from "../campaigns/images/placeholder.jpg";
 
 const Campaigns = () => {
-  const currentUser = "Alice"; // Example logged-in user
 
   const [campaigns] = useState([
     {
-      id: 1,
-      title: "Dragon Quest",
-      dm: "Alice",
-      players: ["Bob", "Charlie", "Dave"],
-      description: "An epic journey through the mountains.",
+      title: "The Lost Mines",
+      description: "A classic adventure in the world of D&D.",
       image: placeholderImage,
+      dm: "Alice",
+      players: ["Bob", "Charlie"]
     },
     {
-      id: 2,
-      title: "Mystic Lands",
-      dm: "Eve",
-      players: ["Mallory", "Trent"],
-      description: "Explore mysterious lands full of magic.",
+      title: "Curse of Strahd",
+      description: "A gothic horror campaign set in Barovia.",
       image: placeholderImage,
+      dm: "Bob",
+      players: ["Alice", "Charlie"]
     }
   ]);
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>My Campaigns</h1>
-      <Link to="/create-campaign">
-        <button style={createButtonStyle}>+ Create Campaign</button>
-      </Link>
-      <div style={containerStyle}>
-        {campaigns.map((c) => (
-          <CampaignCard key={c.id} campaign={c} currentUser={currentUser} />
+    <>
+      <div style={styles.header}>
+        <h1>My Campaigns</h1>
+        <Link to="/create-campaign">
+          <Button>Create New Campaign</Button>
+        </Link>
+      </div>
+      <div style={styles.list}>
+        {campaigns.map((campaign, index) => (
+          <CampaignCard key={index} campaign={campaign} currentUser="Bob" />
         ))}
       </div>
-    </div>
+    </>
   );
 };
 
-const containerStyle = {
-  display: "flex",
-  overflowX: "auto",
-  padding: "10px 0"
-};
-
-const createButtonStyle = {
-  margin: "12px 0",
-  padding: "8px 16px",
-  cursor: "pointer"
+const styles = {
+  header: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "16px"
+  },
+  list: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: "16px",
+    padding: "16px"
+  }
 };
 
 export default Campaigns;

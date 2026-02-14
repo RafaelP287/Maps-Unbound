@@ -1,0 +1,21 @@
+/* Button */
+.button {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+    padding: 10px 20px;
+    border: none;
+    outline: none;
+    border-radius: 4px;
+    background: #007272;
+    color: #fff;
+    font-family: inherit;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.button:hover {
+    background: #992400;
+    transition: all 0.3s ease;
+}
