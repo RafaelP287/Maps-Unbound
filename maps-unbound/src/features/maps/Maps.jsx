@@ -58,7 +58,7 @@ function Maps({ initializeDice, rollDice, isDiceReady }) {
             {/* Controls */}
             <div style={{ 
                 position: 'absolute', 
-                top: 20,
+                top: 60,
                 left: 20,
                 zIndex: 10, 
                 display: 'flex',
