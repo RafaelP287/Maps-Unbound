@@ -47,7 +47,7 @@ function Home() {
             <div style={styles.container}>
                 <h1 style={styles.subHeading}>We offer a variety of tools and features to enhance your tabletop RPG experience.</h1>
                 <div style={styles.serviceCards}>
-                    {services.map((service, index) => (
+                    {services.map((service) => (
                         <div
                             key={service.title}
                             style={{
