@@ -4,8 +4,7 @@ const router = express.Router();
 const Character = require('../models/Character'); 
 const User = require('../models/User.js');
 
-const { getCharacters, getCharacter, createCharacter } = require('../controllers/characterController.js')
-const { parseSpellData } = require("../models/Spell.js");
+const { getCharacters, getCharacter, createCharacter, addSpellToCharacter } = require('../controllers/characterController.js')
 
 // GET all characters 
 router.get('/', async (req, res) => {
@@ -55,23 +54,14 @@ router.post('/', async (req, res) => {
 router.post("/:id/spells", async (req, res) => {
   try {
     const { spellIndex } = req.body;
+    const characterId = req.params.id
 
-    // Fetch
-    const apiURL = `${CONFIG.api5e}/api/2014/spells/${spellIndex}`
-    console.log(`Attempting to fetch from URL: ${apiURL}`);
-    const response = await fetch(apiURL);
-    const apiJson = await response.json();
-
-    const character = await Character.findOne({ characterId: req.params.id });
-
-    // Parse & Push
-    const newSpell = parseSpellData(apiJson);
+    const response = await addSpellToCharacter(characterId, spellIndex)
     
-    character.spellbook.push(newSpell);
-    await character.save();
-    
-    console.log(`Successfully added spell "${newSpell.name}" to ${character.name} (ID '${character.characterId}')`)
-    res.status(200).json(character);
+    res.status(200).json({
+      message: `Successfully added spell "${spellIndex}" to character (ID '${characterId}')`,
+      content: response
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

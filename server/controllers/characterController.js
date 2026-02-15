@@ -3,6 +3,8 @@ const { CONFIG } = require('../config.js')
 const User = require("../models/User");
 const Character = require("../models/Character");
 
+const { parseSpellData } = require("../models/Spell.js");
+
 async function getCharacters() {
   return Character.find({})
 }
@@ -49,4 +51,23 @@ async function createCharacter(characterName, userName, raceIndex, classIndex, b
   }
 }
 
-module.exports = { getCharacters, getCharactersFromUser, getCharacter, getCharacterExpanded, getCharacterByName, createCharacter };
+async function addSpellToCharacter(id, spellIndex) {
+  try {
+    const currentCharacter = await Character.findOne({ characterId: id });
+
+    const response = await fetch(`${CONFIG.api5e}/api/2014/spells/${spellIndex}`);
+    const spellJson = await response.json();
+
+    const newSpell = parseSpellData(spellJson);
+    currentCharacter.spellbook.push(newSpell);
+
+    await currentCharacter.save();
+
+    console.log(`Successfully added spell "${newSpell.name}" to ${currentCharacter.name} (ID '${currentCharacter.characterId}')`)
+    return newSpell
+  } catch (error) {
+    console.error("Error adding spell to character:", error);
+  }
+}
+
+module.exports = { getCharacters, getCharactersFromUser, getCharacter, getCharacterExpanded, getCharacterByName, createCharacter, addSpellToCharacter };
