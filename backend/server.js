@@ -9,7 +9,7 @@ import campaignRoutes from './routes/campaigns.js';
 dotenv.config({ path: '../.env' });
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
