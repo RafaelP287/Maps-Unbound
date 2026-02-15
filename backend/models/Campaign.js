@@ -6,7 +6,7 @@ const memberSchema = new mongoose.Schema({
 });
 
 const campaignSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  title: { type: String, required: true },
   description: { type: String },
   image: { type: String },
   members: [memberSchema],
