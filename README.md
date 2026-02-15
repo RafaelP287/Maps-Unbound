@@ -1,19 +1,18 @@
-## Setup
+# Maps-Unbound
 
-1) Install frontend deps:
+Create .env file in root folder for database connection
 
-```
-cd maps-unbound
-npm install
-```
+> MONGO_URI=your_mongodb_connection_string_here
+>
+> PORT=5000
 
-2) Install backend deps:
+Dependencies
 
-```
-cd ../backend
-npm install
-```
+Running Server
 
+<<<<<<< Updated upstream
+> run server.js and then test the outputs on the api_tests.rest
+=======
 ## Environment
 
 Create or update the root .env file:
@@ -38,3 +37,13 @@ Terminal 2 (frontend):
 cd maps-unbound
 npm run dev
 ```
+
+
+## Running the dice
+
+Create a account on dddice.com
+
+and once you create get a API key to initiallize the engine 
+
+Profile<Developers< Create API Key
+>>>>>>> Stashed changes
