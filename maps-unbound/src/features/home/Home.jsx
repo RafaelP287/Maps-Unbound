@@ -1,7 +1,8 @@
 import Button from "../../shared/Button";
 import mapIMG from "./images/home1.jpg";
-import campaignIMG from "./images/home2.jpg";
-import partyFinderIMG from "./images/home3.jpg";
+import characterIMG from "./images/home2.jpg";
+import campaignIMG from "./images/home3.jpg";
+import partyFinderIMG from "./images/home4.jpg";
 
 function Home() {
     const services = [
@@ -9,6 +10,11 @@ function Home() {
             title: "Map Editor",
             description: "Create and customize your own maps with our intuitive map editor.",
             image: mapIMG
+        },
+        {
+            title: "Character Management",
+            description: "Create and manage your characters with our comprehensive character sheets and tools.",
+            image: characterIMG
         },
         {
             title: "Campaign Management",

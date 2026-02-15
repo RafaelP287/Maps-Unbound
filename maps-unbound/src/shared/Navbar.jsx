@@ -1,48 +1,37 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
 import Button from "../shared/Button.jsx";
-
-const AUTH_STORAGE_KEY = "maps-unbound-auth";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function Navbar() {
     const navigate = useNavigate();
-    const [user, setUser] = useState(() => {
-        // Initialize state directly from localStorage instead of using useEffect
-        try {
-            const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-            if (authData) {
-                const { user } = JSON.parse(authData);
-                return user;
-            }
-        } catch (error) {
-            console.error("Failed to parse auth data:", error);
-        }
-        return null;
-    });
+    const { user, logout, isLoggedIn, loading } = useAuth();
 
     const handleLogout = () => {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-        setUser(null);
-        navigate('/');
+        logout();
+        navigate("/");
     };
+
+    if (loading) return null;
 
     return (
         <nav style={styles.navbar}>
             <Link to="/" style={styles.titleLink}>
                 <h2 style={styles.title}>Maps Unbound</h2>
             </Link>
+
             <div style={styles.links}>
-                <Link to="/" style={styles.link}>Home</Link>
-                <Link to="/maps" style={styles.link}>Maps</Link>
-                <Link to="/characters" style={styles.link}>Characters</Link>
-                <Link to="/campaigns" style={styles.link}>Campaigns</Link>
-                <Link to="/party-finder" style={styles.link}>Party Finder</Link>
-                
-                {user ? (
+                {isLoggedIn ? (
                     <>
+                        <Link to="/" style={styles.link}>Home</Link>
+                        <Link to="/maps" style={styles.link}>Maps</Link>
+                        <Link to="/characters" style={styles.link}>Characters</Link>
+                        <Link to="/campaigns" style={styles.link}>Campaigns</Link>
+                        <Link to="/party-finder" style={styles.link}>Party Finder</Link>
+
                         <Link to="/profile" style={styles.link}>
-                             {user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase()}
+                            {user.username[0].toUpperCase() + user.username.slice(1)}
                         </Link>
+
                         <button onClick={handleLogout} style={styles.logoutButton}>
                             Logout
                         </button>
