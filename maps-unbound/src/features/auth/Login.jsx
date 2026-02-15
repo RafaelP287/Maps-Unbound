@@ -1,14 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
-const AUTH_STORAGE_KEY = "maps-unbound-auth";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 function Login() {
     const navigate = useNavigate();
-    const [form, setForm] = useState({
-        email: "",
-        password: "",
-    });
+    const { login } = useAuth(); // <-- get login function from context
+
+    const [form, setForm] = useState({ email: "", password: "" });
     const [errors, setErrors] = useState({});
     const [status, setStatus] = useState({ type: "idle", message: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,22 +14,19 @@ function Login() {
     const handleChange = (event) => {
         const { name, value } = event.target;
         setForm((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) {
-            setErrors((prev) => ({ ...prev, [name]: "" }));
-        }
-        if (status.type !== "idle") {
-            setStatus({ type: "idle", message: "" });
-        }
+
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+        if (status.type !== "idle") setStatus({ type: "idle", message: "" });
     };
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const nextErrors = {};
 
+        const nextErrors = {};
         if (!form.email.trim()) nextErrors.email = "Email is required.";
         if (!form.password) nextErrors.password = "Password is required.";
-
         setErrors(nextErrors);
+
         if (Object.keys(nextErrors).length > 0) {
             setStatus({ type: "error", message: "Fix the highlighted fields." });
             return;
@@ -43,9 +38,7 @@ function Login() {
         try {
             const response = await fetch("/api/auth/login", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     email: form.email.trim().toLowerCase(),
                     password: form.password,
@@ -55,7 +48,7 @@ function Login() {
             const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                const message = data.message || data.error || "Login failed.";
+                const message = data.message || "Login failed.";
                 const fieldErrors = data.errors || {};
                 if (fieldErrors && typeof fieldErrors === "object") {
                     setErrors((prev) => ({ ...prev, ...fieldErrors }));
@@ -64,20 +57,15 @@ function Login() {
                 return;
             }
 
-            if (data.token) {
-                localStorage.setItem(
-                    AUTH_STORAGE_KEY,
-                    JSON.stringify({ token: data.token, user: data.user })
-                );
-            }
+            // Use AuthContext login function
+            login({ user: data.user, token: data.token });
 
             setStatus({ type: "success", message: "Welcome back!" });
             setForm({ email: "", password: "" });
 
-            setTimeout(() => {
-                navigate("/profile", { replace: true });
-            }, 400);
-        } catch {
+            setTimeout(() => navigate("/profile", { replace: true }), 400);
+        } catch (error) {
+            console.error("Login error:", error);
             setStatus({ type: "error", message: "Unable to reach server." });
         } finally {
             setIsSubmitting(false);
@@ -91,7 +79,7 @@ function Login() {
                     <h1 style={styles.logo}>Maps Unbound</h1>
                     <p style={styles.subtitle}>Sign in to your account</p>
                     <br />
-                    <img src="d20.svg"width="150" height="150"></img>
+                    <img src="d20.svg" width="150" height="150" alt="D20 Logo" />
                 </div>
 
                 {status.message && (

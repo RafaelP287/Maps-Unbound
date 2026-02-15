@@ -15,6 +15,7 @@ import Characters from "./features/characters/Characters.jsx";
 import CreateCharacter from "./features/characters/CreateCharacter.jsx";
 
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+
 import Profile from "./features/profile/Profile.jsx";
 
 import Signup from "./features/auth/Signup.jsx";
@@ -77,6 +78,9 @@ function App() {
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
           <Route index element={<Home />} />
+
+          {/* Profile route */}
+          <Route path="profile" element={<Profile />} />
           
           {/* Map routes */}
           <Route 
