@@ -1,18 +1,25 @@
-import React from "react";
+import { Link } from "react-router-dom";
+import placeholderImage from "./images/DnD.jpg";
 
 const CampaignCard = ({ campaign, currentUser }) => {
-  const isDM = campaign.dm === currentUser;
-  const totalPlayers = campaign.players.length + 1;
+  const member = campaign.members.find(m => m.userId === currentUser);
+
+  const isDM = member && member.role === "DM";
+  const totalPlayers = campaign.members.length;
 
   return (
-    <div style={{ ...cardStyle, backgroundImage: `url(${campaign.image})` }}>
-      {isDM && <span style={dmBadgeStyle}>DM</span>}
-      <div style={overlayStyle}>
-        <h3 style={titleStyle}>{campaign.title}</h3>
-        <p style={descriptionStyle}>{campaign.description}</p>
-        <p style={playersStyle}>Players: {totalPlayers}</p>
-      </div>
-    </div>
+    <Link 
+    to={`/campaigns/${campaign._id}`} 
+    style={{ ...cardStyle, backgroundImage: `url(${campaign.image || placeholderImage})` }}>
+        {member && (
+          <div style={badgeStyle}>{isDM ? "DM" : "Player"}</div>
+        )}
+        <div style={overlayStyle}>
+          <h3 style={titleStyle}>{campaign.title}</h3>
+          <p style={descriptionStyle}>{campaign.description}</p>
+          <p style={playersStyle}>Players: {totalPlayers}</p>
+        </div>
+    </Link>
   );
 };
 
@@ -43,8 +50,8 @@ const overlayStyle = {
   gap: "4px"
 };
 
-// DM Badge
-const dmBadgeStyle = {
+// Badge
+const badgeStyle = {
   position: "absolute",
   top: "10px",
   right: "10px",

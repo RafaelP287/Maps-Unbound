@@ -2,84 +2,81 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Button from "../../shared/Button.jsx";
 
-function CreateCampaign() {
+function CreateCampaignPage() {
     const navigate = useNavigate();
-    const [campaignName, setCampaignName] = useState("");
-    const [description, setDescription] = useState("");
-    const [playersNeeded, setPlayersNeeded] = useState(0);
-    
+    const [form, setForm] = useState({
+        title: "",
+        description: "",
+        members: []
+    });
+
     const handleSubmit = (e) => {
-        e.preventDefault();
-        // Here you would typically send the data to your backend
-        console.log({ campaignName, description, playersNeeded });
-        // After creation, navigate to the campaigns page
         navigate("/campaigns");
-    }
+    };
+
     return (
         <>
-            <div style={styles.header}>
+            <div style={headerStyle}>
                 <h1>Create New Campaign</h1>
-                <p>Fill out the details below to create your campaign.</p>
+                <p>Start a new adventure!</p>
             </div>
-            <div style={styles.formContainer}>
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <label style={styles.label}>
-                        Campaign Name:
-                        <input type="text" value={campaignName} onChange={(e) => setCampaignName(e.target.value)} style={styles.input} required />
-                    </label>
-                    <label style={styles.label}>
-                        Description:
-                        <textarea value={description} onChange={(e) => setDescription(e.target.value)} style={styles.textarea} required />
-                    </label>
-                    <label style={styles.label}>
-                        Players Needed:
-                        <input type="number" value={playersNeeded} onChange={(e) => setPlayersNeeded(e.target.value)} style={styles.input} min="1" required />
-                    </label>
-                    <Button type="submit">Create Campaign</Button>
-                </form>
-            </div>
+
+            <form onSubmit={handleSubmit} style={formStyle}>
+                <label style={labelStyle}>
+                    Campaign Title:
+                    <input 
+                        type="text" 
+                        value={form.title} 
+                        onChange={e => setForm({...form, title: e.target.value})} 
+                        required 
+                        style={inputStyle}
+                    />
+                </label>
+
+                <label style={labelStyle}>
+                    Description:
+                    <textarea 
+                        value={form.description} 
+                        onChange={e => setForm({...form, description: e.target.value})} 
+                        required 
+                        style={{...inputStyle, height: "100px"}}
+                    />
+                </label>
+
+                <Button type="submit" primary>Create Campaign</Button>
+            </form>
         </>
-    );
+    )
 }
 
-const styles = {
-    header: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        padding: "16px"
-    },
-    formContainer: {
-        display: "flex",
-        justifyContent: "center",
-        padding: "16px"
-    },
-    form: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        width: "100%",
-        maxWidth: "400px"
-    },
-    label: {
-        display: "flex",
-        flexDirection: "column",
-        fontSize: "14px",
-        fontWeight: "bold"
-    },
-    input: {
-        padding: "8px",
-        fontSize: "14px",
-        borderRadius: "4px",
-        border: "1px solid #ccc"
-    },
-    textarea: {
-        padding: "8px",
-        fontSize: "14px",
-        borderRadius: "4px",
-        border: "1px solid #ccc",
-        resize: "vertical"
-    }
+/* Styles */
+const headerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    padding: "1rem",
+    gap: "0.5rem"
 };
 
-export default CreateCampaign;
+const formStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1rem",
+    maxWidth: "400px",
+    margin: "0 auto"
+};
+
+const labelStyle = {
+    display: "flex",
+    flexDirection: "column",
+    fontWeight: "bold"
+};
+
+const inputStyle = {
+    padding: "8px",
+    borderRadius: "4px",
+    border: "1px solid #ccc",
+    marginTop: "4px"
+};
+
+export default CreateCampaignPage;

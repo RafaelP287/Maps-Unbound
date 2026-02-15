@@ -75,7 +75,7 @@ function Login() {
             setForm({ email: "", password: "" });
 
             setTimeout(() => {
-                navigate("/", { replace: true });
+                navigate("/profile", { replace: true });
             }, 400);
         } catch {
             setStatus({ type: "error", message: "Unable to reach server." });
@@ -85,97 +85,186 @@ function Login() {
     };
 
     return (
-        <div style={styles.container}>
-            <h1>Login to Maps Unbound</h1>
-            <form style={styles.form} onSubmit={handleSubmit} noValidate>
-                <label style={styles.label}>
-                    Email:
-                    <input
-                        type="email"
-                        name="email"
-                        autoComplete="email"
-                        value={form.email}
-                        onChange={handleChange}
-                        style={styles.input}
-                    />
-                    {errors.email && <span style={styles.error}>{errors.email}</span>}
-                </label>
-                <label style={styles.label}>
-                    Password:
-                    <input
-                        type="password"
-                        name="password"
-                        autoComplete="current-password"
-                        value={form.password}
-                        onChange={handleChange}
-                        style={styles.input}
-                    />
-                    {errors.password && <span style={styles.error}>{errors.password}</span>}
-                </label>
-                <button type="submit" style={styles.button} disabled={isSubmitting}>
-                    {isSubmitting ? "Signing in..." : "Login"}
-                </button>
+        <div style={styles.pageContainer}>
+            <div style={styles.loginBox}>
+                <div style={styles.header}>
+                    <h1 style={styles.logo}>Maps Unbound</h1>
+                    <p style={styles.subtitle}>Sign in to your account</p>
+                    <br />
+                    <img src="d20.svg"width="150" height="150"></img>
+                </div>
+
                 {status.message && (
-                    <p
-                        style={
-                            status.type === "success" ? styles.successMessage : styles.errorMessage
-                        }
-                    >
+                    <div style={status.type === "success" ? styles.successAlert : styles.errorAlert}>
                         {status.message}
-                    </p>
+                    </div>
                 )}
-            </form>
-            <p>
-                Don&apos;t have an account? Sign up <Link to="/signup">here</Link>.
-            </p>
+
+                <form style={styles.form} onSubmit={handleSubmit} noValidate>
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>Email</label>
+                        <input
+                            type="email"
+                            name="email"
+                            autoComplete="email"
+                            value={form.email}
+                            onChange={handleChange}
+                            style={errors.email ? {...styles.input, ...styles.inputError} : styles.input}
+                            placeholder="Enter your email"
+                        />
+                        {errors.email && <span style={styles.error}>{errors.email}</span>}
+                    </div>
+
+                    <div style={styles.formGroup}>
+                        <label style={styles.label}>Password</label>
+                        <input
+                            type="password"
+                            name="password"
+                            autoComplete="current-password"
+                            value={form.password}
+                            onChange={handleChange}
+                            style={errors.password ? {...styles.input, ...styles.inputError} : styles.input}
+                            placeholder="Enter your password"
+                        />
+                        {errors.password && <span style={styles.error}>{errors.password}</span>}
+                    </div>
+
+                    <button type="submit" style={styles.submitButton} disabled={isSubmitting}>
+                        {isSubmitting ? "Signing in..." : "Sign In"}
+                    </button>
+
+                    <div style={styles.divider}>
+                        <span style={styles.dividerText}>OR</span>
+                    </div>
+
+                    <p style={styles.signupText}>
+                        Don't have an account?{' '}
+                        <Link to="/signup" style={styles.signupLink}>Create one here</Link>
+                    </p>
+                </form>
+            </div>
         </div>
     );
 }
 
 const styles = {
-    container: {
+    pageContainer: {
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+        padding: '20px',
+    },
+    loginBox: {
+        width: '100%',
+        maxWidth: '420px',
+        background: '#fff',
+        borderRadius: '10px',
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+        padding: '40px',
+    },
+    header: {
         textAlign: 'center',
-        padding: '50px 20px',
+        marginBottom: '30px',
+    },
+    logo: {
+        color: '#00FFFF',
+        fontSize: '32px',
+        fontWeight: 'bold',
+        margin: '0 0 10px 0',
+    },
+    subtitle: {
+        color: '#666',
+        fontSize: '14px',
+        margin: 0,
     },
     form: {
         display: 'flex',
         flexDirection: 'column',
-        maxWidth: '400px',
-        margin: '0 auto',
+    },
+    formGroup: {
+        marginBottom: '20px',
     },
     label: {
-        marginBottom: '15px',
-        fontSize: '16px',
+        display: 'block',
+        marginBottom: '8px',
+        fontSize: '14px',
+        fontWeight: '500',
+        color: '#333',
     },
     input: {
         width: '100%',
-        padding: '8px',
-        marginTop: '5px',
+        padding: '12px',
         fontSize: '14px',
+        border: '1px solid #ddd',
+        borderRadius: '5px',
+        outline: 'none',
+        transition: 'border-color 0.2s',
+        boxSizing: 'border-box',
     },
-    button: {
-        padding: '10px',
-        fontSize: '16px',
-        backgroundColor: '#282c34',
-        color: 'white',
-        border: 'none',
-        cursor: 'pointer',
+    inputError: {
+        borderColor: '#dc3545',
     },
     error: {
         display: 'block',
         marginTop: '6px',
-        color: '#fca5a5',
-        fontSize: '0.9rem',
+        color: '#dc3545',
+        fontSize: '12px',
     },
-    successMessage: {
-        marginTop: '16px',
-        color: '#86efac',
-        fontSize: '1rem',
+    submitButton: {
+        width: '100%',
+        padding: '12px',
+        fontSize: '16px',
+        fontWeight: 'bold',
+        backgroundColor: '#00FFFF',
+        color: '#111',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: 'pointer',
+        transition: 'background-color 0.2s',
     },
-    errorMessage: {
-        marginTop: '16px',
-        color: '#fca5a5',
-        fontSize: '1rem',
+    divider: {
+        position: 'relative',
+        textAlign: 'center',
+        margin: '20px 0',
+        borderTop: '1px solid #ddd',
+    },
+    dividerText: {
+        position: 'relative',
+        top: '-12px',
+        background: '#fff',
+        padding: '0 10px',
+        color: '#999',
+        fontSize: '12px',
+    },
+    signupText: {
+        textAlign: 'center',
+        fontSize: '14px',
+        color: '#666',
+    },
+    signupLink: {
+        color: '#00FFFF',
+        textDecoration: 'none',
+        fontWeight: 'bold',
+    },
+    successAlert: {
+        padding: '12px',
+        marginBottom: '20px',
+        background: '#d4edda',
+        border: '1px solid #c3e6cb',
+        borderRadius: '5px',
+        color: '#155724',
+        fontSize: '14px',
+    },
+    errorAlert: {
+        padding: '12px',
+        marginBottom: '20px',
+        background: '#f8d7da',
+        border: '1px solid #f5c6cb',
+        borderRadius: '5px',
+        color: '#721c24',
+        fontSize: '14px',
     },
 };
 
