@@ -4,9 +4,27 @@ const { Schema } = mongoose;
 const Counter = require("./Counter");
 const { spellSchema } = require("./Spell.js");
 
+const abilityBonusSchema = new mongoose.Schema(
+  {
+    index: {
+      type: String,
+      required: true,
+      enum: ["str", "dex", "con", "int", "wis", "cha"],
+      lowercase: true,
+    },
+    bonus: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+  },
+  { _id: false }
+);
+
 const characterSchema = new Schema(
   {
     // --- Identity ---
+    // Character Name
     characterId: { type: Number, unique: true },
     name: {
       type: String,
@@ -15,7 +33,7 @@ const characterSchema = new Schema(
       minlength: 2,
       maxlength: 30,
     },
-    // Link to the Player Account
+    // Player Name
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -27,10 +45,21 @@ const characterSchema = new Schema(
     race: {
       type: String,
       required: true,
+      lowercase: true
     },
     class: {
       type: String,
       required: true,
+    },
+    alignment: {
+      type: String,
+      required: true,
+      default: "neutral"
+    },
+    background: {
+      type: String,
+      required: true,
+      default: "acolyte"
     },
     maxLevel: {
       type: Number,
@@ -75,33 +104,13 @@ const characterSchema = new Schema(
       cha: { type: Number, min: 1, max: 30, default: 10 },
     },
 
-    // --- Bonus Attributes (Calculated from race, ) ---
-    bonusAttributes: {
-      str: { type: Number, min: 0, default: 0},
-      dex: { type: Number, min: 0, default: 0},
-      con: { type: Number, min: 0, default: 0},
-      int: { type: Number, min: 0, default: 0},
-      wis: { type: Number, min: 0, default: 0},
-      cha: { type: Number, min: 0, default: 0},
-    },
+    // --- Bonus Attributes (Calculated from race and level ups) ---
+    fixedRacialBonuses: [abilityBonusSchema],
+    chosenRacialBonuses: [abilityBonusSchema],
+    levelUpBonuses: [abilityBonusSchema],
 
     // --- Skills ---
-    skills: {
-      name: {
-        type: String,
-        required: true,
-      },
-      level: {
-        type: Number,
-        required: true,
-        default: 1,
-      },
-      desc: {
-        type: String,
-        required: true,
-        maxlength: 30,
-      },
-    },
+    
     // --- Spellbook ---
     spellbook: [spellSchema],
 
@@ -114,7 +123,7 @@ const characterSchema = new Schema(
   },
   {
     timestamps: true,
-    toJSON: { virtuals: true }, // Ensure virtuals are sent to client
+    toJSON: { virtuals: true },
     toObject: { virtuals: true },
   },
 );
@@ -128,7 +137,64 @@ characterSchema.virtual("inventory", {
   foreignField: "owner", // is equal to `foreignField`
 });
 
-// --- Get Method: Gets race from database ---
+// Virtual: Calculates Total Attributes
+characterSchema.virtual("totalAttributes").get(function () {
+  // Start with the base scores
+  const totals = {
+    str: this.attributes.str,
+    dex: this.attributes.dex,
+    con: this.attributes.con,
+    int: this.attributes.int,
+    wis: this.attributes.wis,
+    cha: this.attributes.cha,
+  };
+
+  // Helper function to add values from any bonus array
+  const applyBonuses = (bonusArray) => {
+    if (!bonusArray) return;
+    
+    for (const stat of bonusArray) {
+      // stat.index will be "str", "dex", etc.
+      if (totals[stat.index] !== undefined) {
+        totals[stat.index] += stat.bonus;
+      }
+    }
+  };
+
+  // Apply all three categories of bonuses
+  applyBonuses(this.fixedRacialBonuses);
+  applyBonuses(this.chosenRacialBonuses);
+  applyBonuses(this.levelUpBonuses);
+
+  // Cap the maximum score at 20 (Standard D&D 5e rule)
+  for (const key in totals) {
+    if (totals[key] > 20) totals[key] = 20;
+  }
+
+  return totals;
+});
+
+characterSchema.methods.calculateBonuses = async function () {
+  try {
+    const raceResponse = await fetch(`${CONFIG.api5e}/api/2014/races/${this.race}`);
+    if (!raceResponse.ok) throw new Error("Race not found in API");
+    const raceData = await raceResponse.json();
+
+    const formattedFixedBonuses = raceData.ability_bonuses.map((apiBonus) => {
+      return {
+        index: apiBonus.ability_score.index,
+        bonus: apiBonus.bonus,
+      };
+    });
+
+    this.fixedRacialBonuses = formattedFixedBonuses ;
+    return formattedFixedBonuses;
+  } catch (error) {
+    console.log({ error: error.message })
+  }
+}
+
+// --- Getter: Gets race from database ---
 characterSchema.methods.getRace = async function () {
   try {
     const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.toLowerCase()}`
@@ -142,7 +208,7 @@ characterSchema.methods.getRace = async function () {
   }
 };
 
-// --- Get Method: Gets class from database ---
+// --- Getter: Gets class from database ---
 characterSchema.methods.getClass = async function () {
   try {
     const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.toLowerCase()}`

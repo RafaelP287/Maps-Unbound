@@ -138,6 +138,41 @@ curl --header "Content-Type: application/json" \
     "spellbook": []
   }' \
   http://localhost:3000/api/characters
+
+curl --header "Content-Type: application/json" \
+  --request POST \
+  --data '{
+    "name": "Carl Gaylord",
+    "user": "tofu", 
+    "race": "Dwarf",
+    "class": "Paladin",
+    "level": 12,
+    "maxLevel": 20,
+    "experience": 100000,
+    "hp": {
+      "current": 362,
+      "max": 750
+    },
+    "mana": {
+      "current": 60,
+      "max": 170
+    },
+    "attributes": {
+      "str": 20,
+      "dex": 5,
+      "con": 17,
+      "int": 4,
+      "wis": 14,
+      "cha": 30
+    },
+    "skills": {
+      "name": "Arcana",
+      "level": 2,
+      "desc": "Knowledge of magical signs"
+    },
+    "spellbook": []
+  }' \
+  http://localhost:3000/api/characters
 ```
 
 ```bash
