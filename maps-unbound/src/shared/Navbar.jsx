@@ -2,6 +2,19 @@ import { Link, useNavigate } from "react-router-dom";
 import Button from "../shared/Button.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
+function getUserFromStorage() {
+    try {
+        const authData = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (authData) {
+            const { user } = JSON.parse(authData);
+            return user;
+        }
+    } catch (error) {
+        console.error("Failed to parse auth data:", error);
+    }
+    return null;
+}
+
 function Navbar() {
     const navigate = useNavigate();
     const { user, logout, isLoggedIn, loading } = useAuth();

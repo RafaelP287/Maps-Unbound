@@ -10,7 +10,7 @@ function CreateCampaignPage() {
         members: []
     });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = () => {
         navigate("/campaigns");
     };
 
