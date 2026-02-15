@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import Button from "../shared/Button.jsx";
 
 const AUTH_STORAGE_KEY = "maps-unbound-auth";
 
@@ -47,7 +48,9 @@ function Navbar() {
                         </button>
                     </>
                 ) : (
-                    <Link to="/login" style={styles.link}>Sign In</Link>
+                    <Link to="/login" style={styles.link}>
+                        <Button>Sign In</Button>
+                    </Link>
                 )}
             </div>
         </nav>
