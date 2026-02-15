@@ -12,6 +12,9 @@ import Campaigns from "./features/campaigns/Campaigns.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
 
+import Characters from "./features/characters/Characters.jsx";
+import CreateCharacter from "./features/characters/CreateCharacter.jsx";
+
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
 import Profile from "./features/profile/Profile.jsx";
 
@@ -75,7 +78,7 @@ function App() {
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
           <Route index element={<Home />} />
-
+          
           {/* Map routes */}
           <Route 
             path="maps" 
@@ -87,6 +90,11 @@ function App() {
               />
             } 
           />
+          
+          {/* Character Routes */}
+          <Route path="characters" element={<Characters />} />
+          <Route path="create-character" element={<CreateCharacter />} />
+
 
           {/* Campaign routes */}
           <Route path="campaigns">
