@@ -22,7 +22,7 @@ const styles = {
     },
     main: {
         flex: 1,
-        paddingTop: '0px',
+        paddingTop: '60px',
         paddingBottom: '60px',
     },
 };

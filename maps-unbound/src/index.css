@@ -63,16 +63,3 @@ input {
   border: 1px solid #ccc;
   font-size: 1rem;
 }
-
-/* Utility classes (optional but useful) */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-.center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}

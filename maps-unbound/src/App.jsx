@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { useState, useRef, useCallback } from "react";
 import { ThreeDDice } from "dddice-js";
 import AppLayout from "./layout/AppLayout.jsx";
-import AuthLayout from "./layout/AuthLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 
