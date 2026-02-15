@@ -98,6 +98,9 @@ function App() {
           {/* Party Finder route */}
           <Route path="party-finder" element={<PartyFinder />} />
 
+          {/* Profile route */}
+          <Route path="profile" element={<Profile />} />
+
           {/* Auth routes */}
           <Route path="signup" element={<Signup />} />
           <Route path="login" element={<Login />} />
