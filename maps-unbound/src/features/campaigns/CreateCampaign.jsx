@@ -10,10 +10,12 @@ function CreateCampaignPage() {
         members: []
     });
 
+    // Navigate back to campaigns page.
     const handleSubmit = () => {
         navigate("/campaigns");
     };
 
+    // TODO: Add implementation to add members.
     return (
         <>
             <div style={headerStyle}>

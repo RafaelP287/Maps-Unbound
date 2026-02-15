@@ -4,9 +4,10 @@ import CampaignCard from "./CampaignCard.jsx";
 import Button from "../../shared/Button.jsx";
 
 function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [loading, setLoading] = useState(true);
-
+  const [campaigns, setCampaigns] = useState([]); // State to store campaign data
+  const [loading, setLoading] = useState(true); // State to track loading status
+  
+  // Fetch campaigns from backend api
   useEffect(() => {
     fetch('http://localhost:5001/api/campaigns')
       .then((res) => res.json())

@@ -2,10 +2,10 @@ import { Link } from "react-router-dom";
 import placeholderImage from "./images/DnD.jpg";
 
 const CampaignCard = ({ campaign, currentUser }) => {
-  const member = campaign.members.find(m => m.userId === currentUser);
+  const member = campaign.members.find(m => m.userId === currentUser); // Find the member for current user.
 
-  const isDM = member && member.role === "DM";
-  const totalPlayers = campaign.members.length;
+  const isDM = member && member.role === "DM"; // Check if current user is the DM
+  const totalPlayers = campaign.members.length; // Count total members in campaign
 
   return (
     <Link 

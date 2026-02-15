@@ -4,12 +4,13 @@ import placeholderImage from "./images/DnD.jpg";
 import Button from "../../shared/Button.jsx";
 
 function ViewCampaignPage() {
-  const { id } = useParams();
+  const { id } = useParams(); // Get campaign data from url
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Handle missing id
     if (!id) {
       setError("No campaign ID provided.");
       setLoading(false);
@@ -38,7 +39,7 @@ function ViewCampaignPage() {
         setError("Failed to load campaign.");
         setLoading(false);
       });
-  }, [id]);
+  }, [id]); // Re-run effect if ID changes.
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading campaign...</p>;
   if (error) return <p style={{ textAlign: "center", color: "red" }}>{error}</p>;
