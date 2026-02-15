@@ -1,23 +1,33 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const AUTH_STORAGE_KEY = "maps-unbound-auth";
 
+function getUserFromStorage() {
+    try {
+        const authData = localStorage.getItem(AUTH_STORAGE_KEY);
+        if (authData) {
+            const { user } = JSON.parse(authData);
+            return user;
+        }
+    } catch (error) {
+        console.error("Failed to parse auth data:", error);
+    }
+    return null;
+}
+
 function Navbar() {
     const navigate = useNavigate();
-    const [user, setUser] = useState(() => {
-        // Initialize state directly from localStorage instead of using useEffect
-        try {
-            const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-            if (authData) {
-                const { user } = JSON.parse(authData);
-                return user;
-            }
-        } catch (error) {
-            console.error("Failed to parse auth data:", error);
-        }
-        return null;
-    });
+    const [user, setUser] = useState(() => getUserFromStorage());
+
+    useEffect(() => {
+        // Poll localStorage every 300ms to detect login/logout
+        const interval = setInterval(() => {
+            setUser(getUserFromStorage());
+        }, 300);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const handleLogout = () => {
         localStorage.removeItem(AUTH_STORAGE_KEY);
@@ -40,7 +50,7 @@ function Navbar() {
                 {user ? (
                     <>
                         <Link to="/profile" style={styles.link}>
-                             {user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase()}
+                            {user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase()}
                         </Link>
                         <button onClick={handleLogout} style={styles.logoutButton}>
                             Logout
