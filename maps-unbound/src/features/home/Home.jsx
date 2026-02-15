@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Button from "../../shared/Button";
 import mapIMG from "./images/home1.jpg";
 import characterIMG from "./images/home2.jpg";
@@ -37,9 +38,9 @@ function Home() {
                 <p style={styles.paragraph}>
                     Your personal vitrual tabletop RPG destination!
                 </p>
-                <Button onClick={() => alert('Not implemented yet')}>
-                    Get Started
-                </Button>
+                <Link to="/signup">
+                    <Button>Get Started</Button>
+                </Link>
             </div>
 
             {/* Services Section */}

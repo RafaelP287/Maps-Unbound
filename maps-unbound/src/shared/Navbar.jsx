@@ -28,13 +28,13 @@ function Navbar() {
                         <Link to="/campaigns" style={styles.link}>Campaigns</Link>
                         <Link to="/party-finder" style={styles.link}>Party Finder</Link>
 
-                        <Link to="/profile" style={styles.link}>
+                        <Link to="/profile" style={styles.userLink}>
                             {user.username[0].toUpperCase() + user.username.slice(1)}
                         </Link>
 
-                        <button onClick={handleLogout} style={styles.logoutButton}>
+                        <Button onClick={handleLogout} style={{ marginLeft: '20px' }}>
                             Logout
-                        </button>
+                        </Button>
                     </>
                 ) : (
                     <Link to="/login" style={styles.link}>
@@ -78,14 +78,11 @@ const styles = {
         fontSize: '16px',
         transition: 'color 0.2s',
     },
-    logoutButton: {
-        background: '#dc3545',
-        color: 'white',
-        border: 'none',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '14px',
+    userLink: {
+        color: '#00FFFF',
+        textDecoration: 'none',
+        fontSize: '16px',
+        fontWeight: 'bold',
     },
 };
 
