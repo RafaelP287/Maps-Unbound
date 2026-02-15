@@ -8,6 +8,7 @@ function Navbar() {
             <div style={styles.links}>
                 <Link to="/" style={styles.link}>Home</Link>
                 <Link to="/maps" style={styles.link}>Maps</Link>
+                <Link to="/characters" style={styles.link}>Characters</Link>
                 <Link to="/campaigns" style={styles.link}>Campaigns</Link>
                 <Link to="/party-finder" style={styles.link}>Party Finder</Link>
                 <Link to="/signup" style={{textDecoration: 'none'}}>
