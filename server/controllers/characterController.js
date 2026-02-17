@@ -46,6 +46,8 @@ async function createCharacter(
   raceIndex,
   classIndex,
   baseStats,
+  alignmentIndex = "acolyte",
+  backgroundIndex = "neutral",
 ) {
   try {
     const userId = (await User.findOne({ username: userName }))?._id;
@@ -56,6 +58,8 @@ async function createCharacter(
       user: userId,
       race: raceIndex,
       class: classIndex,
+      alignment: alignmentIndex,
+      background: backgroundIndex,
       baseAbilityScores: baseStats,
     });
 

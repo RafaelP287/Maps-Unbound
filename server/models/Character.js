@@ -131,6 +131,13 @@ const characterSchema = new Schema(
     // --- Spellbook ---
     spellbook: [spellSchema],
 
+    // --- Attacks & Spellcasting (Quick Reference) ---
+    attacks: [{
+      name: { type: String, required: true }, // e.g., "Longsword" or "Firebolt"
+      attackBonus: { type: String },          // Stored as a string so it can hold "+5"
+      damageAndType: { type: String }         // e.g., "1d8+3 Slashing" or "1d10 Fire"
+    }],
+
     // --- Status Flags ---
     isDead: {
       type: Boolean,

@@ -37,7 +37,7 @@ router.get("/:id", async (req, res) => {
 // POST a new character
 router.post("/", async (req, res) => {
   try {
-    const { name, user, race, characterClass, attributes, ...charData } =
+    const { name, user, race, characterClass, attributes, alignment, background, ...charData } =
       req.body;
 
     // Create the Character Instance
@@ -47,6 +47,8 @@ router.post("/", async (req, res) => {
       race,
       characterClass,
       attributes,
+      alignment, 
+      background,
     );
 
     // Response
