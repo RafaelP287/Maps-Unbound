@@ -4,9 +4,9 @@ const { CONFIG } = require("./config.js");
 const express = require("express");
 const cors = require("cors"); // Allows frontend to talk to backend
 const connectDB = require("./config/db");
-const multer = require("multer"); // Handles the file parsing
 
 const app = express();
+const PORT = process.env.PORT || 5001;
 
 // Middleware to parse JSON bodies (The data sent by frontend)
 app.use(express.urlencoded({ extended: false }));
@@ -18,6 +18,8 @@ const characterRoutes = require('./routes/characters');
 const userRoutes = require('./routes/users');
 const registerRoutes = require('./routes/register');
 const loginRoutes = require('./routes/login');
+import authRoutes from './routes/auth.js';
+import campaignRoutes from './routes/campaigns.js';
 
 // ---  Mount the routes ---
 app.use('/api/characters', characterRoutes);
@@ -37,4 +39,4 @@ app.use((req, res, next) => {
 
 connectDB();
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+app.listen(PORT, () => console.log("Server running on port 3000"));
