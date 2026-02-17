@@ -1,8 +1,11 @@
 const { CONFIG } = require("../config.js");
+const { DEFAULT_SKILLS } = require("../constants/skills_data.js");
+
 const mongoose = require("mongoose");
 const { Schema } = mongoose;
 const Counter = require("./Counter");
 const { spellSchema } = require("./Spell.js");
+const { skillSchema } = require("./Skill.js");
 
 const abilityBonusSchema = new mongoose.Schema(
   {
@@ -18,7 +21,7 @@ const abilityBonusSchema = new mongoose.Schema(
       default: 0,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const characterSchema = new Schema(
@@ -45,7 +48,7 @@ const characterSchema = new Schema(
     race: {
       type: String,
       required: true,
-      lowercase: true
+      lowercase: true,
     },
     class: {
       type: String,
@@ -54,12 +57,12 @@ const characterSchema = new Schema(
     alignment: {
       type: String,
       required: true,
-      default: "neutral"
+      default: "neutral",
     },
     background: {
       type: String,
       required: true,
-      default: "acolyte"
+      default: "acolyte",
     },
     maxLevel: {
       type: Number,
@@ -104,13 +107,27 @@ const characterSchema = new Schema(
       cha: { type: Number, min: 1, max: 30, default: 10 },
     },
 
+    // --- Biographical Stuff ---
+    personalityTraits: { type: [String], default: [] },
+    ideals: { type: [String], default: [] },
+    bonds: { type: [String], default: [] },
+    flaws: { type: [String], default: [] },
+    featuresAndTraits: { type: [String], default: [] },
+
+    // --- Other Proficiencies & Languages
+    languages: { type: [String], default: ["common"] },    // Almost every character can read Common
+    weaponProficiencies: { type: [String], default: [] },
+    armorProficiencies: { type: [String], default: [] },
+    toolProficiencies: { type: [String], default: [] },
+
     // --- Bonus Attributes (Calculated from race and level ups) ---
     fixedRacialBonuses: [abilityBonusSchema],
     chosenRacialBonuses: [abilityBonusSchema],
     levelUpBonuses: [abilityBonusSchema],
 
     // --- Skills ---
-    
+    skillProficiencies: [skillSchema],
+
     // --- Spellbook ---
     spellbook: [spellSchema],
 
@@ -152,7 +169,7 @@ characterSchema.virtual("totalAttributes").get(function () {
   // Helper function to add values from any bonus array
   const applyBonuses = (bonusArray) => {
     if (!bonusArray) return;
-    
+
     for (const stat of bonusArray) {
       // stat.index will be "str", "dex", etc.
       if (totals[stat.index] !== undefined) {
@@ -174,9 +191,12 @@ characterSchema.virtual("totalAttributes").get(function () {
   return totals;
 });
 
+// Calculates attribute bonuses from race and etc.
 characterSchema.methods.calculateBonuses = async function () {
   try {
-    const raceResponse = await fetch(`${CONFIG.api5e}/api/2014/races/${this.race}`);
+    const raceResponse = await fetch(
+      `${CONFIG.api5e}/api/2014/races/${this.race}`,
+    );
     if (!raceResponse.ok) throw new Error("Race not found in API");
     const raceData = await raceResponse.json();
 
@@ -187,35 +207,68 @@ characterSchema.methods.calculateBonuses = async function () {
       };
     });
 
-    this.fixedRacialBonuses = formattedFixedBonuses ;
+    this.fixedRacialBonuses = formattedFixedBonuses;
     return formattedFixedBonuses;
   } catch (error) {
-    console.log({ error: error.message })
+    console.log({ error: error.message });
   }
-}
+};
 
-// --- Getter: Gets race from database ---
+// --- Getters: Gets stuff from database ---
 characterSchema.methods.getRace = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.toLowerCase()}`
+    const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.toLowerCase()}`;
     console.log(`Attempting to fetch race from URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
-    console.log(`Successfully obtained the race of ${this.name} (ID: ${this.characterId}): ${this.race}`);
+    console.log(
+      `Successfully obtained the race of ${this.name} (ID: ${this.characterId}): ${this.race}`,
+    );
     return apiJson;
   } catch (error) {
     console.log({ error: error.message });
   }
 };
 
-// --- Getter: Gets class from database ---
 characterSchema.methods.getClass = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.toLowerCase()}`
+    const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.toLowerCase()}`;
     console.log(`Attempting to fetch class URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
-    console.log(`Successfully obtained the class of ${this.name} (ID: ${this.characterId}): ${this.class}`);
+    console.log(
+      `Successfully obtained the class of ${this.name} (ID: ${this.characterId}): ${this.class}`,
+    );
+    return apiJson;
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
+
+characterSchema.methods.getBackground = async function () {
+  try {
+    const apiURL = `${CONFIG.api5e}/api/2014/backgrounds/${this.background.toLowerCase()}`;
+    console.log(`Attempting to fetch background URL: ${apiURL}`);
+    const response = await fetch(apiURL);
+    const apiJson = await response.json();
+    console.log(
+      `Successfully obtained the background of ${this.name} (ID: ${this.characterId}): ${this.background}`,
+    );
+    return apiJson;
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
+
+characterSchema.methods.getAlignment = async function () {
+  try {
+    const apiURL = `${CONFIG.api5e}/api/2014/alignments/${this.alignment.toLowerCase()}`;
+    console.log(`Attempting to fetch alignment URL: ${apiURL}`);
+    const response = await fetch(apiURL);
+    const apiJson = await response.json();
+    console.log(
+      `Successfully obtained the alignment of ${this.name} (ID: ${this.characterId}): ${this.alignment}`,
+    );
     return apiJson;
   } catch (error) {
     console.log({ error: error.message });
@@ -235,9 +288,8 @@ characterSchema.methods.takeDamage = async function (amount) {
 };
 
 characterSchema.pre("save", async function () {
-  const doc = this;
-
   // Only generate a new ID if this is a NEW document
+  const doc = this;
   if (!doc.isNew) {
     return;
   }
@@ -247,11 +299,12 @@ characterSchema.pre("save", async function () {
     const counter = await Counter.findByIdAndUpdate(
       { _id: "character_id" },
       { $inc: { seq: 1 } },
-      { new: true, upsert: true }
+      { new: true, upsert: true },
     );
+    doc.characterId = counter.seq; // Assign the new number to the character
 
-    // Assign the new number to the character
-    doc.characterId = counter.seq;
+    // --- Skill Initialization ---
+    doc.skillProficiencies = DEFAULT_SKILLS.map((skill) => ({ ...skill }));
   } catch (error) {
     throw error;
   }

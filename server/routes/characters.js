@@ -1,13 +1,17 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
-const Character = require('../models/Character'); 
-const User = require('../models/User.js');
+const {
+  getCharacters,
+  getCharacter,
+  getCharacterExpanded,
+  createCharacter,
+  addSpellToCharacter,
+  addItemToInventory,
+} = require("../controllers/characterController.js");
 
-const { getCharacters, getCharacter, createCharacter, addSpellToCharacter } = require('../controllers/characterController.js')
-
-// GET all characters 
-router.get('/', async (req, res) => {
+// GET all characters
+router.get("/", async (req, res) => {
   try {
     const characters = await getCharacters();
     res.json(characters);
@@ -17,24 +21,33 @@ router.get('/', async (req, res) => {
 });
 
 // GET a single character by ID
-router.get('/:id', async (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const character = await getCharacter(req.params.id);
+    // const character = await getCharacter(req.params.id);
+    const character = await getCharacterExpanded(req.params.id);
     res.status(201).json({
       message: `Obtained the data of ${character.name}!`,
-      character: character});
+      character: character,
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
 // POST a new character
-router.post('/', async (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const { name, user, race, characterClass, attributes, ...charData } = req.body;
+    const { name, user, race, characterClass, attributes, ...charData } =
+      req.body;
 
     // Create the Character Instance
-    const newCharacter = await createCharacter(name, user, race, characterClass, attributes);
+    const newCharacter = await createCharacter(
+      name,
+      user,
+      race,
+      characterClass,
+      attributes,
+    );
 
     // Response
     res.status(201).json({
@@ -54,17 +67,20 @@ router.post('/', async (req, res) => {
 router.post("/:id/spells", async (req, res) => {
   try {
     const { spellIndex } = req.body;
-    const characterId = req.params.id
+    const characterId = req.params.id;
 
-    const response = await addSpellToCharacter(characterId, spellIndex)
-    
+    const response = await addSpellToCharacter(characterId, spellIndex);
+
     res.status(200).json({
       message: `Successfully added spell "${spellIndex}" to character (ID '${characterId}')`,
-      content: response
+      content: response,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+// POST: Add an item to a character's inventory
+router.post("/:id/inventory", addItemToInventory);
 
 module.exports = router;
