@@ -18,8 +18,8 @@ const characterRoutes = require('./routes/characters');
 const userRoutes = require('./routes/users');
 const registerRoutes = require('./routes/register');
 const loginRoutes = require('./routes/login');
-import authRoutes from './routes/auth.js';
-import campaignRoutes from './routes/campaigns.js';
+const authRoutes = require('./routes/auth');
+const campaignRoutes = require('./routes/campaigns');
 
 // ---  Mount the routes ---
 app.use('/api/characters', characterRoutes);
