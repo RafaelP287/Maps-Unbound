@@ -1,7 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const { login } = require("../controllers/authController.js");
+import { login } from "../controllers/authController.js";
 
 // POST Route: /api/login
 router.post("/", async (req, res) => {
@@ -22,4 +22,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

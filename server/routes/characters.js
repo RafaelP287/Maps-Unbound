@@ -1,14 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const {
-  getCharacters,
-  getCharacter,
-  getCharacterExpanded,
-  createCharacter,
-  addSpellToCharacter,
-  addItemToInventory,
-} = require("../controllers/characterController.js");
+import { getCharacters, getCharacter, getCharacterExpanded, createCharacter, addSpellToCharacter, addItemToInventory } from "../controllers/characterController.js";
 
 // GET all characters
 router.get("/", async (req, res) => {
@@ -85,4 +78,4 @@ router.post("/:id/spells", async (req, res) => {
 // POST: Add an item to a character's inventory
 router.post("/:id/inventory", addItemToInventory);
 
-module.exports = router;
+export default router;

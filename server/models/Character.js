@@ -1,13 +1,13 @@
-const { CONFIG } = require("../config.js");
-const { DEFAULT_SKILLS } = require("../constants/skills_data.js");
+import { CONFIG } from "../config.js";
+import { DEFAULT_SKILLS } from "../constants/skills_data.js";
 
-const mongoose = require("mongoose");
+import mongoose, { Schema as _Schema, model } from "mongoose";
 const { Schema } = mongoose;
-const Counter = require("./Counter");
-const { spellSchema } = require("./Spell.js");
-const { skillSchema } = require("./Skill.js");
+import Counter from "./Counter.js";
+import { spellSchema } from "./Spell.js";
+import { skillSchema } from "./Skill.js";
 
-const abilityBonusSchema = new mongoose.Schema(
+const abilityBonusSchema = new _Schema(
   {
     index: {
       type: String,
@@ -317,5 +317,5 @@ characterSchema.pre("save", async function () {
   }
 });
 
-const Character = mongoose.model("Character", characterSchema);
-module.exports = Character;
+const Character = model("Character", characterSchema);
+export default Character;

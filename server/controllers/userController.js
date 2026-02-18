@@ -1,4 +1,4 @@
-const User = require("../models/User");
+import User from "../models/User.js";
 
 // Returns a query of all users
 async function getUsers() {
@@ -23,4 +23,4 @@ async function deleteUser(username) {
   });
 }
 
-module.exports = { getUsers, getUser, createUser, deleteUser };
+export { getUsers, getUser, createUser, deleteUser };

@@ -1,17 +1,17 @@
-const mongoose = require("mongoose");
+import { Schema, model } from "mongoose";
 
-const guildSchema = new mongoose.Schema({
+const guildSchema = new Schema({
   name: { type: String, required: true, unique: true },
   description: { type: String, maxlength: 500 },
   owner: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
     index: true,
   },
   members: [
     {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
     },
   ],
@@ -30,5 +30,5 @@ const guildSchema = new mongoose.Schema({
 
 guildSchema.index({ owner: 1, name: 1 });
 
-const Guild = mongoose.model("Guild", guildSchema);
-module.exports = Guild;
+const Guild = model("Guild", guildSchema);
+export default Guild;

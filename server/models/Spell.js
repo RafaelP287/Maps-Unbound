@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import { Schema } from 'mongoose';
 
-const spellSchema = new mongoose.Schema({
+const spellSchema = new Schema({
   api_index: { type: String, required: true }, 
   name: { type: String, required: true },
   level: Number,
@@ -38,4 +38,4 @@ const parseSpellData = (apiData) => {
   };
 };
 
-module.exports = { spellSchema, parseSpellData };
+export { spellSchema, parseSpellData };

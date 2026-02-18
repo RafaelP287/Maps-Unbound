@@ -1,4 +1,4 @@
-const Profile = require("../models/Profile");
+import Profile from "../models/Profile";
 
 // Edit a user's bio via username
 async function updateBio(username, bio) {
@@ -8,4 +8,4 @@ async function updateBio(username, bio) {
   return await Profile.findOneAndUpdate(filter, update, {new: true});
 }
 
-module.exports = { updateBio };
+export default { updateBio };

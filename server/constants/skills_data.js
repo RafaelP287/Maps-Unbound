@@ -1,4 +1,4 @@
-const DEFAULT_SKILLS = [
+export const DEFAULT_SKILLS = [
   { api_index: "acrobatics", name: "Acrobatics", desc: [], ability_score: { index: "dex", name: "DEX", url: "/api/2014/ability-scores/dex" } },
   { api_index: "animal-handling", name: "Animal Handling", desc: [], ability_score: { index: "wis", name: "WIS", url: "/api/2014/ability-scores/wis" } },
   { api_index: "arcana", name: "Arcana", desc: [], ability_score: { index: "int", name: "INT", url: "/api/2014/ability-scores/int" } },
@@ -18,5 +18,3 @@ const DEFAULT_SKILLS = [
   { api_index: "stealth", name: "Stealth", desc: [], ability_score: { index: "dex", name: "DEX", url: "/api/2014/ability-scores/dex" } },
   { api_index: "survival", name: "Survival", desc: [], ability_score: { index: "wis", name: "WIS", url: "/api/2014/ability-scores/wis" } }
 ];
-
-module.exports = { DEFAULT_SKILLS };

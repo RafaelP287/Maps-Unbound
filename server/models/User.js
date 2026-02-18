@@ -1,8 +1,8 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const Profile = require("./Profile");
+import { Schema, model } from "mongoose";
+import { genSalt, hash as _hash, compare } from "bcrypt";
+import Profile from "./Profile.js";
 
-const userSchema = new mongoose.Schema(
+const userSchema = new Schema(
   {
     email: {
       type: String,
@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
     profileImageUrl: { type: String }, // The S3 URL
     s3Key: { type: String }, // The file path in the bucket (useful for deleting later)
     profileId: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "Profile",
     },
   },
@@ -57,10 +57,10 @@ userSchema.pre("save", async function () {
   if (!user.isModified("password")) return;
   try {
     // Generate a salt
-    const salt = await bcrypt.genSalt(10);
+    const salt = await genSalt(10);
 
     // Hash the password along with the new salt
-    const hash = await bcrypt.hash(user.password, salt);
+    const hash = await _hash(user.password, salt);
 
     // Override the cleartext password with the hashed one
     user.password = hash;
@@ -75,7 +75,7 @@ userSchema.post("findOneAndDelete", async function (doc) {
   // Check if a document was actually deleted
   if (doc) {
     // Delete the associated Profile
-    await mongoose.model("Profile").deleteOne({ _id: doc.profileId });
+    await model("Profile").deleteOne({ _id: doc.profileId });
 
     console.log(`Associated profile ${doc.profileId} was deleted.`);
   }
@@ -83,9 +83,9 @@ userSchema.post("findOneAndDelete", async function (doc) {
 
 // Helper method to compare passwords later (for login)
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  return compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
+const User = model("User", userSchema);
 
-module.exports = User;
+export default User;

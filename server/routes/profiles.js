@@ -1,7 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const { updateBio } = require("../controllers/profileController.js");
+import { updateBio } from "../controllers/profileController.js";
 
 router.put("/:username", async (req, res) => {
   try {
@@ -27,4 +27,4 @@ router.put("/:username", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

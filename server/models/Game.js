@@ -1,22 +1,22 @@
-const mongoose = require("mongoose");
+import { Schema, model } from "mongoose";
 
-const gameSchema = new mongoose.Schema({
+const gameSchema = new Schema({
   title: { type: String, required: true, unique: true },
   description: { type: String, maxlength: 500 },
   owner: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
     index: true,
   },
   dm: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: "User",
     required: true,
   },
   members: [
     {
-      type: mongoose.Schema.Types.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: "User",
     },
   ],
@@ -34,5 +34,5 @@ const gameSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-const Game = mongoose.model("Game", GameSchema);
-module.exports = Game;
+const Game = model("Game", GameSchema);
+export default Game;

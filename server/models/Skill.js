@@ -1,6 +1,6 @@
-const mongoose = require('mongoose');
+import { Schema } from 'mongoose';
 
-const skillSchema = new mongoose.Schema({
+const skillSchema = new Schema({
   // --- API Data ---
   api_index: { type: String, required: true }, 
   name: { type: String, required: true },
@@ -29,4 +29,4 @@ const parseSkillData = (apiData) => {
   };
 };
 
-module.exports = { skillSchema, parseSkillData };
+export { skillSchema, parseSkillData };

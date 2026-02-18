@@ -1,8 +1,8 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const {getUsers, getUser, deleteUser} = require("../controllers/userController.js");
-const { getCharactersFromUser } = require('../controllers/characterController.js')
+import { getUsers, getUser, deleteUser } from "../controllers/userController.js";
+import { getCharactersFromUser } from '../controllers/characterController.js';
 
 // GET all users
 router.get("/", async (req, res) => {
@@ -69,4 +69,4 @@ router.delete("/:username", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

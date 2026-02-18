@@ -1,4 +1,4 @@
-const User = require("../models/User");
+import User from "../models/User.js";
 
 async function login(username, password) {
   // Validate Input
@@ -22,4 +22,4 @@ async function login(username, password) {
   return user;
 }
 
-module.exports = { login };
+export { login };

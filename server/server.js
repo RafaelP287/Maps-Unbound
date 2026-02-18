@@ -1,31 +1,30 @@
-// server.js
-require("dotenv").config();
-const { CONFIG } = require("./config.js");
-const express = require("express");
-const cors = require("cors"); // Allows frontend to talk to backend
-const connectDB = require("./config/db");
+import express, { urlencoded, json } from "express";
+import cors from "cors";
+import connectDB from "./config/db.js";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // Middleware to parse JSON bodies (The data sent by frontend)
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
+app.use(urlencoded({ extended: false }));
+app.use(json());
 app.use(cors());
 
 // --- Import route files ---
-const characterRoutes = require('./routes/characters');
-const userRoutes = require('./routes/users');
-const registerRoutes = require('./routes/register');
-const loginRoutes = require('./routes/login');
-const authRoutes = require('./routes/auth');
-const campaignRoutes = require('./routes/campaigns');
+import characterRoutes from './routes/characters.js';
+import userRoutes from './routes/users.js';
+import registerRoutes from './routes/register.js';
+import loginRoutes from './routes/login.js';
+import authRoutes from './routes/auth.js';
+import campaignRoutes from './routes/campaigns.js';
 
 // ---  Mount the routes ---
 app.use('/api/characters', characterRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/register', registerRoutes);
 app.use('/api/login', loginRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/campaigns', campaignRoutes);
 
 // Debugging Middleware (Add this to see what is happening)
 app.use((req, res, next) => {

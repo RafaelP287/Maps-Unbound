@@ -1,10 +1,10 @@
-const { CONFIG } = require("../config.js");
+import { CONFIG } from "../config.js";
 
-const User = require("../models/User");
-const Character = require("../models/Character");
-const { Item, parseEquipmentData } = require("../models/Item");
+import User from "../models/User.js";
+import Character from "../models/Character.js";
+import { Item, parseEquipmentData } from "../models/Item.js";
 
-const { parseSpellData } = require("../models/Spell.js");
+import { parseSpellData } from "../models/Spell.js";
 
 // Finds every character in the database
 async function getCharacters() {
@@ -36,7 +36,7 @@ async function getCharacterExpanded(id) {
 
 // Finds a character by name
 async function getCharacterByName(name) {
-  return await Character.findOne({ name: name });
+  return await Character.find({ name: name });
 }
 
 // Character creation function
@@ -165,7 +165,7 @@ const addItemToInventory = async (req, res) => {
   }
 };
 
-module.exports = {
+export {
   getCharacters,
   getCharactersFromUser,
   getCharacter,

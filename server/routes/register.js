@@ -1,7 +1,7 @@
-const express = require("express");
-const router = express.Router();
+import { Router } from "express";
+const router = Router();
 
-const {createUser} = require("../controllers/userController.js");
+import { createUser } from "../controllers/userController.js";
 
 // POST Route: /api/register
 router.post("/", async (req, res) => {
@@ -19,4 +19,4 @@ router.post("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

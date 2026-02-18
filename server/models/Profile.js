@@ -1,7 +1,7 @@
 // models/Profile.js
-const mongoose = require("mongoose");
-const profileSchema = new mongoose.Schema({
+import { Schema, model } from "mongoose";
+const profileSchema = new Schema({
   user: { type: String, required: true, unique: true },
   bio: { type: String, default: "" },
 });
-module.exports = mongoose.model("Profile", profileSchema);
+export default model("Profile", profileSchema);

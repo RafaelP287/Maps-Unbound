@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+import mongoose, { model } from "mongoose";
 const { Schema } = mongoose;
 
 const itemSchema = new Schema(
@@ -88,5 +88,5 @@ const parseEquipmentData = (apiData, characterId, quantity = 1) => {
   return parsedItem;
 };
 
-const Item = mongoose.model("Item", itemSchema);
-module.exports = { Item, parseEquipmentData };
+const Item = model("Item", itemSchema);
+export { Item, parseEquipmentData };
