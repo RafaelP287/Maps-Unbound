@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+const apiServer = import.meta.env.VITE_API_SERVER;
+
 function validateForm({ username, email, password, confirmPassword }) {
   const issues = {};
 
@@ -58,7 +60,7 @@ function Signup() {
     setStatus({ type: "idle", message: "" });
 
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch(`${apiServer}/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -29,10 +29,7 @@ function Profile() {
                     { id: 2, name: "Curse of Strahd", players: 5, lastPlayed: "2026-02-05" },
                 ]);
 
-                setCharacters([
-                    { id: 1, name: "Elara Moonwhisper", class: "Wizard", level: 5, campaign: "Dragons of the North" },
-                    { id: 2, name: "Thorin Ironforge", class: "Fighter", level: 6, campaign: "Curse of Strahd" },
-                ]);
+                setCharacters([]);
             } catch (error) {
                 console.error("Failed to load user data:", error);
                 navigate('/login');
@@ -97,8 +94,10 @@ function Profile() {
             {activeTab === 'characters' && (
                 <div style={styles.content}>
                     <div style={styles.sectionHeader}>
-                        <h2>Character Sheets</h2>
+                      <h2>Character Sheets</h2>
+                      <Link to="/create-character">
                         <button style={styles.createButton}>+ Create Character</button>
+                      </Link>
                     </div>
                     
                     {characters.length === 0 ? (

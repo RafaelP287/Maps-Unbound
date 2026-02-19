@@ -39,8 +39,6 @@ const userSchema = new Schema(
   },
 );
 
-// Mongoose "Pre-Save" Hook
-// This function runs before saving a document to the database
 userSchema.pre("save", async function () {
   const user = this;
 
@@ -51,21 +49,6 @@ userSchema.pre("save", async function () {
       bio: "No bio provided.",
     });
     this.profileId = newProfile._id;
-  }
-
-  // Only hash the password if it has been modified (or is new)
-  if (!user.isModified("password")) return;
-  try {
-    // Generate a salt
-    const salt = await genSalt(10);
-
-    // Hash the password along with the new salt
-    const hash = await _hash(user.password, salt);
-
-    // Override the cleartext password with the hashed one
-    user.password = hash;
-  } catch (error) {
-    return next(error);
   }
 });
 

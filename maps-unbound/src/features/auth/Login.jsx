@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
+const apiServer = import.meta.env.VITE_API_SERVER;
+
 function Login() {
     const navigate = useNavigate();
     const { login } = useAuth(); // <-- get login function from context
@@ -36,7 +38,7 @@ function Login() {
         setStatus({ type: "idle", message: "" });
 
         try {
-            const response = await fetch("/api/auth/login", {
+            const response = await fetch(`${apiServer}/api/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -63,7 +65,7 @@ function Login() {
             setStatus({ type: "success", message: "Welcome back!" });
             setForm({ email: "", password: "" });
 
-            setTimeout(() => navigate("/profile", { replace: true }), 400);
+            setTimeout(() => navigate(`/profile`, { replace: true }), 400);
         } catch (error) {
             console.error("Login error:", error);
             setStatus({ type: "error", message: "Unable to reach server." });
