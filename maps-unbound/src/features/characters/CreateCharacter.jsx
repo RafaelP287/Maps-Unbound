@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
 
 const CreateCharacter = () => {
   const navigate = useNavigate();
+  const { token } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     class: "",
     race: "",
     level: 1
   });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -19,16 +23,41 @@ const CreateCharacter = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Add character creation logic here (API call)
-    console.log("Creating character:", formData);
-    navigate("/characters");
+    setError("");
+    setLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:5001/api/characters", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to create character");
+      }
+
+      const data = await response.json();
+      console.log("Character created successfully:", data);
+      navigate("/characters");
+    } catch (err) {
+      console.error("Character creation error:", err);
+      setError(err.message || "Failed to create character. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>Create New Character</h1>
+      {error && <div style={styles.error}>{error}</div>}
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.field}>
           <label style={styles.label}>Character Name</label>
@@ -108,7 +137,9 @@ const CreateCharacter = () => {
           <button type="button" onClick={() => navigate("/characters")} style={styles.cancelBtn}>
             Cancel
           </button>
-          <Button type="submit">Create Character</Button>
+          <Button type="submit" disabled={loading}>
+            {loading ? "Creating..." : "Create Character"}
+          </Button>
         </div>
       </form>
     </div>
@@ -125,6 +156,14 @@ const styles = {
     textAlign: "center",
     color: "#00FFFF",
     marginBottom: "30px"
+  },
+  error: {
+    backgroundColor: "#ff4444",
+    color: "#fff",
+    padding: "12px",
+    borderRadius: "6px",
+    marginBottom: "20px",
+    fontSize: "14px"
   },
   form: {
     display: "flex",

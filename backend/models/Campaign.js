@@ -11,7 +11,10 @@ const campaignSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String },
   image: { type: String },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   members: [memberSchema],
+}, {
+  timestamps: true,
 });
 
 const Campaign = mongoose.model("Campaign", campaignSchema);

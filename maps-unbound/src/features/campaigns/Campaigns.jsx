@@ -1,25 +1,47 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 import CampaignCard from "./CampaignCard.jsx";
 import Button from "../../shared/Button.jsx";
 
 function CampaignsPage() {
-  const [campaigns, setCampaigns] = useState([]); // State to store campaign data
-  const [loading, setLoading] = useState(true); // State to track loading status
+  const { token } = useAuth();
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   
   // Fetch campaigns from backend api
   useEffect(() => {
-    fetch('http://localhost:5001/api/campaigns')
-      .then((res) => res.json())
-      .then((data) => {
+    const fetchCampaigns = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('http://localhost:5001/api/campaigns', {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch campaigns");
+        }
+
+        const data = await response.json();
         setCampaigns(data);
-        setLoading(false);
-      })
-      .catch((err) => {
+        setError("");
+      } catch (err) {
         console.error("Error fetching campaigns:", err);
+        setError("Failed to load campaigns");
+        setCampaigns([]);
+      } finally {
         setLoading(false);
-      });
-  }, []);
+      }
+    };
+
+    if (token) {
+      fetchCampaigns();
+    }
+  }, [token]);
 
   if (loading) return <p style={{ textAlign: "center" }}>Loading campaigns...</p>;
   
@@ -32,19 +54,23 @@ function CampaignsPage() {
         </Link>
       </div>
 
+      {error && <div style={errorStyle}>{error}</div>}
+
       <div style={listStyle}>
         {campaigns.length > 0 ? (
           campaigns.map((c) => (
             <CampaignCard
               key={c._id}
               campaign={c}
-              currentUser = "me" // Replace with actual user ID from auth context
             />
           ))
         ) : (
           <div style = {emptyListStyle}>
             <h2>No campaigns found</h2>
             <p>Start a new adventure by creating a campaign!</p>
+            <Link to="/campaigns/new">
+              <Button primary>Create Campaign</Button>
+            </Link>
           </div>
         )}
       </div>
@@ -67,6 +93,15 @@ const listStyle = {
   justifyContent: "center",
   gap: "16px",
   padding: "16px"
+};
+
+const errorStyle = {
+  backgroundColor: "#ff4444",
+  color: "#fff",
+  padding: "12px",
+  borderRadius: "6px",
+  margin: "20px",
+  textAlign: "center"
 };
 
 const emptyListStyle = {
