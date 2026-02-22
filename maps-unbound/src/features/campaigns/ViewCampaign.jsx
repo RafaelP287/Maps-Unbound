@@ -27,7 +27,7 @@ function ViewCampaignPage() {
 
     const fetchCampaign = async () => {
       try {
-        const res = await fetch(`http://localhost:5001/api/campaigns/${id}`, {
+        const res = await fetch(`/api/campaigns/${id}`, {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
@@ -59,7 +59,7 @@ function ViewCampaignPage() {
   if (!campaign) return <p style={{ textAlign: "center" }}>Campaign not found.</p>;
 
   // Get DM and players
-  const dm = campaign.members?.find((m) => m.role === "DM")?.userId.username || "Unknown";
+  const dm = campaign.members?.find((m) => m.role === "DM")?.userId?.username || "Unknown";
   const players = campaign.members?.filter((m) => m.role === "Player") || [];
   const backgroundImage = campaign.image || placeholderImage;
 
@@ -82,10 +82,10 @@ function ViewCampaignPage() {
             <strong>DM:</strong> {dm}
           </p>
           <p>
-            <strong>Players ({players.length}):</strong>{" "}
+            <strong>Players:</strong>{" "}
             {players.length > 0
-              ? players.map((p) => p.userId.username).join(", ")
-              : "None"}
+              ? `(${players.length}) ${players.map((p) => p.userId?.username).join(", ")}`
+              : "No players yet"}
           </p>
         </div>
 
