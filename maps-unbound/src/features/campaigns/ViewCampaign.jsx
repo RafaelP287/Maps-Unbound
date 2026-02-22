@@ -2,51 +2,64 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import placeholderImage from "./images/DnD.jpg";
 import Button from "../../shared/Button.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 function ViewCampaignPage() {
-  const { id } = useParams(); // Get campaign data from url
+  const { id } = useParams();
+  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Handle missing id
     if (!id) {
       setError("No campaign ID provided.");
       setLoading(false);
       return;
     }
 
-    console.log("Fetching campaign with ID:", id);
+    if (!isLoggedIn) {
+      setError("Please sign in to view campaign details.");
+      setLoading(false);
+      return;
+    }
 
-    fetch("http://localhost:5001/api/campaigns/" + id)
-      .then((res) => {
-        console.log("Response status:", res.status);
+    const fetchCampaign = async () => {
+      try {
+        const res = await fetch(`http://localhost:5001/api/campaigns/${id}`, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
         if (!res.ok) throw new Error(`Server returned status ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Fetched campaign data:", data);
+
+        const data = await res.json();
+
         if (!data || !data._id) {
           setError("Campaign not found.");
         } else {
           setCampaign(data);
         }
-        setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Error fetching campaign:", err);
         setError("Failed to load campaign.");
+      } finally {
         setLoading(false);
-      });
-  }, [id]); // Re-run effect if ID changes.
+      }
+    };
 
-  if (loading) return <p style={{ textAlign: "center" }}>Loading campaign...</p>;
+    fetchCampaign();
+  }, [id, token, isLoggedIn]);
+
+  if (loading || authLoading) return <p style={{ textAlign: "center" }}>Loading campaign...</p>;
   if (error) return <p style={{ textAlign: "center", color: "red" }}>{error}</p>;
   if (!campaign) return <p style={{ textAlign: "center" }}>Campaign not found.</p>;
 
-  // Safe member access
-  const dm = campaign.members?.find((m) => m.role === "DM")?.userId || "Unknown";
+  // Get DM and players
+  const dm = campaign.members?.find((m) => m.role === "DM")?.userId.username || "Unknown";
   const players = campaign.members?.filter((m) => m.role === "Player") || [];
   const backgroundImage = campaign.image || placeholderImage;
 
@@ -70,7 +83,9 @@ function ViewCampaignPage() {
           </p>
           <p>
             <strong>Players ({players.length}):</strong>{" "}
-            {players.map((p) => p.userId).join(", ") || "None"}
+            {players.length > 0
+              ? players.map((p) => p.userId.username).join(", ")
+              : "None"}
           </p>
         </div>
 
@@ -100,7 +115,7 @@ const pageStyle = {
 };
 
 const overlayStyle = {
-  backgroundColor: "rgba(0,0,0,0.5)",
+  backgroundColor: "rgba(0,0,0,0.6)",
   padding: "2rem",
   borderRadius: "12px",
   color: "#fff",
