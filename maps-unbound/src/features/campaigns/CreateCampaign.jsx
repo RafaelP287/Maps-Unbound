@@ -1,21 +1,50 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import Button from "../../shared/Button.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 function CreateCampaignPage() {
     const navigate = useNavigate();
+    const { user, token } = useAuth();
     const [form, setForm] = useState({
         title: "",
         description: "",
-        members: []
     });
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    // Navigate back to campaigns page.
-    const handleSubmit = () => {
-        navigate("/campaigns");
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+        setLoading(true);
+
+        try {
+            const response = await fetch("/api/campaigns", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    title: form.title,
+                    description: form.description,
+                    members: [{ userId: user.id, role: "DM" }],
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to create campaign");
+            }
+
+            navigate("/campaigns");
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // TODO: Add implementation to add members.
     return (
         <>
             <div style={headerStyle}>
@@ -23,32 +52,36 @@ function CreateCampaignPage() {
                 <p>Start a new adventure!</p>
             </div>
 
+            {error && <p style={errorStyle}>{error}</p>}
+
             <form onSubmit={handleSubmit} style={formStyle}>
                 <label style={labelStyle}>
                     Campaign Title:
-                    <input 
-                        type="text" 
-                        value={form.title} 
-                        onChange={e => setForm({...form, title: e.target.value})} 
-                        required 
+                    <input
+                        type="text"
+                        value={form.title}
+                        onChange={e => setForm({ ...form, title: e.target.value })}
+                        required
                         style={inputStyle}
                     />
                 </label>
 
                 <label style={labelStyle}>
                     Description:
-                    <textarea 
-                        value={form.description} 
-                        onChange={e => setForm({...form, description: e.target.value})} 
-                        required 
-                        style={{...inputStyle, height: "100px"}}
+                    <textarea
+                        value={form.description}
+                        onChange={e => setForm({ ...form, description: e.target.value })}
+                        required
+                        style={{ ...inputStyle, height: "100px" }}
                     />
                 </label>
 
-                <Button type="submit" primary>Create Campaign</Button>
+                <Button type="submit" primary disabled={loading}>
+                    {loading ? "Creating..." : "Create Campaign"}
+                </Button>
             </form>
         </>
-    )
+    );
 }
 
 /* Styles */
@@ -79,6 +112,13 @@ const inputStyle = {
     borderRadius: "4px",
     border: "1px solid #ccc",
     marginTop: "4px"
+};
+
+const errorStyle = {
+    color: "red",
+    textAlign: "center",
+    maxWidth: "400px",
+    margin: "0 auto"
 };
 
 export default CreateCampaignPage;
