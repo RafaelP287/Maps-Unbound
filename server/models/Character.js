@@ -221,6 +221,22 @@ characterSchema.methods.calculateBonuses = async function () {
   }
 };
 
+// Initializes items based on background and etc.
+characterSchema.methods.initializeItems = async function () {
+  try {
+    const backgroundResponse = await fetch(
+      `${CONFIG.api5e}/api/2014/backrounds/${this.backgrounds}`,
+    );
+    if (!backgroundResponse.ok) throw new Error("Background not found in API");
+    const backgroundData = await backgroundResponse.json();
+
+    // TODO: adds items
+    
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
+
 // --- Getters: Gets stuff from database ---
 characterSchema.methods.getRace = async function () {
   try {

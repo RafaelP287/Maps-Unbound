@@ -2,16 +2,23 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Button from "../../shared/Button.jsx";
 
+const AUTH_STORAGE_KEY = "maps-unbound-auth";
 const api5e = import.meta.env.VITE_API_5E;
 const apiServer = import.meta.env.VITE_API_SERVER;
 
 const CreateCharacter = () => {
+  // Loads the user
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
-    class: "",
+    user: "",
     race: "",
+    characterClass: "",
+    attributes: "",
+    alignment: "", 
+    background: "",
     level: 1,
   });
 
@@ -25,8 +32,28 @@ const CreateCharacter = () => {
   const [isLoadingRaces, setIsLoadingRaces] = useState(true);
   const [raceApiError, setRaceApiError] = useState("");
 
-  // Fetch classes on component mount
+  // API state for backgrounds
+  const [backgrounds, setBackgrounds] = useState([]);
+  const [isLoadingBackgrounds, setIsLoadingBackgrounds] = useState(true);
+  const [backgroundApiError, setBackgroundApiError] = useState("");
+
+  // API state for backgrounds
+  const [alignments, setAlignments] = useState([]);
+  const [isLoadingAlignments, setIsLoadingAlignments] = useState(true);
+  const [alignmentApiError, setAlignmentApiError] = useState("");
+
+  
   useEffect(() => {
+    // Fetches user auth data
+    const authData = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!authData) {
+      navigate("/login");
+      return;
+    }
+    const { user } = JSON.parse(authData);
+    setUser(user);
+
+    // Fetch classes on component mount 
     const fetchClasses = async () => {
       const cachedClasses = sessionStorage.getItem("dnd_classes");
       if (cachedClasses) {
@@ -51,6 +78,7 @@ const CreateCharacter = () => {
       }
     };
 
+    // Fetch races on component mount 
     const fetchRaces = async () => {
       const cachedRaces = sessionStorage.getItem("dnd_races");
       if (cachedRaces) {
@@ -73,8 +101,56 @@ const CreateCharacter = () => {
       }
     };
 
+    // Fetch backgrounds on component mount 
+    const fetchBackgrounds = async () => {
+      const cachedBackgrounds = sessionStorage.getItem("dnd_backgrounds");
+      if (cachedBackgrounds) {
+        setBackgrounds(JSON.parse(cachedBackgrounds));
+        setIsLoadingBackgrounds(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${api5e}/api/2014/backgrounds`);
+        if (!response.ok) throw new Error("Failed to fetch backgrounds");
+        const data = await response.json();
+        setBackgrounds(data.results);
+        sessionStorage.setItem("dnd_backgrounds", JSON.stringify(data.results));
+      } catch (err) {
+        console.error("Backgrounds API Error:", err);
+        setBackgroundApiError("Could not load backgrounds.");
+      } finally {
+        setIsLoadingBackgrounds(false);
+      }
+    };
+
+    // Fetch alignments on component mount 
+    const fetchAlignments = async () => {
+      const cachedAlignments = sessionStorage.getItem("dnd_alignments");
+      if (cachedAlignments) {
+        setAlignments(JSON.parse(cachedAlignments));
+        setIsLoadingAlignments(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${api5e}/api/2014/alignments`);
+        if (!response.ok) throw new Error("Failed to fetch alignments");
+        const data = await response.json();
+        setAlignments(data.results);
+        sessionStorage.setItem("dnd_alignments", JSON.stringify(data.results));
+      } catch (err) {
+        console.error("Alignments API Error:", err);
+        setAlignmentApiError("Could not load alignments.");
+      } finally {
+        setIsLoadingAlignments(false);
+      }
+    };
+
     fetchClasses();
     fetchRaces();
+    fetchBackgrounds();
+    fetchAlignments();
   }, []);
 
   const handleChange = (e) => {
@@ -86,15 +162,38 @@ const CreateCharacter = () => {
   };
 
   // 2. Handle the progression of steps
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault(); // Prevents page reload
 
     if (step === 1) {
-      // Move to step 2 if we are on step 1
       setStep(2);
     } else {
-      // We are on the final step, actually submit the data
+      formData.user = user.username
       console.log("Creating character:", formData);
+
+      try {
+        // Send the POST request to crate character
+        const response = await fetch(`${apiServer}/api/characters`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Character created successfully:", result);
+          
+          navigate("/characters"); 
+        } else {
+          const errorData = await response.json();
+          console.error("Failed to create character:", errorData);
+        }
+      } catch (error) {
+        console.error("Network error:", error);
+      }
+
       navigate("/characters");
     }
   };
@@ -129,8 +228,8 @@ const CreateCharacter = () => {
             <div style={styles.field}>
               <label style={styles.label}>Class</label>
               <select
-                name="class"
-                value={formData.class}
+                name="characterClass"
+                value={formData.characterClass}
                 onChange={handleChange}
                 style={styles.input}
                 required
@@ -191,17 +290,58 @@ const CreateCharacter = () => {
               )}
             </div>
 
+            {/* Backgrounds */}
             <div style={styles.field}>
               <label style={styles.label}>Background</label>
-              <input
-                type="text"
+              <select
                 name="background"
                 value={formData.background}
                 onChange={handleChange}
                 style={styles.input}
-                placeholder="e.g. Acolyte, Criminal, Soldier"
                 required
-              />
+                disabled={isLoadingBackgrounds}
+              >
+                <option value="">
+                  {isLoadingBackgrounds
+                    ? "Loading backgrounds..."
+                    : "Select a background"}
+                </option>
+                {backgrounds.map((dndBackground) => (
+                  <option key={dndBackground.index} value={dndBackground.name}>
+                    {dndBackground.name}
+                  </option>
+                ))}
+              </select>
+              {backgroundApiError && (
+                <span style={styles.errorText}>{backgroundApiError}</span>
+              )}
+            </div>
+
+            {/* Alignments */}
+            <div style={styles.field}>
+              <label style={styles.label}>Background</label>
+              <select
+                name="alignment"
+                value={formData.alignment}
+                onChange={handleChange}
+                style={styles.input}
+                required
+                disabled={isLoadingAlignments}
+              >
+                <option value="">
+                  {isLoadingAlignments
+                    ? "Loading alignments..."
+                    : "Select a alignment"}
+                </option>
+                {alignments.map((dndAlignment) => (
+                  <option key={dndAlignment.index} value={dndAlignment.name}>
+                    {dndAlignment.name}
+                  </option>
+                ))}
+              </select>
+              {alignmentApiError && (
+                <span style={styles.errorText}>{alignmentApiError}</span>
+              )}
             </div>
           </div>
         )}
