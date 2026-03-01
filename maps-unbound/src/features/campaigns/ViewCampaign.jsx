@@ -116,10 +116,12 @@ function ViewCampaignPage() {
   if (!campaign) return <div style={fullCenterStyle}><p style={errorMsgStyle}>Campaign not found.</p></div>;
 
   return (
-    <div style={{ ...pageStyle, backgroundImage: `url(${activeBg})` }}>
-      {/* Background gradient & noise */}
-      <div style={bgOverlayStyle} />
-      <div style={noiseOverlayStyle} />
+    <div style={pageStyle}>
+      {/* ── Hero background image — fades into page bg at the bottom ── */}
+      <div style={heroBgWrapStyle}>
+        <div style={{ ...heroBgImgStyle, backgroundImage: `url(${activeBg})` }} />
+        <div style={heroBgFadeStyle} />
+      </div>
 
       <div style={contentWrapStyle}>
         {/* ── Hero header ── */}
@@ -244,7 +246,7 @@ function ViewCampaignPage() {
             <div style={modalIconStyle}>⚠</div>
             <h3 style={modalTitleStyle}>Burn the Chronicle?</h3>
             <p style={modalBodyStyle}>
-              <strong style={{ color: goldLight }}>{campaign.title}</strong> will be permanently destroyed.
+              <strong style={{ color: "var(--gold-light)" }}>{campaign.title}</strong> will be permanently destroyed.
               This cannot be undone.
             </p>
             <div style={btnRowStyle}>
@@ -264,27 +266,40 @@ function ViewCampaignPage() {
 const pageStyle = {
   position: "relative",
   minHeight: "100vh",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
+  background: "var(--bg-deep)",
   fontFamily: "'Crimson Text', Georgia, serif",
   color: "#d4c5a9",
 };
 
-const bgOverlayStyle = {
-  position: "fixed",
-  inset: 0,
-  background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(10,8,4,0.88) 100%)",
+/* Hero background — fixed height, fades out downward into darkBg */
+const heroBgWrapStyle = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  height: "520px",       /* how tall the image zone is — adjust freely */
   zIndex: 0,
+  pointerEvents: "none",
 };
 
-const noiseOverlayStyle = {
-  position: "fixed",
+const heroBgImgStyle = {
+  position: "absolute",
   inset: 0,
-  backgroundImage:
-    "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")",
-  pointerEvents: "none",
-  zIndex: 1,
+  backgroundSize: "cover",
+  backgroundPosition: "center top",
+};
+
+/* Layered fade: dim the photo, then dissolve into darkBg at the bottom */
+const heroBgFadeStyle = {
+  position: "absolute",
+  inset: 0,
+  background: `linear-gradient(
+    to bottom,
+    rgba(10,8,4,0.45) 0%,
+    rgba(10,8,4,0.55) 40%,
+    rgba(10,8,4,0.85) 75%,
+    var(--bg-deep) 100%
+  )`,
 };
 
 const contentWrapStyle = {
@@ -311,13 +326,13 @@ const heroTextStyle = {
 const heroDividerStyle = {
   width: "260px",
   height: "1px",
-  background: `linear-gradient(to right, transparent, ${borderColor}, transparent)`,
+  background: `linear-gradient(to right, transparent, var(--border), transparent)`,
 };
 
 const heroTitleStyle = {
   fontFamily: "'Cinzel Decorative', serif",
   fontSize: "clamp(1.8rem, 5vw, 3rem)",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   textShadow: `0 2px 30px rgba(201,168,76,0.3), 0 0 60px rgba(201,168,76,0.1)`,
 };
@@ -344,8 +359,8 @@ const editHeaderWrapStyle = {
 const editInputStyle = {
   padding: "0.65rem 0.9rem",
   borderRadius: "6px",
-  border: `1px solid ${borderColor}`,
-  background: inputBg,
+  border: `1px solid var(--border)`,
+  background: "var(--input-bg)",
   color: "#e8dcca",
   fontSize: "1rem",
   fontFamily: "'Crimson Text', serif",
@@ -356,8 +371,8 @@ const editInputStyle = {
 
 /* Main card */
 const cardStyle = {
-  background: panelBg,
-  border: `1px solid ${borderColor}`,
+  background: "var(--panel-bg)",
+  border: `1px solid var(--border)`,
   borderRadius: "12px",
   padding: "2rem",
   backdropFilter: "blur(12px)",
@@ -374,7 +389,7 @@ const fieldLabelStyle = {
   fontSize: "0.75rem",
   letterSpacing: "0.14em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
 };
 
 /* Image */
@@ -391,7 +406,12 @@ const dropZoneStyle = (isDragging) => ({
 const dropLabelStyle = { color: "#b0a08a", fontSize: "0.9rem", margin: "4px 0 2px" };
 const dropHintStyle = { color: "#6a5e50", fontSize: "0.78rem", margin: 0 };
 
-const previewWrapStyle = { position: "relative", borderRadius: "8px", overflow: "hidden" };
+const previewWrapStyle = {
+  position: "relative",
+  borderRadius: "8px",
+  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
+  maskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
+};
 const previewImgStyle = { width: "100%", maxHeight: "200px", objectFit: "cover", display: "block" };
 const previewOverlayStyle = { position: "absolute", bottom: 0, left: 0, right: 0, padding: "0.5rem", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", display: "flex", justifyContent: "flex-end" };
 const removeImgBtnStyle = { background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "4px", color: "#ddd", fontSize: "0.8rem", padding: "4px 10px", cursor: "pointer" };
@@ -412,14 +432,14 @@ const detailsHeaderStyle = {
   marginBottom: "1rem",
 };
 
-const detailsIconStyle = { color: gold, fontSize: "0.85rem", opacity: 0.6 };
+const detailsIconStyle = { color: "var(--gold)", fontSize: "0.85rem", opacity: 0.6 };
 
 const detailsHeadingStyle = {
   fontFamily: "'Cinzel', serif",
   fontSize: "0.78rem",
   letterSpacing: "0.14em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
 };
 
 const detailsGridStyle = { display: "flex", flexDirection: "column", gap: "0.75rem" };
@@ -451,8 +471,8 @@ const detailDivStyle = {
 
 const dmBadgeStyle = {
   marginLeft: "0.6rem",
-  background: `linear-gradient(135deg, ${gold}, ${goldLight})`,
-  color: darkBg,
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
+  color: "var(--bg-deep)",
   fontSize: "0.65rem",
   fontWeight: "700",
   padding: "2px 8px",
@@ -481,7 +501,7 @@ const dmLabelStyle = {
   fontSize: "0.75rem",
   letterSpacing: "0.14em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
 };
 
 const btnRowStyle = { display: "flex", gap: "0.6rem", flexWrap: "wrap" };
@@ -499,8 +519,8 @@ const baseBtnStyle = {
   transition: "opacity 0.2s",
 };
 
-const editBtnStyle = { ...baseBtnStyle, background: `linear-gradient(135deg, ${gold}, ${goldLight})`, color: darkBg };
-const saveBtnStyle = { ...baseBtnStyle, background: "linear-gradient(135deg, #4caf82, #72d4a8)", color: darkBg };
+const editBtnStyle = { ...baseBtnStyle, background: `linear-gradient(135deg, var(--gold), var(--gold-light))`, color: "var(--bg-deep)" };
+const saveBtnStyle = { ...baseBtnStyle, background: "linear-gradient(135deg, #4caf82, #72d4a8)", color: "var(--bg-deep)" };
 const cancelBtnStyle = { ...baseBtnStyle, background: "rgba(255,255,255,0.08)", color: "#d4c5a9", border: `1px solid rgba(255,255,255,0.15)` };
 const deleteBtnStyle = { ...baseBtnStyle, background: "rgba(192,57,43,0.8)", color: "#fff", border: "1px solid rgba(192,57,43,0.6)" };
 
@@ -510,7 +530,7 @@ const ghostBtnStyle = {
   letterSpacing: "0.1em",
   textTransform: "uppercase",
   background: "none",
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   borderRadius: "6px",
   color: "#9a8a70",
   padding: "0.55rem 1.2rem",
@@ -549,7 +569,7 @@ const modalIconStyle = { fontSize: "2rem", color: "#e74c3c" };
 
 const modalTitleStyle = {
   fontFamily: "'Cinzel', serif",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   fontSize: "1.3rem",
 };
@@ -563,11 +583,11 @@ const loadingWrapStyle = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  background: darkBg,
+  background: "var(--bg-deep)",
   gap: "1rem",
 };
 
-const spinnerStyle = { fontSize: "2rem", color: gold, animation: "spin 2s linear infinite" };
+const spinnerStyle = { fontSize: "2rem", color: "var(--gold)", animation: "spin 2s linear infinite" };
 const loadingTextStyle = { fontFamily: "'Crimson Text', serif", fontStyle: "italic", color: "#9a8a70" };
 
 const fullCenterStyle = {
@@ -576,7 +596,7 @@ const fullCenterStyle = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  background: darkBg,
+  background: "var(--bg-deep)",
   gap: "1rem",
 };
 

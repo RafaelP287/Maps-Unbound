@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import CampaignCard from "./CampaignCard.jsx";
-import Button from "../../shared/Button.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 function CampaignsPage() {
@@ -91,17 +90,12 @@ function CampaignsPage() {
 }
 
 /* ── Palette ── */
-const gold = "#c9a84c";
-const goldLight = "#e8c96a";
-const darkBg = "#0d0b08";
-const panelBg = "rgba(20, 15, 8, 0.92)";
-const borderColor = "rgba(201,168,76,0.3)";
 
 /* ── Styles ── */
 const pageWrapStyle = {
   position: "relative",
   minHeight: "100vh",
-  background: `radial-gradient(ellipse at 20% 0%, #1a1006 0%, ${darkBg} 60%)`,
+  background: `radial-gradient(ellipse at 20% 0%, #1a1006 0%, var(--bg-deep) 60%)`,
   fontFamily: "'Crimson Text', Georgia, serif",
   overflow: "hidden",
 };
@@ -133,7 +127,7 @@ const headerStyle = {
 const headerDividerStyle = {
   width: "100%",
   height: "1px",
-  background: `linear-gradient(to right, transparent, ${borderColor}, transparent)`,
+  background: `linear-gradient(to right, transparent, var(--border), transparent)`,
   margin: "0.6rem 0",
 };
 
@@ -144,7 +138,7 @@ const headerCenterStyle = {
 };
 
 const headerRuneStyle = {
-  color: gold,
+  color: "var(--gold)",
   fontSize: "1.2rem",
   opacity: 0.7,
 };
@@ -152,7 +146,7 @@ const headerRuneStyle = {
 const pageTitleStyle = {
   fontFamily: "'Cinzel Decorative', serif",
   fontSize: "clamp(1.6rem, 4vw, 2.8rem)",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   letterSpacing: "0.05em",
   textShadow: `0 0 30px rgba(201,168,76,0.25)`,
@@ -171,9 +165,9 @@ const emptyStyle = {
   alignItems: "center",
   gap: "0.75rem",
   padding: "3rem 2rem",
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   borderRadius: "10px",
-  background: panelBg,
+  background: "var(--panel-bg)",
   backdropFilter: "blur(8px)",
   maxWidth: "420px",
   margin: "2rem auto",
@@ -183,7 +177,7 @@ const emptyIconStyle = { fontSize: "2.5rem" };
 
 const emptyTitleStyle = {
   fontFamily: "'Cinzel', serif",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   fontSize: "1.4rem",
 };
@@ -202,8 +196,8 @@ const primaryBtnStyle = {
   fontWeight: "600",
   letterSpacing: "0.1em",
   textTransform: "uppercase",
-  color: darkBg,
-  background: `linear-gradient(135deg, ${gold}, ${goldLight})`,
+  color: "var(--bg-deep)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
   border: "none",
   borderRadius: "6px",
   padding: "0.7rem 1.8rem",
@@ -219,12 +213,12 @@ const loadingWrapStyle = {
   justifyContent: "center",
   minHeight: "60vh",
   gap: "1rem",
-  background: darkBg,
+  background: "var(--bg-deep)",
 };
 
 const runeSpinnerStyle = {
   fontSize: "2rem",
-  color: gold,
+  color: "var(--gold)",
   animation: "spin 2s linear infinite",
 };
 
@@ -240,7 +234,7 @@ const gateStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: darkBg,
+  background: "var(--bg-deep)",
 };
 
 const gatePanelStyle = {
@@ -249,21 +243,21 @@ const gatePanelStyle = {
   alignItems: "center",
   gap: "1rem",
   padding: "3rem 2.5rem",
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   borderRadius: "12px",
-  background: panelBg,
+  background: "var(--panel-bg)",
   textAlign: "center",
   maxWidth: "380px",
 };
 
 const runeAccentStyle = {
   fontSize: "2rem",
-  color: gold,
+  color: "var(--gold)",
 };
 
 const gateTitleStyle = {
   fontFamily: "'Cinzel', serif",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   fontSize: "1.6rem",
 };
@@ -273,13 +267,5 @@ const gateSubtextStyle = {
   fontStyle: "italic",
   margin: "0 0 0.5rem",
 };
-
-/* Inject spinner keyframe once */
-if (!document.head.querySelector("[data-campaigns-spin]")) {
-  const style = document.createElement("style");
-  style.setAttribute("data-campaigns-spin", "1");
-  style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
-  document.head.appendChild(style);
-}
 
 export default CampaignsPage;

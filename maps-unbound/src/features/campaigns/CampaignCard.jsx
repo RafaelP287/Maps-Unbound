@@ -34,9 +34,6 @@ const CampaignCard = ({ campaign, currentUser }) => {
   );
 };
 
-const gold = "#c9a84c";
-const borderColor = "rgba(201,168,76,0.35)";
-
 const overlayStyle = {
   background: "linear-gradient(to top, rgba(8,6,3,0.95) 0%, rgba(8,6,3,0.5) 55%, transparent 100%)",
   padding: "1rem",
@@ -50,7 +47,7 @@ const dmBadgeStyle = {
   position: "absolute",
   top: "10px",
   right: "10px",
-  background: `linear-gradient(135deg, ${gold}, #e8c96a)`,
+  background: `linear-gradient(135deg, var(--gold), #e8c96a)`,
   color: "#0d0b08",
   padding: "3px 9px",
   borderRadius: "999px",
@@ -64,8 +61,8 @@ const dmBadgeStyle = {
 const playerBadgeStyle = {
   ...dmBadgeStyle,
   background: "rgba(20,15,8,0.85)",
-  color: gold,
-  border: `1px solid ${borderColor}`,
+  color: "var(--gold)",
+  border: `1px solid var(--border)`,
 };
 
 const titleStyle = {
@@ -114,7 +111,7 @@ const viewLinkStyle = {
   fontSize: "0.62rem",
   letterSpacing: "0.1em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
   opacity: 0.7,
 };
 

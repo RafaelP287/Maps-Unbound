@@ -66,8 +66,8 @@ const navStyle = {
   alignItems: "center",
   padding: "0 2rem",
   height: "60px",
-  background: navBg,
-  borderBottom: `1px solid ${borderColor}`,
+  background: "var(--nav-bg)",
+  borderBottom: `1px solid var(--border)`,
   backdropFilter: "blur(12px)",
   boxShadow: "0 2px 24px rgba(0,0,0,0.5)",
 };
@@ -79,7 +79,7 @@ const brandStyle = {
 };
 
 const brandRuneStyle = {
-  color: gold,
+  color: "var(--gold)",
   fontSize: "1rem",
   opacity: 0.8,
 };
@@ -101,7 +101,7 @@ const linksStyle = {
 const dividerStyle = {
   width: "1px",
   height: "18px",
-  background: borderColor,
+  background: "var(--border)",
 };
 
 const avatarStyle = {
@@ -115,7 +115,7 @@ const avatarStyle = {
   justifyContent: "center",
   fontSize: "0.7rem",
   fontFamily: "'Cinzel', serif",
-  color: gold,
+  color: "var(--gold)",
   flexShrink: 0,
 };
 

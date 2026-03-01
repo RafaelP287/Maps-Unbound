@@ -216,7 +216,7 @@ function CreateCampaignPage() {
 const pageWrapStyle = {
   position: "relative",
   minHeight: "100vh",
-  background: `radial-gradient(ellipse at 20% 0%, #1a1006 0%, ${darkBg} 60%)`,
+  background: `radial-gradient(ellipse at 20% 0%, #1a1006 0%, var(--bg-deep) 60%)`,
   fontFamily: "'Crimson Text', Georgia, serif",
   color: "#d4c5a9",
 };
@@ -245,7 +245,7 @@ const headerStyle = {
 
 const dividerStyle = {
   height: "1px",
-  background: `linear-gradient(to right, transparent, ${borderColor}, transparent)`,
+  background: `linear-gradient(to right, transparent, var(--border), transparent)`,
   margin: "0.6rem 0",
 };
 
@@ -256,12 +256,12 @@ const headerRowStyle = {
   gap: "0.8rem",
 };
 
-const runeStyle = { color: gold, fontSize: "1rem", opacity: 0.7 };
+const runeStyle = { color: "var(--gold)", fontSize: "1rem", opacity: 0.7 };
 
 const titleStyle = {
   fontFamily: "'Cinzel Decorative', serif",
   fontSize: "clamp(1.4rem, 4vw, 2.1rem)",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   textShadow: `0 0 30px rgba(201,168,76,0.2)`,
 };
@@ -297,14 +297,14 @@ const labelStyle = {
   fontWeight: "600",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
 };
 
 const inputStyle = {
   padding: "0.65rem 0.9rem",
   borderRadius: "6px",
-  border: `1px solid ${borderColor}`,
-  background: inputBg,
+  border: `1px solid var(--border)`,
+  background: "var(--input-bg)",
   color: "#e8dcca",
   fontSize: "1rem",
   fontFamily: "'Crimson Text', serif",
@@ -324,7 +324,7 @@ const sectionDividerStyle = {
 const sectionLineStyle = {
   flex: 1,
   height: "1px",
-  background: `linear-gradient(to right, transparent, ${borderColor})`,
+  background: `linear-gradient(to right, transparent, var(--border))`,
 };
 
 const sectionLabelStyle = {
@@ -398,7 +398,7 @@ const dropdownStyle = {
   listStyle: "none",
   margin: "4px 0 0",
   padding: "0",
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   borderRadius: "6px",
   background: "#1a1306",
   position: "absolute",
@@ -425,13 +425,13 @@ const dropdownAvatarStyle = {
   height: "26px",
   borderRadius: "50%",
   background: `rgba(201,168,76,0.2)`,
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: "0.75rem",
   fontFamily: "'Cinzel', serif",
-  color: gold,
+  color: "var(--gold)",
   flexShrink: 0,
 };
 
@@ -456,7 +456,7 @@ const partyTagStyle = {
   alignItems: "center",
   gap: "0.5rem",
   background: "rgba(201,168,76,0.1)",
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   borderRadius: "999px",
   padding: "4px 12px 4px 6px",
   fontSize: "0.9rem",
@@ -468,13 +468,13 @@ const partyAvatarStyle = {
   height: "22px",
   borderRadius: "50%",
   background: `rgba(201,168,76,0.2)`,
-  border: `1px solid ${borderColor}`,
+  border: `1px solid var(--border)`,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   fontSize: "0.7rem",
   fontFamily: "'Cinzel', serif",
-  color: gold,
+  color: "var(--gold)",
   flexShrink: 0,
 };
 
@@ -495,8 +495,8 @@ const submitBtnStyle = {
   fontWeight: "700",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: darkBg,
-  background: `linear-gradient(135deg, ${gold}, ${goldLight})`,
+  color: "var(--bg-deep)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
   border: "none",
   borderRadius: "6px",
   padding: "0.85rem 1.5rem",

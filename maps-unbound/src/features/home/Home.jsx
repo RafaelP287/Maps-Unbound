@@ -154,7 +154,7 @@ const ornamentLineStyle = {
 };
 
 const ornamentRuneStyle = {
-  color: gold,
+  color: "var(--gold)",
   fontSize: "0.7rem",
   letterSpacing: "0.5em",
   opacity: 0.6,
@@ -165,7 +165,7 @@ const welcomeTextStyle = {
   fontSize: "0.9rem",
   letterSpacing: "0.3em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
   margin: 0,
   opacity: 0.8,
 };
@@ -173,7 +173,7 @@ const welcomeTextStyle = {
 const heroTitleStyle = {
   fontFamily: "'Cinzel Decorative', serif",
   fontSize: "clamp(2.5rem, 8vw, 5rem)",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   letterSpacing: "0.04em",
   textShadow: `0 0 60px rgba(201,168,76,0.25), 0 2px 4px rgba(0,0,0,0.8)`,
@@ -231,7 +231,7 @@ const sectionDivStyle = {
 const sectionTitleStyle = {
   fontFamily: "'Cinzel Decorative', serif",
   fontSize: "clamp(1.2rem, 3vw, 1.7rem)",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   whiteSpace: "nowrap",
   textShadow: `0 0 30px rgba(201,168,76,0.15)`,
@@ -279,7 +279,7 @@ const cardTitleStyle = {
   fontFamily: "'Cinzel', serif",
   fontSize: "1.1rem",
   fontWeight: "700",
-  color: goldLight,
+  color: "var(--gold-light)",
   margin: 0,
   letterSpacing: "0.06em",
 };
@@ -299,7 +299,7 @@ const cardLinkStyle = {
   fontSize: "0.68rem",
   letterSpacing: "0.12em",
   textTransform: "uppercase",
-  color: gold,
+  color: "var(--gold)",
   marginTop: "0.25rem",
 };
 

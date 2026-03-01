@@ -20,7 +20,7 @@ const footerStyle = {
   right: 0,
   width: "100%",
   background: "rgba(10, 8, 5, 0.96)",
-  borderTop: `1px solid ${borderColor}`,
+  borderTop: `1px solid var(--border)`,
   backdropFilter: "blur(12px)",
   boxShadow: "0 -2px 24px rgba(0,0,0,0.4)",
   zIndex: 1000,
@@ -34,7 +34,7 @@ const footerInnerStyle = {
 
 const dividerStyle = {
   height: "1px",
-  background: `linear-gradient(to right, transparent, ${borderColor}, transparent)`,
+  background: `linear-gradient(to right, transparent, var(--border), transparent)`,
   marginBottom: "0",
 };
 
@@ -47,7 +47,7 @@ const footerContentStyle = {
 };
 
 const runeStyle = {
-  color: gold,
+  color: "var(--gold)",
   fontSize: "0.7rem",
   opacity: 0.5,
 };
