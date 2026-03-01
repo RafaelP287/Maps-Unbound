@@ -1,10 +1,28 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import Campaign from "../models/Campaign.js";
 
 const router = express.Router();
 
+// --- Auth Middleware ---
+// May need to move this to another file for reuse in maps anc character.
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // contains { userId, username }
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+};
+
 // Create a new campaign
-router.post("/", async (req, res) => {
+router.post("/", verifyToken, async (req, res) => {
   try {
     const { title, description, members } = req.body;
     const campaign = new Campaign({ title, description, members });
@@ -15,31 +33,51 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Get all campaigns
-router.get("/", async (req, res) => {
+// Get all campaigns where the logged-in user is a member
+router.get("/", verifyToken, async (req, res) => {
   try {
-    const campaigns = await Campaign.find();
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId });
     res.json(campaigns);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Get a campaign by ID
-router.get("/:id", async (req, res) => {
+// Get a campaign by ID — only if the user is a member
+router.get("/:id", verifyToken, async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id)
-      .populate("members.userId", "username email");
+    const campaign = await Campaign.findById(req.params.id).populate(
+      "members.userId",
+      "username email"
+    );
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isMember = campaign.members.some(
+      (m) => m.userId._id.toString() === req.user.userId
+    );
+    if (!isMember) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
     res.json(campaign);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// Update a campaign
-router.put("/:id", async (req, res) => {
+// Update a campaign — only the DM can update
+router.put("/:id", verifyToken, async (req, res) => {
   try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can update this campaign" });
+    }
+
     const updatedCampaign = await Campaign.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -51,9 +89,19 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete a campaign
-router.delete("/:id", async (req, res) => {
+// Delete a campaign — only the DM can delete
+router.delete("/:id", verifyToken, async (req, res) => {
   try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can delete this campaign" });
+    }
+
     await Campaign.findByIdAndDelete(req.params.id);
     res.json({ message: "Campaign deleted" });
   } catch (err) {
