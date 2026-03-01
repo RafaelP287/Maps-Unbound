@@ -277,7 +277,7 @@ const heroBgWrapStyle = {
   top: 0,
   left: 0,
   right: 0,
-  height: "520px",       /* how tall the image zone is — adjust freely */
+  height: "780px",       /* how tall the image zone is — adjust freely */
   zIndex: 0,
   pointerEvents: "none",
 };
@@ -289,16 +289,18 @@ const heroBgImgStyle = {
   backgroundPosition: "center top",
 };
 
-/* Layered fade: dim the photo, then dissolve into darkBg at the bottom */
+/* Layered fade: very light dim at top, image stays visible, dissolves only at the very bottom */
 const heroBgFadeStyle = {
   position: "absolute",
   inset: 0,
   background: `linear-gradient(
     to bottom,
-    rgba(10,8,4,0.45) 0%,
-    rgba(10,8,4,0.55) 40%,
-    rgba(10,8,4,0.85) 75%,
-    var(--bg-deep) 100%
+    rgba(10,8,4,0.2)  0%,
+    rgba(10,8,4,0.15) 30%,
+    rgba(10,8,4,0.2)  55%,
+    rgba(10,8,4,0.6)  78%,
+    rgba(10,8,4,0.9)  90%,
+    var(--bg-deep)    100%
   )`,
 };
 
@@ -601,13 +603,5 @@ const fullCenterStyle = {
 };
 
 const errorMsgStyle = { color: "#ff9089", fontFamily: "'Crimson Text', serif", fontSize: "1.1rem" };
-
-/* Spinner keyframe */
-if (!document.head.querySelector("[data-view-spin]")) {
-  const s = document.createElement("style");
-  s.setAttribute("data-view-spin", "1");
-  s.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
-  document.head.appendChild(s);
-}
 
 export default ViewCampaignPage;

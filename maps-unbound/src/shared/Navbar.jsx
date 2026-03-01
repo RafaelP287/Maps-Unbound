@@ -68,7 +68,7 @@ const navStyle = {
   height: "60px",
   background: "var(--nav-bg)",
   borderBottom: `1px solid var(--border)`,
-  backdropFilter: "blur(12px)",
+  backdropFilter: "none",
   boxShadow: "0 2px 24px rgba(0,0,0,0.5)",
 };
 
