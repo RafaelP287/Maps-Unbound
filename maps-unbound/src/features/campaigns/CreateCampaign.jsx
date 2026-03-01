@@ -59,8 +59,8 @@ function CreateCampaignPage() {
             setImageError("Please upload an image file.");
             return;
         }
-        if (file.size > 2 * 1024 * 1024) {
-            setImageError("Image must be under 2MB.");
+        if (file.size > 10 * 1024 * 1024) {
+            setImageError("Image must be under 10MB.");
             return;
         }
 
@@ -196,7 +196,7 @@ function CreateCampaignPage() {
                             <p style={dropZoneLabelStyle}>
                                 Drag & drop an image here, or <u>click to browse</u>
                             </p>
-                            <p style={dropZoneHintStyle}>PNG, JPG, WEBP — max 2MB</p>
+                            <p style={dropZoneHintStyle}>PNG, JPG, WEBP — max 10MB</p>
                         </div>
                     )}
 
