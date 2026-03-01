@@ -46,8 +46,8 @@ router.get("/users/search", verifyToken, async (req, res) => {
 // Create a new campaign
 router.post("/", verifyToken, async (req, res) => {
   try {
-    const { title, description, members } = req.body;
-    const campaign = new Campaign({ title, description, members });
+    const { title, description, image, members } = req.body;
+    const campaign = new Campaign({ title, description, image, members });
     await campaign.save();
     res.status(201).json(campaign);
   } catch (err) {

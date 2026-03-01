@@ -10,14 +10,20 @@ function CreateCampaignPage() {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
+    // Image state
+    const [imagePreview, setImagePreview] = useState(null); // base64 string
+    const [imageError, setImageError] = useState(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const fileInputRef = useRef(null);
+
     // Player search state
     const [playerSearch, setPlayerSearch] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [searchLoading, setSearchLoading] = useState(false);
-    const [players, setPlayers] = useState([]); // added players: [{ userId, username }]
+    const [players, setPlayers] = useState([]);
     const searchTimeout = useRef(null);
 
-    // Debounced search
+    // Debounced player search
     useEffect(() => {
         if (playerSearch.trim().length < 2) {
             setSearchResults([]);
@@ -33,12 +39,11 @@ function CreateCampaignPage() {
                 );
                 const data = await res.json();
                 if (res.ok) {
-                    // Filter out users already added
                     const addedIds = players.map((p) => p.userId);
                     setSearchResults(data.filter((u) => !addedIds.includes(u._id)));
                 }
             } catch {
-                // silently fail — not critical
+                // silently fail
             } finally {
                 setSearchLoading(false);
             }
@@ -46,6 +51,48 @@ function CreateCampaignPage() {
 
         return () => clearTimeout(searchTimeout.current);
     }, [playerSearch, players, token]);
+
+    const processImageFile = (file) => {
+        setImageError(null);
+
+        if (!file.type.startsWith("image/")) {
+            setImageError("Please upload an image file.");
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            setImageError("Image must be under 2MB.");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => setImagePreview(e.target.result);
+        reader.readAsDataURL(file);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (file) processImageFile(file);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = () => setIsDragging(false);
+
+    const handleFileInput = (e) => {
+        const file = e.target.files[0];
+        if (file) processImageFile(file);
+    };
+
+    const removeImage = () => {
+        setImagePreview(null);
+        setImageError(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
 
     const addPlayer = (u) => {
         setPlayers((prev) => [...prev, { userId: u._id, username: u.username }]);
@@ -77,6 +124,7 @@ function CreateCampaignPage() {
                 body: JSON.stringify({
                     title: form.title,
                     description: form.description,
+                    image: imagePreview ?? undefined,
                     members,
                 }),
             });
@@ -125,6 +173,44 @@ function CreateCampaignPage() {
                     />
                 </label>
 
+                {/* Campaign Image */}
+                <div>
+                    <span style={labelStyle}>Campaign Image:</span>
+
+                    {imagePreview ? (
+                        <div style={previewWrapperStyle}>
+                            <img src={imagePreview} alt="Campaign preview" style={previewImageStyle} />
+                            <button type="button" onClick={removeImage} style={removeImageButtonStyle}>
+                                ✕ Remove
+                            </button>
+                        </div>
+                    ) : (
+                        <div
+                            style={dropZoneStyle(isDragging)}
+                            onDrop={handleDrop}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <span style={dropZoneIconStyle}>🖼️</span>
+                            <p style={dropZoneLabelStyle}>
+                                Drag & drop an image here, or <u>click to browse</u>
+                            </p>
+                            <p style={dropZoneHintStyle}>PNG, JPG, WEBP — max 2MB</p>
+                        </div>
+                    )}
+
+                    <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileInput}
+                        style={{ display: "none" }}
+                    />
+
+                    {imageError && <p style={imageErrorStyle}>{imageError}</p>}
+                </div>
+
                 {/* Player search */}
                 <div>
                     <span style={labelStyle}>Add Players:</span>
@@ -138,30 +224,21 @@ function CreateCampaignPage() {
                             style={inputStyle}
                             autoComplete="off"
                         />
-                        {searchLoading && (
-                            <p style={searchHintStyle}>Searching...</p>
-                        )}
+                        {searchLoading && <p style={searchHintStyle}>Searching...</p>}
                         {!searchLoading && searchResults.length > 0 && (
                             <ul style={dropdownStyle}>
                                 {searchResults.map((u) => (
-                                    <li
-                                        key={u._id}
-                                        style={dropdownItemStyle}
-                                        onClick={() => addPlayer(u)}
-                                    >
+                                    <li key={u._id} style={dropdownItemStyle} onClick={() => addPlayer(u)}>
                                         {u.username}
                                     </li>
                                 ))}
                             </ul>
                         )}
-                        {!searchLoading &&
-                            playerSearch.trim().length >= 2 &&
-                            searchResults.length === 0 && (
-                                <p style={searchHintStyle}>No users found.</p>
-                            )}
+                        {!searchLoading && playerSearch.trim().length >= 2 && searchResults.length === 0 && (
+                            <p style={searchHintStyle}>No users found.</p>
+                        )}
                     </div>
 
-                    {/* Added players list */}
                     {players.length > 0 && (
                         <ul style={playerListStyle}>
                             {players.map((p) => (
@@ -219,6 +296,7 @@ const inputStyle = {
     marginTop: "4px",
     width: "100%",
     boxSizing: "border-box",
+    color: "#111",
 };
 
 const errorStyle = {
@@ -226,6 +304,65 @@ const errorStyle = {
     textAlign: "center",
     maxWidth: "400px",
     margin: "0 auto",
+};
+
+const dropZoneStyle = (isDragging) => ({
+    marginTop: "6px",
+    border: `2px dashed ${isDragging ? "#4a7fd4" : "#aaa"}`,
+    borderRadius: "8px",
+    padding: "24px 16px",
+    textAlign: "center",
+    cursor: "pointer",
+    backgroundColor: isDragging ? "#eef3fc" : "transparent",
+    transition: "border-color 0.2s, background-color 0.2s",
+});
+
+const dropZoneIconStyle = {
+    fontSize: "2rem",
+};
+
+const dropZoneLabelStyle = {
+    margin: "8px 0 4px",
+    fontSize: "0.9rem",
+    color: "#fff",
+};
+
+const dropZoneHintStyle = {
+    margin: 0,
+    fontSize: "0.78rem",
+    color: "#fff",
+};
+
+const previewWrapperStyle = {
+    marginTop: "6px",
+    position: "relative",
+    display: "inline-block",
+    width: "100%",
+};
+
+const previewImageStyle = {
+    width: "100%",
+    maxHeight: "180px",
+    objectFit: "cover",
+    borderRadius: "8px",
+    display: "block",
+};
+
+const removeImageButtonStyle = {
+    marginTop: "6px",
+    background: "none",
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    padding: "4px 10px",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    color: "#fff",
+};
+
+const imageErrorStyle = {
+    color: "red",
+    fontSize: "0.85rem",
+    marginTop: "4px",
 };
 
 const searchWrapperStyle = {
@@ -250,7 +387,7 @@ const dropdownItemStyle = {
     padding: "8px 12px",
     cursor: "pointer",
     borderBottom: "1px solid #eee",
-    color: "#111"
+    color: "#111",
 };
 
 const searchHintStyle = {
@@ -277,7 +414,7 @@ const playerTagStyle = {
     borderRadius: "20px",
     padding: "4px 10px",
     fontSize: "0.9rem",
-    color: "#111"
+    color: "#111",
 };
 
 const removeButtonStyle = {
