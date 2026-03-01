@@ -84,7 +84,7 @@ function ViewCampaignPage() {
           <p>
             <strong>Players:</strong>{" "}
             {players.length > 0
-              ? `(${players.length}) ${players.map((p) => p.userId?.username).join(", ")}`
+              ? `${players.map((p) => p.userId?.username).join(", ")}`
               : "No players yet"}
           </p>
         </div>

@@ -1,11 +1,12 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import Campaign from "../models/Campaign.js";
+import User from "../models/User.js";
 
 const router = express.Router();
 
 // --- Auth Middleware ---
-// May need to move this to another file for reuse in maps anc character.
+// May need to move this to another file for reuse in maps and character.
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -20,6 +21,27 @@ const verifyToken = (req, res, next) => {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 };
+
+// Search users by username (for adding players)
+router.get("/users/search", verifyToken, async (req, res) => {
+  try {
+    const { username } = req.query;
+    if (!username || username.trim().length < 2) {
+      return res.status(400).json({ error: "Query must be at least 2 characters" });
+    }
+
+    const users = await User.find({
+      username: { $regex: username.trim(), $options: "i" },
+      _id: { $ne: req.user.userId }, // exclude the searching user
+    })
+      .select("_id username")
+      .limit(10);
+
+    res.json(users);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 // Create a new campaign
 router.post("/", verifyToken, async (req, res) => {
