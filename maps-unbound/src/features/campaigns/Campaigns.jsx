@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import CampaignCard from "./CampaignCard.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+
+import CampaignCard from "./CampaignCard.jsx";
+import Gate from "../../shared/Gate.jsx";
 
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
@@ -35,16 +37,9 @@ function CampaignsPage() {
 
   if (!isLoggedIn) {
     return (
-      <div style={gateStyle}>
-        <div style={gatePanelStyle}>
-          <div style={runeAccentStyle}>⚔</div>
-          <h2 style={gateTitleStyle}>The Gates Are Sealed</h2>
-          <p style={gateSubtextStyle}>Sign in to access your campaigns.</p>
-          <Link to="/login">
-            <button style={primaryBtnStyle}>Enter the Realm</button>
-          </Link>
-        </div>
-      </div>
+      <Gate>
+        Sign in to access your campaigns.
+      </Gate>
     );
   }
 
@@ -88,8 +83,6 @@ function CampaignsPage() {
     </div>
   );
 }
-
-/* ── Palette ── */
 
 /* ── Styles ── */
 const pageWrapStyle = {
@@ -227,45 +220,6 @@ const loadingTextStyle = {
   fontStyle: "italic",
   color: "#9a8a70",
   fontSize: "1.1rem",
-};
-
-const gateStyle = {
-  minHeight: "100vh",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "var(--bg-deep)",
-};
-
-const gatePanelStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "1rem",
-  padding: "3rem 2.5rem",
-  border: `1px solid var(--border)`,
-  borderRadius: "12px",
-  background: "var(--panel-bg)",
-  textAlign: "center",
-  maxWidth: "380px",
-};
-
-const runeAccentStyle = {
-  fontSize: "2rem",
-  color: "var(--gold)",
-};
-
-const gateTitleStyle = {
-  fontFamily: "'Cinzel', serif",
-  color: "var(--gold-light)",
-  margin: 0,
-  fontSize: "1.6rem",
-};
-
-const gateSubtextStyle = {
-  color: "#9a8a70",
-  fontStyle: "italic",
-  margin: "0 0 0.5rem",
 };
 
 export default CampaignsPage;
