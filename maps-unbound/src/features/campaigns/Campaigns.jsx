@@ -7,10 +7,12 @@ import Gate from "../../shared/Gate.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
 
 function CampaignsPage() {
+  // Auth state and campaigns data
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch campaigns if logged in
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
     const fetchCampaigns = async () => {

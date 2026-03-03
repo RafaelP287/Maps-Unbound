@@ -6,14 +6,17 @@ import placeholderImage from "./images/DnD.jpg";
 import LoadingPage from "../../shared/Loading.jsx";
 
 function ViewCampaignPage() {
+  // Get campaign ID from URL and auth state
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
 
+  // State for campaign data, loading, and errors
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // State for edit mode and form fields
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
@@ -21,10 +24,12 @@ function ViewCampaignPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
+  // State for image upload drag-and-drop
   const [isDragging, setIsDragging] = useState(false);
   const [imageError, setImageError] = useState(null);
   const fileInputRef = useRef(null);
 
+  // State for delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 

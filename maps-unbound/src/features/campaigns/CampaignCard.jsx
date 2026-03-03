@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import placeholderImage from "./images/DnD.jpg";
 
 const CampaignCard = ({ campaign, currentUser }) => {
+  // Determine user's role in the campaign and total members
   const member = campaign.members.find((m) => m.userId === currentUser);
   const isDM = member && member.role === "DM";
   const totalPlayers = campaign.members.length;
@@ -34,6 +35,7 @@ const CampaignCard = ({ campaign, currentUser }) => {
   );
 };
 
+/* Styles */
 const overlayStyle = {
   background: "linear-gradient(to top, rgba(8,6,3,0.95) 0%, rgba(8,6,3,0.5) 55%, transparent 100%)",
   padding: "1rem",

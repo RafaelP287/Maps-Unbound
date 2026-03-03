@@ -3,23 +3,27 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 function CreateCampaignPage() {
+  // Navigation and auth state
   const navigate = useNavigate();
   const { user, token } = useAuth();
   const [form, setForm] = useState({ title: "", description: "" });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // State for image upload
   const [imagePreview, setImagePreview] = useState(null);
   const [imageError, setImageError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
 
+  // State for player search and selection
   const [playerSearch, setPlayerSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [players, setPlayers] = useState([]);
   const searchTimeout = useRef(null);
 
+  // Effect to handle player search
   useEffect(() => {
     if (playerSearch.trim().length < 2) { setSearchResults([]); return; }
     clearTimeout(searchTimeout.current);
@@ -40,6 +44,7 @@ function CreateCampaignPage() {
     return () => clearTimeout(searchTimeout.current);
   }, [playerSearch, players, token]);
 
+  // Function to process selected image file
   const processImageFile = (file) => {
     setImageError(null);
     if (!file.type.startsWith("image/")) { setImageError("Please upload an image file."); return; }
@@ -49,6 +54,7 @@ function CreateCampaignPage() {
     reader.readAsDataURL(file);
   };
 
+  // Handlers for drag-and-drop and file input
   const handleDrop = (e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processImageFile(f); };
   const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = () => setIsDragging(false);
@@ -57,6 +63,7 @@ function CreateCampaignPage() {
   const addPlayer = (u) => { setPlayers((p) => [...p, { userId: u._id, username: u.username }]); setPlayerSearch(""); setSearchResults([]); };
   const removePlayer = (userId) => setPlayers((p) => p.filter((x) => x.userId !== userId));
 
+  // Handler for form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
