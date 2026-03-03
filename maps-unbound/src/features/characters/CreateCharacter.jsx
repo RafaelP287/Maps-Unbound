@@ -85,8 +85,8 @@ const CreateCharacter = () => {
     }));
   };
 
-  // 2. Handle the progression of steps
-  const handleSubmit = (e) => {
+  // Handle the progression of steps
+  const handleSubmit = async (e) => {
     e.preventDefault(); // Prevents page reload
 
     if (step === 1) {
@@ -107,7 +107,7 @@ const CreateCharacter = () => {
     <div style={styles.container}>
       <h1 style={styles.title}>Create New Character</h1>
 
-      {/* 3. Step Indicator */}
+      {/* Step Indicator */}
       <p style={styles.stepIndicator}>Step {step} of 2</p>
       <form onSubmit={handleSubmit} style={styles.form}>
         {/* STEP 1: BASICS */}
@@ -140,7 +140,7 @@ const CreateCharacter = () => {
                   {isLoadingClasses ? "Loading classes..." : "Select a class"}
                 </option>
                 {classes.map((dndClass) => (
-                  <option key={dndClass.index} value={dndClass.name}>
+                  <option key={dndClass.index} value={dndClass.index}>
                     {dndClass.name}
                   </option>
                 ))}
@@ -181,7 +181,7 @@ const CreateCharacter = () => {
                   {isLoadingRaces ? "Loading races..." : "Select a race"}
                 </option>
                 {races.map((dndRace) => (
-                  <option key={dndRace.index} value={dndRace.name}>
+                  <option key={dndRace.index} value={dndRace.index}>
                     {dndRace.name}
                   </option>
                 ))}
@@ -201,7 +201,49 @@ const CreateCharacter = () => {
                 style={styles.input}
                 placeholder="e.g. Acolyte, Criminal, Soldier"
                 required
-              />
+                disabled={isLoadingBackgrounds}
+              >
+                <option value="">
+                  {isLoadingBackgrounds
+                    ? "Loading backgrounds..."
+                    : "Select a background"}
+                </option>
+                {backgrounds.map((dndBackground) => (
+                  <option key={dndBackground.index} value={dndBackground.index}>
+                    {dndBackground.name}
+                  </option>
+                ))}
+              </select>
+              {backgroundApiError && (
+                <span style={styles.errorText}>{backgroundApiError}</span>
+              )}
+            </div>
+
+            {/* Alignments */}
+            <div style={styles.field}>
+              <label style={styles.label}>Alignment</label>
+              <select
+                name="alignment"
+                value={formData.alignment}
+                onChange={handleChange}
+                style={styles.input}
+                required
+                disabled={isLoadingAlignments}
+              >
+                <option value="">
+                  {isLoadingAlignments
+                    ? "Loading alignments..."
+                    : "Select a alignment"}
+                </option>
+                {alignments.map((dndAlignment) => (
+                  <option key={dndAlignment.index} value={dndAlignment.index}>
+                    {dndAlignment.name}
+                  </option>
+                ))}
+              </select>
+              {alignmentApiError && (
+                <span style={styles.errorText}>{alignmentApiError}</span>
+              )}
             </div>
           </div>
         )}

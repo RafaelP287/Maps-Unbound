@@ -46,23 +46,47 @@ const characterSchema = new Schema(
 
     // --- Core RPG Data ---
     race: {
-      type: String,
+      type: new Schema(
+        {
+          index: { type: String, required: true, lowercase: true },
+          name: { type: String, required: true },
+        },
+        { _id: false },
+      ),
       required: true,
-      lowercase: true,
     },
+
     class: {
-      type: String,
+      type: new Schema(
+        {
+          index: { type: String, required: true, lowercase: true },
+          name: { type: String, required: true },
+        },
+        { _id: false },
+      ),
       required: true,
     },
+
     alignment: {
-      type: String,
-      required: true,
-      default: "neutral",
+      type: new Schema(
+        {
+          index: { type: String, required: true, lowercase: true },
+          name: { type: String, required: true },
+        },
+        { _id: false },
+      ),
+      default: { index: "neutral", name: "Neutral" },
     },
+
     background: {
-      type: String,
-      required: true,
-      default: "acolyte",
+      type: new Schema(
+        {
+          index: { type: String, required: true, lowercase: true },
+          name: { type: String, required: true },
+        },
+        { _id: false },
+      ),
+      default: { index: "acolyte", name: "Acolyte" },
     },
     maxLevel: {
       type: Number,
@@ -115,7 +139,7 @@ const characterSchema = new Schema(
     featuresAndTraits: { type: [String], default: [] },
 
     // --- Other Proficiencies & Languages
-    languages: { type: [String], default: ["common"] },    // Almost every character can read Common
+    languages: { type: [String], default: ["common"] }, // Almost every character can read Common
     weaponProficiencies: { type: [String], default: [] },
     armorProficiencies: { type: [String], default: [] },
     toolProficiencies: { type: [String], default: [] },
@@ -132,11 +156,13 @@ const characterSchema = new Schema(
     spellbook: [spellSchema],
 
     // --- Attacks & Spellcasting (Quick Reference) ---
-    attacks: [{
-      name: { type: String, required: true }, // e.g., "Longsword" or "Firebolt"
-      attackBonus: { type: String },          // Stored as a string so it can hold "+5"
-      damageAndType: { type: String }         // e.g., "1d8+3 Slashing" or "1d10 Fire"
-    }],
+    attacks: [
+      {
+        name: { type: String, required: true }, // e.g., "Longsword" or "Firebolt"
+        attackBonus: { type: String }, // Stored as a string so it can hold "+5"
+        damageAndType: { type: String }, // e.g., "1d8+3 Slashing" or "1d10 Fire"
+      },
+    ],
 
     // --- Status Flags ---
     isDead: {
@@ -202,7 +228,7 @@ characterSchema.virtual("totalAttributes").get(function () {
 characterSchema.methods.calculateBonuses = async function () {
   try {
     const raceResponse = await fetch(
-      `${CONFIG.api5e}/api/2014/races/${this.race}`,
+      `${CONFIG.api5e}/api/2014/races/${this.race.index}`,
     );
     if (!raceResponse.ok) throw new Error("Race not found in API");
     const raceData = await raceResponse.json();
@@ -221,10 +247,25 @@ characterSchema.methods.calculateBonuses = async function () {
   }
 };
 
+// Initializes items based on background and etc.
+characterSchema.methods.initializeItems = async function () {
+  try {
+    const backgroundResponse = await fetch(
+      `${CONFIG.api5e}/api/2014/backgrounds/${this.backgrounds.index}`,
+    );
+    if (!backgroundResponse.ok) throw new Error("Background not found in API");
+    const backgroundData = await backgroundResponse.json();
+
+    // TODO: adds items
+  } catch (error) {
+    console.log({ error: error.message });
+  }
+};
+
 // --- Getters: Gets stuff from database ---
 characterSchema.methods.getRace = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.toLowerCase()}`;
+    const apiURL = `${CONFIG.api5e}/api/2014/races/${this.race.index}`;
     console.log(`Attempting to fetch race from URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
@@ -239,7 +280,7 @@ characterSchema.methods.getRace = async function () {
 
 characterSchema.methods.getClass = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.toLowerCase()}`;
+    const apiURL = `${CONFIG.api5e}/api/2014/classes/${this.class.index}`;
     console.log(`Attempting to fetch class URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
@@ -254,7 +295,7 @@ characterSchema.methods.getClass = async function () {
 
 characterSchema.methods.getBackground = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/backgrounds/${this.background.toLowerCase()}`;
+    const apiURL = `${CONFIG.api5e}/api/2014/backgrounds/${this.background.index}`;
     console.log(`Attempting to fetch background URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();
@@ -269,7 +310,7 @@ characterSchema.methods.getBackground = async function () {
 
 characterSchema.methods.getAlignment = async function () {
   try {
-    const apiURL = `${CONFIG.api5e}/api/2014/alignments/${this.alignment.toLowerCase()}`;
+    const apiURL = `${CONFIG.api5e}/api/2014/alignments/${this.alignment.index}`;
     console.log(`Attempting to fetch alignment URL: ${apiURL}`);
     const response = await fetch(apiURL);
     const apiJson = await response.json();

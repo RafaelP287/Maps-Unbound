@@ -3,7 +3,6 @@ import { CONFIG } from "../config.js";
 import User from "../models/User.js";
 import Character from "../models/Character.js";
 import { Item, parseEquipmentData } from "../models/Item.js";
-
 import { parseSpellData } from "../models/Spell.js";
 
 // Finds every character in the database
@@ -43,11 +42,11 @@ async function getCharacterByName(name) {
 async function createCharacter(
   characterName,
   userName,
-  raceIndex,
-  classIndex,
+  raceObj,
+  classObj,
+  backgroundObj,
+  alignmentObj,
   baseStats,
-  alignmentIndex = "acolyte",
-  backgroundIndex = "neutral",
 ) {
   try {
     const userId = (await User.findOne({ username: userName }))?._id;
@@ -56,10 +55,10 @@ async function createCharacter(
     const newCharacter = new Character({
       name: characterName,
       user: userId,
-      race: raceIndex,
-      class: classIndex,
-      alignment: alignmentIndex,
-      background: backgroundIndex,
+      race: raceObj,
+      class: classObj,
+      background: backgroundObj,
+      alignment: alignmentObj,
       baseAbilityScores: baseStats,
     });
 
