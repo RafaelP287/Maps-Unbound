@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import placeholderImage from "./images/DnD.jpg";
 import { useAuth } from "../../context/AuthContext.jsx";
+
+import placeholderImage from "./images/DnD.jpg";
+import LoadingPage from "../../shared/Loading.jsx";
 
 function ViewCampaignPage() {
   const { id } = useParams();
@@ -106,10 +108,9 @@ function ViewCampaignPage() {
 
   if (loading || authLoading) {
     return (
-      <div style={loadingWrapStyle}>
-        <div style={spinnerStyle}>✦</div>
-        <p style={loadingTextStyle}>Unrolling the scroll…</p>
-      </div>
+      <LoadingPage>
+        Unravelling the scroll...
+      </LoadingPage>
     );
   }
   if (error) return <div style={fullCenterStyle}><p style={errorMsgStyle}>⚠ {error}</p><Link to="/campaigns"><button style={ghostBtnStyle}>← Back to Campaigns</button></Link></div>;
@@ -577,20 +578,6 @@ const modalTitleStyle = {
 };
 
 const modalBodyStyle = { color: "#9a8a70", margin: "0 0 0.5rem", lineHeight: 1.6 };
-
-/* Loading / error */
-const loadingWrapStyle = {
-  minHeight: "100vh",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  background: "var(--bg-deep)",
-  gap: "1rem",
-};
-
-const spinnerStyle = { fontSize: "2rem", color: "var(--gold)", animation: "spin 2s linear infinite" };
-const loadingTextStyle = { fontFamily: "'Crimson Text', serif", fontStyle: "italic", color: "#9a8a70" };
 
 const fullCenterStyle = {
   minHeight: "100vh",

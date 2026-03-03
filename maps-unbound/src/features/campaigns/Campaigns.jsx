@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 
 import CampaignCard from "./CampaignCard.jsx";
 import Gate from "../../shared/Gate.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
 
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
@@ -28,10 +29,9 @@ function CampaignsPage() {
 
   if (loading || authLoading) {
     return (
-      <div style={loadingWrapStyle}>
-        <div style={runeSpinnerStyle}>✦</div>
-        <p style={loadingTextStyle}>Consulting the arcane records…</p>
-      </div>
+      <LoadingPage>
+        Searching the archives...
+      </LoadingPage>
     );
   }
 
@@ -197,29 +197,6 @@ const primaryBtnStyle = {
   cursor: "pointer",
   boxShadow: `0 2px 16px rgba(201,168,76,0.25)`,
   transition: "opacity 0.2s, transform 0.15s",
-};
-
-const loadingWrapStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "60vh",
-  gap: "1rem",
-  background: "var(--bg-deep)",
-};
-
-const runeSpinnerStyle = {
-  fontSize: "2rem",
-  color: "var(--gold)",
-  animation: "spin 2s linear infinite",
-};
-
-const loadingTextStyle = {
-  fontFamily: "'Crimson Text', serif",
-  fontStyle: "italic",
-  color: "#9a8a70",
-  fontSize: "1.1rem",
 };
 
 export default CampaignsPage;
