@@ -7,13 +7,19 @@ const API_SERVER = import.meta.env.VITE_API_SERVER;
 const AUTH_STORAGE_KEY = "maps-unbound-auth";
 
 const CreateCharacter = () => {
+  // Loads the user
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
+  const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     characterClass: "",
     race: "",
+    characterClass: "",
+    attributes: "",
+    alignment: "", 
+    background: "",
     level: 1,
     background: "",
     alignment: "",
@@ -79,6 +85,7 @@ const CreateCharacter = () => {
       }
     };
 
+    // Fetch races on component mount 
     const fetchRaces = async () => {
       const cachedRaces = sessionStorage.getItem("dnd_races");
       if (cachedRaces) {
@@ -147,6 +154,8 @@ const CreateCharacter = () => {
 
     fetchClasses();
     fetchRaces();
+    fetchBackgrounds();
+    fetchAlignments();
     fetchBackgrounds();
     fetchAlignments();
   }, []);
@@ -237,6 +246,8 @@ const CreateCharacter = () => {
               <select
                 name="characterClass"
                 value={formData.characterClass}
+                name="characterClass"
+                value={formData.characterClass}
                 onChange={handleChange}
                 style={styles.input}
                 required
@@ -297,6 +308,7 @@ const CreateCharacter = () => {
               )}
             </div>
 
+            {/* Backgrounds */}
             <div style={styles.field}>
               <label style={styles.label}>Background</label>
               <select
@@ -305,7 +317,33 @@ const CreateCharacter = () => {
                 value={formData.background}
                 onChange={handleChange}
                 style={styles.input}
-                placeholder="e.g. Acolyte, Criminal, Soldier"
+                required
+                disabled={isLoadingBackgrounds}
+              >
+                <option value="">
+                  {isLoadingBackgrounds
+                    ? "Loading backgrounds..."
+                    : "Select a background"}
+                </option>
+                {backgrounds.map((dndBackground) => (
+                  <option key={dndBackground.index} value={dndBackground.name}>
+                    {dndBackground.name}
+                  </option>
+                ))}
+              </select>
+              {backgroundApiError && (
+                <span style={styles.errorText}>{backgroundApiError}</span>
+              )}
+            </div>
+
+            {/* Alignments */}
+            <div style={styles.field}>
+              <label style={styles.label}>Background</label>
+              <select
+                name="alignment"
+                value={formData.alignment}
+                onChange={handleChange}
+                style={styles.input}
                 required
                 disabled={isLoadingBackgrounds}
               >
