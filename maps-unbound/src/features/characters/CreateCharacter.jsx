@@ -193,7 +193,7 @@ const CreateCharacter = () => {
 
             <div style={styles.field}>
               <label style={styles.label}>Background</label>
-              <input
+              <select
                 type="text"
                 name="background"
                 value={formData.background}
