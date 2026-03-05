@@ -11,18 +11,14 @@ const CreateCharacter = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
-  const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({
+    level: 1,
     name: "",
-    characterClass: "",
     race: "",
     characterClass: "",
-    attributes: "",
-    alignment: "", 
-    background: "",
-    level: 1,
     background: "",
     alignment: "",
+    attributes: "",
     user: ""
   });
 
@@ -156,8 +152,6 @@ const CreateCharacter = () => {
     fetchRaces();
     fetchBackgrounds();
     fetchAlignments();
-    fetchBackgrounds();
-    fetchAlignments();
   }, []);
 
   const handleChange = (e) => {
@@ -246,8 +240,6 @@ const CreateCharacter = () => {
               <select
                 name="characterClass"
                 value={formData.characterClass}
-                name="characterClass"
-                value={formData.characterClass}
                 onChange={handleChange}
                 style={styles.input}
                 required
@@ -308,40 +300,12 @@ const CreateCharacter = () => {
               )}
             </div>
 
-            {/* Backgrounds */}
+            {/* Background */}
             <div style={styles.field}>
               <label style={styles.label}>Background</label>
               <select
-                type="text"
                 name="background"
                 value={formData.background}
-                onChange={handleChange}
-                style={styles.input}
-                required
-                disabled={isLoadingBackgrounds}
-              >
-                <option value="">
-                  {isLoadingBackgrounds
-                    ? "Loading backgrounds..."
-                    : "Select a background"}
-                </option>
-                {backgrounds.map((dndBackground) => (
-                  <option key={dndBackground.index} value={dndBackground.name}>
-                    {dndBackground.name}
-                  </option>
-                ))}
-              </select>
-              {backgroundApiError && (
-                <span style={styles.errorText}>{backgroundApiError}</span>
-              )}
-            </div>
-
-            {/* Alignments */}
-            <div style={styles.field}>
-              <label style={styles.label}>Background</label>
-              <select
-                name="alignment"
-                value={formData.alignment}
                 onChange={handleChange}
                 style={styles.input}
                 required
