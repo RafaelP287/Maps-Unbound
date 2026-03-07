@@ -5,6 +5,11 @@ const partySchema = new mongoose.Schema({
     type: String, // Assuming usernames based on your frontend setup
     required: true,
   },
+  partyName: {
+    type: String,
+    required: true,
+    maxLength: [40, "Party name cannot exceed 40 characters."],
+  },
   isPublic: {
     type: Boolean,
     default: true,

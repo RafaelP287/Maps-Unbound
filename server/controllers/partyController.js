@@ -14,7 +14,7 @@ const generateLobbyCode = () => {
 
 export const createParty = async (req, res) => {
   try {
-    const { owner, isPublic, maxPlayers } = req.body;
+    const { owner, partyName, isPublic, maxPlayers } = req.body;
 
     // Enforce single-party ownership constraint
     const existingParty = await Party.findOne({ owner });
@@ -49,6 +49,7 @@ export const createParty = async (req, res) => {
     // Save the new party
     const newParty = new Party({
       owner,
+      partyName: partyName || `${owner}'s Party`, // Failsafe fallback
       isPublic,
       maxPlayers,
       lobbyCode: newLobbyCode,
