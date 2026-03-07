@@ -19,6 +19,7 @@ const styles = {
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100vh',
+        backgroundColor: '#0d0b08',
     },
     main: {
         flex: 1,

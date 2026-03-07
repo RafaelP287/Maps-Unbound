@@ -1,7 +1,19 @@
 import React, { useRef, useEffect } from 'react';
+import { useAuth } from "../../context/AuthContext.jsx";
+
+import Gate from "../../shared/Gate.jsx";
 
 function Maps({ initializeDice, rollDice, isDiceReady }) {
+    const { user, token, isLoggedIn, loading: authLoading } = useAuth();
     const canvasRef = useRef();
+
+    if (!isLoggedIn) {
+        return (
+            <Gate>
+                Sign in to create maps.
+            </Gate>
+        );
+    }
 
     useEffect(() => {
         if (canvasRef.current) {

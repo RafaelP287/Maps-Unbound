@@ -1,102 +1,122 @@
-import { Link, useNavigate } from "react-router-dom";
-import Button from "../shared/Button.jsx";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 
-function getUserFromStorage() {
-    try {
-        const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (authData) {
-            const { user } = JSON.parse(authData);
-            return user;
-        }
-    } catch (error) {
-        console.error("Failed to parse auth data:", error);
-    }
-    return null;
-}
-
 function Navbar() {
-    const navigate = useNavigate();
-    const { user, logout, isLoggedIn, loading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, logout, isLoggedIn, loading } = useAuth();
 
-    const handleLogout = () => {
-        logout();
-        navigate("/");
-    };
+  const handleLogout = () => { logout(); navigate("/"); };
 
-    if (loading) return null;
+  if (loading) return null;
 
-    return (
-        <nav style={styles.navbar}>
-            <Link to="/" style={styles.titleLink}>
-                <h2 style={styles.title}>Maps Unbound</h2>
+  const isActive = (path) => location.pathname === path ? "nav-link active" : "nav-link";
+
+  return (
+    <nav style={navStyle}>
+      {/* Left — Brand */}
+      <Link to="/" style={{ textDecoration: "none" }}>
+        <div style={brandStyle}>
+          <span style={brandRuneStyle}>✦</span>
+          <span style={brandTextStyle}>Maps Unbound</span>
+        </div>
+      </Link>
+
+      {/* Right — Links */}
+      <div style={linksStyle}>
+        {isLoggedIn ? (
+          <>
+            <Link to="/" className={isActive("/")}>Home</Link>
+            <Link to="/maps" className={isActive("/maps")}>Maps</Link>
+            <Link to="/characters" className={isActive("/characters")}>Characters</Link>
+            <Link to="/campaigns" className={isActive("/campaigns")}>Campaigns</Link>
+            <Link to="/party-finder" className={isActive("/party-finder")}>Party Finder</Link>
+
+            <div style={dividerStyle} />
+
+            <Link to="/profile" className="nav-user-link">
+              <span style={avatarStyle}>
+                {user.username[0].toUpperCase()}
+              </span>
+              {user.username[0].toUpperCase() + user.username.slice(1)}
             </Link>
 
-            <div style={styles.links}>
-                {isLoggedIn ? (
-                    <>
-                        <Link to="/" style={styles.link}>Home</Link>
-                        <Link to="/maps" style={styles.link}>Maps</Link>
-                        <Link to="/characters" style={styles.link}>Characters</Link>
-                        <Link to="/campaigns" style={styles.link}>Campaigns</Link>
-                        <Link to="/party-finder" style={styles.link}>Party Finder</Link>
-
-                        <Link to="/profile" style={styles.userLink}>
-                            {user.username[0].toUpperCase() + user.username.slice(1)}
-                        </Link>
-
-                        <Button onClick={handleLogout} style={{ marginLeft: '20px' }}>
-                            Logout
-                        </Button>
-                    </>
-                ) : (
-                    <Link to="/login" style={styles.link}>
-                        <Button>Sign In</Button>
-                    </Link>
-                )}
-            </div>
-        </nav>
-    );
+            <button className="nav-logout-btn" onClick={handleLogout}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <Link to="/login" className="nav-signin-btn">
+            Enter the Realm
+          </Link>
+        )}
+      </div>
+    </nav>
+  );
 }
 
-const styles = {
-    navbar: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
-        zIndex: 1000,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 20px',
-        backgroundColor: '#111',
-    },
-    title: {
-        color: '#00FFFF',
-        margin: 0,
-    },
-    titleLink: {
-        textDecoration: 'none',
-    },
-    links: {
-        display: 'flex',
-        gap: '20px',
-        alignItems: 'center',
-    },
-    link: {
-        color: 'white',
-        textDecoration: 'none',
-        fontSize: '16px',
-        transition: 'color 0.2s',
-    },
-    userLink: {
-        color: '#00FFFF',
-        textDecoration: 'none',
-        fontSize: '16px',
-        fontWeight: 'bold',
-    },
+const navStyle = {
+  position: "fixed",
+  top: 0,
+  left: 0,
+  right: 0,
+  zIndex: 1000,
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "0 2rem",
+  height: "60px",
+  background: "var(--nav-bg)",
+  borderBottom: `1px solid var(--border)`,
+  backdropFilter: "none",
+  boxShadow: "0 2px 24px rgba(0,0,0,0.5)",
+};
+
+const brandStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "0.5rem",
+};
+
+const brandRuneStyle = {
+  color: "var(--gold)",
+  fontSize: "1rem",
+  opacity: 0.8,
+};
+
+const brandTextStyle = {
+  fontFamily: "'Cinzel Decorative', serif",
+  fontSize: "1.1rem",
+  color: "#e8c96a",
+  letterSpacing: "0.04em",
+  textShadow: "0 0 20px rgba(201,168,76,0.2)",
+};
+
+const linksStyle = {
+  display: "flex",
+  alignItems: "center",
+  gap: "1.5rem",
+};
+
+const dividerStyle = {
+  width: "1px",
+  height: "18px",
+  background: "var(--border)",
+};
+
+const avatarStyle = {
+  width: "26px",
+  height: "26px",
+  borderRadius: "50%",
+  background: "rgba(201,168,76,0.15)",
+  border: `1px solid rgba(201,168,76,0.4)`,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontSize: "0.7rem",
+  fontFamily: "'Cinzel', serif",
+  color: "var(--gold)",
+  flexShrink: 0,
 };
 
 export default Navbar;
