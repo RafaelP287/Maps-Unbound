@@ -381,13 +381,13 @@ const CreateCharacter = () => {
             </button>
           )}
 
-          <Button type="submit" disabled={isSubmitting}>
+          <button style={styles.nextBtn} type="submit" disabled={isSubmitting}>
             {step === 1 
               ? "Next Step" 
               : isSubmitting 
                 ? "Saving..." 
                 : "Create Character"}
-          </Button>
+          </button>
         </div>
       </form>
     </div>
@@ -396,10 +396,10 @@ const CreateCharacter = () => {
 
 const styles = {
   container: { maxWidth: "600px", margin: "0 auto", padding: "20px" },
-  title: { textAlign: "center", color: "#00FFFF", marginBottom: "10px" },
+  title: { textAlign: "center", color: "var(--gold)", marginBottom: "10px" },
   stepIndicator: {
     textAlign: "center",
-    color: "#888",
+    color: "linear-gradient(135deg, var(--gold), var(--gold-light))",
     marginBottom: "30px",
     fontSize: "14px",
   },
@@ -430,9 +430,17 @@ const styles = {
     padding: "10px 20px",
     fontSize: "16px",
     borderRadius: "6px",
-    border: "1px solid #666",
-    backgroundColor: "#333",
+    border: "1px solid #848484",
+    background: "#3b383880",
     color: "#fff",
+    cursor: "pointer",
+  },
+  nextBtn: {
+    padding: "10px 20px",
+    fontSize: "16px",
+    borderRadius: "6px",
+    border: "1px solid #666",
+    color: "#333",
     cursor: "pointer",
   },
   errorText: { color: "#fca5a5", fontSize: "14px", marginTop: "4px" },

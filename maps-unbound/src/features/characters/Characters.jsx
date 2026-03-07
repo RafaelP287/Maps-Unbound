@@ -74,7 +74,7 @@ const Characters = () => {
       <div style={styles.header}>
         <h1>My Characters</h1>
         <Link to="/create-character">
-          <Button>Create New Character</Button>
+          <button style={primaryBtnStyle}>+ Create New Character</button>
         </Link>
       </div>
 
@@ -111,6 +111,22 @@ const styles = {
     gap: "16px",
     padding: "16px",
   },
+};
+
+const primaryBtnStyle = {
+  fontFamily: "'Cinzel', serif",
+  fontSize: "0.85rem",
+  fontWeight: "600",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "var(--bg-deep)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
+  border: "none",
+  borderRadius: "6px",
+  padding: "0.7rem 1.8rem",
+  cursor: "pointer",
+  boxShadow: `0 2px 16px rgba(201,168,76,0.25)`,
+  transition: "opacity 0.2s, transform 0.15s",
 };
 
 export default Characters;

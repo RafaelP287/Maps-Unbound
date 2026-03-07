@@ -51,7 +51,7 @@ const ownerBadgeStyle = {
   position: "absolute",
   top: "10px",
   right: "10px",
-  backgroundColor: "rgba(0, 255, 255, 0.8)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
   color: "#000",
   padding: "4px 8px",
   borderRadius: "4px",
