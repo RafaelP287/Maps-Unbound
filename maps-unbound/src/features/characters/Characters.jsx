@@ -1,31 +1,31 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 import CharacterCard from "./CharacterCard";
 import Button from "../../shared/Button.jsx";
+import Gate from "../../shared/Gate.jsx";
+
 
 const AUTH_STORAGE_KEY = "maps-unbound-auth";
 const apiServer = import.meta.env.VITE_API_SERVER;
 
 const Characters = () => {
-  const navigate = useNavigate();
+  // Authentication
+  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+  if (!isLoggedIn) {
+    return (
+      <Gate>
+        Sign in to access your characters.
+      </Gate>
+    );
+  }
 
+  const navigate = useNavigate();
   const [characters, setCharacters] = useState([]);
-  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-
-    // Redirect to login if no user is found
-    if (!authData) {
-      navigate("/login");
-      return;
-    }
-
-    const { user } = JSON.parse(authData);
-    setCurrentUser(user);
-
     // Fetches Characters
     const fetchCharacters = async () => {
       try {
@@ -88,7 +88,7 @@ const Characters = () => {
             <CharacterCard
               key={character._id || character.characterId}
               character={character}
-              currentUser={currentUser?.username}
+              user={user?.username}
             />
           ))
         )}

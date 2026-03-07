@@ -2,9 +2,13 @@ import React from "react";
 
 const CharacterCard = ({ character, currentUser }) => {
   const isOwner = character.owner === currentUser;
+  
+  const bgImage = character.class.index 
+    ? `/images/classes/character/${character.class.index}.png`
+    : "/images/classes/character/default.jpg";
 
   return (
-    <div style={{ ...cardStyle, backgroundImage: `url(${character.image})` }}>
+    <div style={{ ...cardStyle, backgroundImage: `url(${bgImage})` }}>
       {isOwner && <span style={ownerBadgeStyle}>Your Character</span>}
       <div style={overlayStyle}>
         <h3 style={titleStyle}>{character.name}</h3>

@@ -1,15 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
+import Gate from "../../shared/Gate.jsx";
 
 const API_5E = import.meta.env.VITE_API_5E;
 const API_SERVER = import.meta.env.VITE_API_SERVER;
 const AUTH_STORAGE_KEY = "maps-unbound-auth";
 
 const CreateCharacter = () => {
+  // Authentication
+  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+  if (!isLoggedIn) {
+    return (
+      <Gate>
+        Sign in to access your characters.
+      </Gate>
+    );
+  }
+
   // Loads the user
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     level: 1,
@@ -48,15 +59,6 @@ const CreateCharacter = () => {
 
   // Fetch classes on component mount
   useEffect(() => {
-    // Finds user
-    const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!authData) {
-        navigate('/login');
-        return;
-    }
-    const { user } = JSON.parse(authData);
-    setUser(user);
-
     const fetchClasses = async () => {
       const cachedClasses = sessionStorage.getItem("dnd_classes");
       if (cachedClasses) {
