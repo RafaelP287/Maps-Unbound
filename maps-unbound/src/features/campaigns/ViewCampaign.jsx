@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import placeholderImage from "./images/DnD.jpg";
 import LoadingPage from "../../shared/Loading.jsx";
 import ImageDrop from "../../shared/ImageDrop.jsx";
+import PlayerSearch from "../../shared/PlayerSearch.jsx";
 
 function ViewCampaignPage() {
   // Get campaign ID from URL and auth state
@@ -22,6 +23,7 @@ function ViewCampaignPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editImage, setEditImage] = useState("");
+  const [editPlayers, setEditPlayers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
@@ -46,6 +48,11 @@ function ViewCampaignPage() {
           setEditTitle(data.title || "");
           setEditDescription(data.description || "");
           setEditImage(data.image || "");
+          setEditPlayers(
+            (data.members || [])
+              .filter((m) => m.role === "Player")
+              .map((m) => ({ userId: m.userId._id, username: m.userId.username }))
+          );
         }
       } catch (err) { console.error(err); setError("Failed to load campaign."); }
       finally { setLoading(false); }
@@ -64,14 +71,25 @@ function ViewCampaignPage() {
   const handleSave = async () => {
     setSaving(true); setSaveError(null);
     try {
+      const dmEntry = { userId: dmMember.userId._id, role: "DM" };
+      const memberPayload = [dmEntry, ...editPlayers.map((p) => ({ userId: p.userId, role: "Player" }))];
       const res = await fetch(`/api/campaigns/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: editTitle, description: editDescription, image: editImage || undefined }),
+        body: JSON.stringify({ title: editTitle, description: editDescription, image: editImage || undefined, members: memberPayload }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
-      const updated = await res.json();
+      // Re-fetch so members are populated with usernames, same as the GET route
+      const refetch = await fetch(`/api/campaigns/${id}`, {
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      const updated = await refetch.json();
       setCampaign(updated);
+      setEditPlayers(
+        (updated.members || [])
+          .filter((m) => m.role === "Player")
+          .map((m) => ({ userId: m.userId._id, username: m.userId.username }))
+      );
       setIsEditing(false);
     } catch (err) { setSaveError(err.message || "Failed to save changes."); }
     finally { setSaving(false); }
@@ -80,6 +98,11 @@ function ViewCampaignPage() {
   const handleCancelEdit = () => {
     setEditTitle(campaign.title || ""); setEditDescription(campaign.description || "");
     setEditImage(campaign.image || ""); setSaveError(null);
+    setEditPlayers(
+      (campaign.members || [])
+        .filter((m) => m.role === "Player")
+        .map((m) => ({ userId: m.userId._id, username: m.userId.username }))
+    );
     setIsEditing(false);
   };
 
@@ -151,6 +174,15 @@ function ViewCampaignPage() {
                 compact
               />
             </div>
+          )}
+
+          {/* Player editor (only in edit mode) */}
+          {isEditing && (
+            <PlayerSearch
+              players={editPlayers}
+              onAddPlayer={(p) => setEditPlayers((prev) => [...prev, p])}
+              onRemovePlayer={(userId) => setEditPlayers((prev) => prev.filter((p) => p.userId !== userId))}
+            />
           )}
 
           {/* Details panel */}
