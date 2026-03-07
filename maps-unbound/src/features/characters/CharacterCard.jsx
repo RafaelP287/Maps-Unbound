@@ -8,8 +8,8 @@ const CharacterCard = ({ character, currentUser }) => {
       {isOwner && <span style={ownerBadgeStyle}>Your Character</span>}
       <div style={overlayStyle}>
         <h3 style={titleStyle}>{character.name}</h3>
-        <p style={classLevelStyle}>{character.class} - Level {character.level}</p>
-        <p style={raceStyle}>{character.race}</p>
+        <p style={classLevelStyle}>{character.class.name} - Level {character.level}</p>
+        <p style={raceStyle}>{character.race.name}</p>
       </div>
     </div>
   );

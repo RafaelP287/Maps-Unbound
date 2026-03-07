@@ -1,43 +1,74 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext.jsx";
-
-import Gate from "../../shared/Gate.jsx";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import CharacterCard from "./CharacterCard";
 import Button from "../../shared/Button.jsx";
-import dwarfImage from "./images/Dwarf-fighter.jpg";
-import elfImage from "./images/Elf-wizard.png";
+
+const AUTH_STORAGE_KEY = "maps-unbound-auth";
+const apiServer = import.meta.env.VITE_API_SERVER;
 
 const Characters = () => {
-  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
 
-  if (!isLoggedIn) {
+  const [characters, setCharacters] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const authData = localStorage.getItem(AUTH_STORAGE_KEY);
+
+    // Redirect to login if no user is found
+    if (!authData) {
+      navigate("/login");
+      return;
+    }
+
+    const { user } = JSON.parse(authData);
+    setCurrentUser(user);
+
+    // Fetches Characters
+    const fetchCharacters = async () => {
+      try {
+        const response = await fetch(
+          `${apiServer}/api/users/${user.username}/characters`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch characters");
+        }
+
+        const data = await response.json();
+        console.log("API DATA:", data);
+        setCharacters(data.characters);
+      } catch (err) {
+        console.error("Error fetching characters:", err);
+        setError("Could not load your characters.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCharacters();
+  }, [navigate]);
+
+  // Handle Loading and Error states
+  if (isLoading) {
     return (
-      <Gate>
-        Sign in to access your characters.
-      </Gate>
+      <div style={{ color: "white", textAlign: "center", marginTop: "50px" }}>
+        Loading your heroes...
+      </div>
     );
   }
 
-  const [characters] = useState([
-    {
-      name: "Krorgulir Wyvernbeard",
-      class: "Fighter",
-      level: 5,
-      race: "Dwarf",
-      image: dwarfImage,
-      owner: "Bob"
-    },
-    {
-      name: "Arel Vasatra",
-      class: "Ranger",
-      level: 4,
-      race: "Elf",
-      image: elfImage,
-      owner: "Bob"
-    }
-  ]);
+  if (error) {
+    return (
+      <div style={{ color: "#ff6b6b", textAlign: "center", marginTop: "50px" }}>
+        {error}
+      </div>
+    );
+  }
 
+  // Page
   return (
     <>
       <div style={styles.header}>
@@ -46,10 +77,21 @@ const Characters = () => {
           <Button>Create New Character</Button>
         </Link>
       </div>
+
       <div style={styles.list}>
-        {characters.map((character, index) => (
-          <CharacterCard key={index} character={character} currentUser="Bob" />
-        ))}
+        {characters.length === 0 ? (
+          <p style={{ color: "#aaa" }}>
+            You haven't created any characters yet.
+          </p>
+        ) : (
+          characters.map((character) => (
+            <CharacterCard
+              key={character._id || character.characterId}
+              character={character}
+              currentUser={currentUser?.username}
+            />
+          ))
+        )}
       </div>
     </>
   );
@@ -60,15 +102,15 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    padding: "16px"
+    padding: "16px",
   },
   list: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: "16px",
-    padding: "16px"
-  }
+    padding: "16px",
+  },
 };
 
 export default Characters;
