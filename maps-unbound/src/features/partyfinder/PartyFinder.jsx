@@ -116,7 +116,6 @@ function PartyFinder() {
         },
         body: JSON.stringify({
           owner: user.username,
-          // Use trim() to prevent names that are just spaces, fallback to default
           partyName: newPartyConfig.partyName.trim() || `${user.username}'s Party`,
           isPublic: newPartyConfig.isPublic,
           maxPlayers: newPartyConfig.maxPlayers,
@@ -128,7 +127,6 @@ function PartyFinder() {
       
       showToast(`Party created! Lobby Code: ${data.lobbyCode}`, "success");
       
-      // Clear the name input for the next time
       setNewPartyConfig(prev => ({ ...prev, partyName: "" }));
       fetchParties();
     } catch (err) {
@@ -186,10 +184,11 @@ function PartyFinder() {
       }
 
       showToast("You have left the party.", "success");
-      setTimeout(() => {
-        fetchParties();
+      // Use async/await to guarantee the fresh data arrives BEFORE resetting the animation
+      setTimeout(async () => {
+        await fetchParties();
         setIsLeaving(false);
-      }, 400); 
+      }, 600); 
     } catch (err) {
       setIsLeaving(false); 
       showToast(err.message, "error");
@@ -214,10 +213,11 @@ function PartyFinder() {
       }
       
       showToast("Party disbanded.", "success");
-      setTimeout(() => {
-        fetchParties();
+      // Use async/await to guarantee the fresh data arrives before resetting the animation
+      setTimeout(async () => {
+        await fetchParties();
         setIsLeaving(false);
-      }, 400);
+      }, 600);
     } catch (err) {
       setIsLeaving(false);
       showToast(err.message, "error");
@@ -259,7 +259,7 @@ function PartyFinder() {
         opacity: isExpanded ? 1 : 0,
       }}>
         <div style={styles.animatedInner}>
-          <div style={{ paddingBottom: "2rem" }}>
+          <div>
             <div style={styles.partyList}>
               {ownedParty && (
                 <div style={{ ...styles.partyCard, ...styles.highlightedCard }}>
@@ -299,7 +299,7 @@ function PartyFinder() {
                 </div>
               )}
             </div>
-            <hr style={{...styles.divider, marginBottom: 0, marginTop: "2rem"}} />
+            <hr style={{...styles.divider, marginTop: "2rem", marginBottom: "2rem"}} />
           </div>
         </div>
       </div>
@@ -461,8 +461,8 @@ function PartyFinder() {
 const styles = {
   container: { maxWidth: "900px", margin: "0 auto", padding: "2rem", position: "relative" },
   pageTitle: { textAlign: "center", marginBottom: "2rem" },
-  animatedWrapper: { display: "grid", transition: "grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)" },
-  animatedInner: { overflow: "hidden" },
+  animatedWrapper: { display: "grid", transition: "grid-template-rows 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)" },
+  animatedInner: { overflow: "hidden", minHeight: 0 },
   controlsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem", marginBottom: "2rem" },
   panel: { backgroundColor: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "1.5rem" },
   formGroup: { display: "flex", flexDirection: "column", gap: "1rem" },
