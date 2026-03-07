@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 import placeholderImage from "./images/DnD.jpg";
 import LoadingPage from "../../shared/Loading.jsx";
+import ImageDrop from "../../shared/ImageDrop.jsx";
 
 function ViewCampaignPage() {
   // Get campaign ID from URL and auth state
@@ -23,11 +24,6 @@ function ViewCampaignPage() {
   const [editImage, setEditImage] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
-
-  // State for image upload drag-and-drop
-  const [isDragging, setIsDragging] = useState(false);
-  const [imageError, setImageError] = useState(null);
-  const fileInputRef = useRef(null);
 
   // State for delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -65,21 +61,6 @@ function ViewCampaignPage() {
   const backgroundImage = campaign?.image || placeholderImage;
   const activeBg = isEditing && editImage ? editImage : backgroundImage;
 
-  const processImageFile = (file) => {
-    setImageError(null);
-    if (!file.type.startsWith("image/")) { setImageError("Please upload an image file."); return; }
-    if (file.size > 10 * 1024 * 1024) { setImageError("Image must be under 10MB."); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => setEditImage(e.target.result);
-    reader.readAsDataURL(file);
-  };
-
-  const handleDrop = (e) => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) processImageFile(f); };
-  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
-  const handleDragLeave = () => setIsDragging(false);
-  const handleFileInput = (e) => { const f = e.target.files[0]; if (f) processImageFile(f); };
-  const removeImage = () => { setEditImage(""); setImageError(null); if (fileInputRef.current) fileInputRef.current.value = ""; };
-
   const handleSave = async () => {
     setSaving(true); setSaveError(null);
     try {
@@ -98,8 +79,8 @@ function ViewCampaignPage() {
 
   const handleCancelEdit = () => {
     setEditTitle(campaign.title || ""); setEditDescription(campaign.description || "");
-    setEditImage(campaign.image || ""); setImageError(null); setSaveError(null);
-    setIsEditing(false); if (fileInputRef.current) fileInputRef.current.value = "";
+    setEditImage(campaign.image || ""); setSaveError(null);
+    setIsEditing(false);
   };
 
   const handleDelete = async () => {
@@ -164,22 +145,11 @@ function ViewCampaignPage() {
           {isEditing && (
             <div style={fieldGroupStyle}>
               <span style={fieldLabelStyle}>Campaign Artwork</span>
-              {editImage ? (
-                <div style={previewWrapStyle}>
-                  <img src={editImage} alt="Campaign preview" style={previewImgStyle} />
-                  <div style={previewOverlayStyle}>
-                    <button type="button" onClick={removeImage} style={removeImgBtnStyle}>✕ Remove</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={dropZoneStyle(isDragging)} onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave} onClick={() => fileInputRef.current?.click()}>
-                  <div style={{ fontSize: "1.8rem" }}>🖼️</div>
-                  <p style={dropLabelStyle}>Drag & drop or <u>browse</u></p>
-                  <p style={dropHintStyle}>PNG · JPG · WEBP — max 10 MB</p>
-                </div>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileInput} style={{ display: "none" }} />
-              {imageError && <p style={imgErrorStyle}>{imageError}</p>}
+              <ImageDrop
+                imagePreview={editImage || null}
+                onImageChange={(val) => setEditImage(val || "")}
+                compact
+              />
             </div>
           )}
 
@@ -283,7 +253,7 @@ const heroBgWrapStyle = {
   top: 0,
   left: 0,
   right: 0,
-  height: "780px",       /* how tall the image zone is — adjust freely */
+  height: "780px",
   zIndex: 0,
   pointerEvents: "none",
 };
@@ -295,7 +265,6 @@ const heroBgImgStyle = {
   backgroundPosition: "center top",
 };
 
-/* Layered fade: very light dim at top, image stays visible, dissolves only at the very bottom */
 const heroBgFadeStyle = {
   position: "absolute",
   inset: 0,
@@ -319,10 +288,7 @@ const contentWrapStyle = {
 };
 
 /* Hero */
-const heroStyle = {
-  padding: "5rem 0 2.5rem",
-  textAlign: "center",
-};
+const heroStyle = { padding: "5rem 0 2.5rem", textAlign: "center" };
 
 const heroTextStyle = {
   display: "flex",
@@ -400,29 +366,6 @@ const fieldLabelStyle = {
   color: "var(--gold)",
 };
 
-/* Image */
-const dropZoneStyle = (isDragging) => ({
-  border: `2px dashed ${isDragging ? gold : "rgba(201,168,76,0.25)"}`,
-  borderRadius: "8px",
-  padding: "1.5rem 1rem",
-  textAlign: "center",
-  cursor: "pointer",
-  background: isDragging ? "rgba(201,168,76,0.07)" : "rgba(0,0,0,0.25)",
-  transition: "border-color 0.2s, background 0.2s",
-});
-
-const dropLabelStyle = { color: "#b0a08a", fontSize: "0.9rem", margin: "4px 0 2px" };
-const dropHintStyle = { color: "#6a5e50", fontSize: "0.78rem", margin: 0 };
-
-const previewWrapStyle = {
-  position: "relative",
-  borderRadius: "8px",
-  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-  maskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-};
-const previewImgStyle = { width: "100%", maxHeight: "200px", objectFit: "cover", display: "block" };
-const previewOverlayStyle = { position: "absolute", bottom: 0, left: 0, right: 0, padding: "0.5rem", background: "linear-gradient(transparent, rgba(0,0,0,0.7))", display: "flex", justifyContent: "flex-end" };
-const removeImgBtnStyle = { background: "rgba(0,0,0,0.5)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "4px", color: "#ddd", fontSize: "0.8rem", padding: "4px 10px", cursor: "pointer" };
 const imgErrorStyle = { color: "#ff9089", fontSize: "0.85rem", margin: "4px 0 0" };
 
 /* Details */
@@ -467,15 +410,9 @@ const detailKeyStyle = {
   letterSpacing: "0.06em",
 };
 
-const detailValStyle = {
-  color: "#e8dcca",
-  fontSize: "1rem",
-};
+const detailValStyle = { color: "#e8dcca", fontSize: "1rem" };
 
-const detailDivStyle = {
-  height: "1px",
-  background: "rgba(201,168,76,0.1)",
-};
+const detailDivStyle = { height: "1px", background: "rgba(201,168,76,0.1)" };
 
 const dmBadgeStyle = {
   marginLeft: "0.6rem",
