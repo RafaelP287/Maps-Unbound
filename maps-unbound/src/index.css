@@ -373,14 +373,31 @@ textarea::placeholder {
   transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
 }
 
+.campaign-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(8, 6, 3, 0.9) 0%,
+    rgba(8, 6, 3, 0.72) 22%,
+    rgba(8, 6, 3, 0.42) 38%,
+    rgba(8, 6, 3, 0.16) 50%,
+    rgba(8, 6, 3, 0) 62%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.campaign-card > * {
+  position: relative;
+  z-index: 2;
+}
+
 .campaign-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(201, 168, 76, 0.4);
   border-color: rgba(201, 168, 76, 0.5);
-}
-
-.campaign-card:hover .card-overlay {
-  background: linear-gradient(to top, rgba(8, 6, 3, 0.97) 0%, rgba(8, 6, 3, 0.6) 55%, transparent 100%);
 }
 
 /* ════════════════════════════════════════════

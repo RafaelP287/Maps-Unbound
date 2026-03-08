@@ -25,7 +25,6 @@ const CampaignCard = ({ campaign, currentUser }) => {
       <div className="card-overlay" style={overlayStyle}>
         <div style={metaRowStyle}>
           <span style={statusStyle}>{status}</span>
-          <span style={systemStyle}>D&D 5e (2014)</span>
         </div>
         <h3 style={titleStyle}>{campaign.title}</h3>
         <p style={descStyle}>{campaign.description}</p>
@@ -42,12 +41,14 @@ const CampaignCard = ({ campaign, currentUser }) => {
 
 /* Styles */
 const overlayStyle = {
-  background: "linear-gradient(to top, rgba(8,6,3,0.95) 0%, rgba(8,6,3,0.5) 55%, transparent 100%)",
+  background: "transparent",
   padding: "1rem",
   display: "flex",
   flexDirection: "column",
   gap: "5px",
   transition: "background 0.25s",
+  position: "relative",
+  zIndex: 2,
 };
 
 const dmBadgeStyle = {
@@ -63,6 +64,7 @@ const dmBadgeStyle = {
   fontWeight: "700",
   letterSpacing: "0.08em",
   textTransform: "uppercase",
+  zIndex: 2,
 };
 
 const playerBadgeStyle = {
@@ -80,6 +82,7 @@ const titleStyle = {
   color: "#e8c96a",
   letterSpacing: "0.04em",
   lineHeight: 1.3,
+  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
 };
 
 const metaRowStyle = {
@@ -94,11 +97,13 @@ const statusStyle = {
   fontSize: "0.56rem",
   letterSpacing: "0.1em",
   textTransform: "uppercase",
-  border: "1px solid rgba(201,168,76,0.35)",
+  border: "1px solid rgba(201,168,76,0.72)",
   borderRadius: "999px",
-  padding: "2px 7px",
-  color: "#d7c08e",
-  background: "rgba(201,168,76,0.12)",
+  padding: "2px 8px",
+  color: "#f2deab",
+  background: "rgba(8,6,3,0.72)",
+  textShadow: "0 1px 6px rgba(0,0,0,0.85)",
+  boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
 };
 
 const systemStyle = {
@@ -106,20 +111,22 @@ const systemStyle = {
   fontSize: "0.56rem",
   letterSpacing: "0.08em",
   textTransform: "uppercase",
-  color: "#8f7e60",
+  color: "#b8a47f",
+  textShadow: "0 1px 6px rgba(0,0,0,0.7)",
 };
 
 const descStyle = {
   margin: 0,
   fontFamily: "'Crimson Text', serif",
   fontSize: "0.88rem",
-  color: "#b0a08a",
+  color: "#d0bda0",
   fontStyle: "italic",
   display: "-webkit-box",
   WebkitLineClamp: 2,
   WebkitBoxOrient: "vertical",
   overflow: "hidden",
   lineHeight: 1.4,
+  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
 };
 
 const footerRowStyle = {
@@ -137,7 +144,8 @@ const playerCountStyle = {
   fontSize: "0.62rem",
   letterSpacing: "0.08em",
   textTransform: "uppercase",
-  color: "#7a6e5e",
+  color: "#b09a79",
+  textShadow: "0 1px 6px rgba(0,0,0,0.7)",
 };
 
 const viewLinkStyle = {
@@ -146,7 +154,8 @@ const viewLinkStyle = {
   letterSpacing: "0.1em",
   textTransform: "uppercase",
   color: "var(--gold)",
-  opacity: 0.7,
+  opacity: 0.9,
+  textShadow: "0 1px 6px rgba(0,0,0,0.7)",
 };
 
 export default CampaignCard;
