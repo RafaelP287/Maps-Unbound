@@ -1,49 +1,130 @@
 # Maps-Unbound
 
-Create .env file in root folder for database connection
+Full-stack app with:
+- Express + MongoDB backend
+- React + Vite frontend
+- Socket.io real-time lobby sessions
 
-> MONGO_URI=your_mongodb_connection_string_here
->
-> PORT=5000
+## Quick Start
 
-Dependencies
+1) Create root `.env`:
 
-Running Server
-
-<<<<<<< Updated upstream
-> run server.js and then test the outputs on the api_tests.rest
-=======
-## Environment
-
-Create or update the root .env file:
-
-```
-MONGO_URI=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/mapsunbound?appName=MapsUnbound
-PORT=5000
+```env
+MONGO_URI=your_mongodb_connection_string
+PORT=5001
+CLIENT_URL=http://localhost:5173
+VITE_API_URL=http://localhost:5001
+JWT_SECRET=your_jwt_secret
 ```
 
-## Run (two terminals)
+2) Install dependencies:
 
-Terminal 1 (backend):
-
+```bash
+cd backend && npm install
+cd ../maps-unbound && npm install --legacy-peer-deps
 ```
+
+3) Run both apps:
+
+```bash
+# terminal A
+cd backend && npm run dev
+
+# terminal B
+cd maps-unbound && npm run dev
+```
+
+4) Open:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5001`
+
+## Project Structure
+
+- `backend/` API server
+- `maps-unbound/` React client
+
+## 1) Environment Setup
+
+Create a root `.env` file at the repository root:
+
+```env
+MONGO_URI=your_mongodb_connection_string
+PORT=5001
+CLIENT_URL=http://localhost:5173
+VITE_API_URL=http://localhost:5001
+JWT_SECRET=your_jwt_secret
+```
+
+Notes:
+- `CLIENT_URL` is used by backend Socket.io CORS.
+- `VITE_API_URL` is used by frontend socket/API connections.
+
+## 2) Install Dependencies
+
+Backend:
+
+```bash
+cd backend
+npm install
+```
+
+Frontend:
+
+```bash
+cd maps-unbound
+npm install --legacy-peer-deps
+```
+
+## 3) Run in Development (2 terminals)
+
+Terminal A (backend):
+
+```bash
 cd backend
 npm run dev
 ```
 
-Terminal 2 (frontend):
+Terminal B (frontend):
 
-```
+```bash
 cd maps-unbound
 npm run dev
 ```
 
+- Backend: `http://localhost:5001`
+- Frontend: `http://localhost:5173`
 
-## Running the dice
+## 4) Auth Endpoints
 
-Create a account on dddice.com
+Existing REST auth routes:
+- `POST /api/auth/signup`
+- `POST /api/auth/login`
 
-and once you create get a API key to initiallize the engine 
+JWT is returned/used as implemented in backend auth routes.
 
-Profile<Developers< Create API Key
->>>>>>> Stashed changes
+## 5) Socket.io Lobby Flow
+
+### Client emits
+- `join-room` with payload:
+
+```json
+{
+	"campaignId": "<campaign-id>",
+	"userId": "<user-id>"
+}
+```
+
+### Server emits
+- `room-joined` (to joining socket)
+- `player-joined` (broadcast to other users in same campaign room)
+
+Room naming convention:
+- `campaign:<campaignId>`
+
+## 6) dddice Setup (optional)
+
+Create a `dddice.com` account and generate an API key from:
+
+Profile → Developers → Create API Key
+
+Then wire that key into your client-side dice integration.

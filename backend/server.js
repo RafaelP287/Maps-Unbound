@@ -2,6 +2,8 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
+import { Server } from 'socket.io';
 
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
@@ -11,6 +13,14 @@ dotenv.config({ path: '../.env' });
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+  },
+});
 
 // Middleware
 app.use(cors());
@@ -31,6 +41,38 @@ app.get('/', (req, res) => {
   res.json({ message: 'Maps Unbound API' });
 });
 
-app.listen(PORT, () => {
+io.on('connection', (socket) => {
+  console.log(`🔌 Socket connected: ${socket.id}`);
+
+  socket.on('join-room', ({ campaignId, userId }) => {
+    if (!campaignId || !userId) {
+      socket.emit('room-error', { message: 'campaignId and userId are required' });
+      return;
+    }
+
+    const room = `campaign:${campaignId}`;
+    socket.join(room);
+
+    socket.emit('room-joined', {
+      room,
+      campaignId,
+      userId,
+      socketId: socket.id,
+    });
+
+    socket.to(room).emit('player-joined', {
+      campaignId,
+      userId,
+      socketId: socket.id,
+      joinedAt: new Date().toISOString(),
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`❌ Socket disconnected: ${socket.id}`);
+  });
+});
+
+server.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

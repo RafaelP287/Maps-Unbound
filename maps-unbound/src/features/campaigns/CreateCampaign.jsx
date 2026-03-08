@@ -8,7 +8,12 @@ function CreateCampaignPage() {
     const { token } = useAuth();
     const [form, setForm] = useState({
         title: "",
-        description: ""
+        description: "",
+        isPublic: true,
+        accessCode: "",
+        maxPlayers: 6,
+        minLevel: 1,
+        campaignType: "D&D"
     });
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
@@ -74,6 +79,66 @@ function CreateCampaignPage() {
                         required 
                         style={{...inputStyle, height: "100px"}}
                         placeholder="Describe your campaign"
+                    />
+                </label>
+
+                <label style={labelStyle}>
+                    Campaign Type:
+                    <select 
+                        value={form.campaignType} 
+                        onChange={e => setForm({...form, campaignType: e.target.value})} 
+                        style={inputStyle}
+                    >
+                        <option value="D&D">Dungeons & Dragons</option>
+                        <option value="Pathfinder">Pathfinder</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </label>
+
+                <label style={labelStyle}>
+                    <input 
+                        type="checkbox" 
+                        checked={form.isPublic} 
+                        onChange={e => setForm({...form, isPublic: e.target.checked})} 
+                        style={{marginRight: "8px"}}
+                    />
+                    Make Campaign Public
+                </label>
+
+                {!form.isPublic && (
+                    <label style={labelStyle}>
+                        Access Code (leave blank for no code):
+                        <input 
+                            type="text" 
+                            value={form.accessCode} 
+                            onChange={e => setForm({...form, accessCode: e.target.value})} 
+                            style={inputStyle}
+                            placeholder="Optional access code"
+                        />
+                    </label>
+                )}
+
+                <label style={labelStyle}>
+                    Max Players:
+                    <input 
+                        type="number" 
+                        value={form.maxPlayers} 
+                        onChange={e => setForm({...form, maxPlayers: parseInt(e.target.value)})} 
+                        min="1"
+                        max="20"
+                        style={inputStyle}
+                    />
+                </label>
+
+                <label style={labelStyle}>
+                    Minimum Character Level:
+                    <input 
+                        type="number" 
+                        value={form.minLevel} 
+                        onChange={e => setForm({...form, minLevel: parseInt(e.target.value)})} 
+                        min="1"
+                        max="20"
+                        style={inputStyle}
                     />
                 </label>
 
