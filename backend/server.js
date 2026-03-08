@@ -71,6 +71,21 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`❌ Socket disconnected: ${socket.id}`);
   });
+
+  socket.on('send-message', ({ campaignId, userId, username, message }) => {
+    if (!campaignId || !userId || !message) {
+      return;
+    }
+
+    const room = `campaign:${campaignId}`;
+    io.to(room).emit('chat-message', {
+      campaignId,
+      userId,
+      username,
+      message,
+      timestamp: new Date().toISOString(),
+    });
+  });
 });
 
 server.listen(PORT, () => {

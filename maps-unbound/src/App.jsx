@@ -15,6 +15,7 @@ import Characters from "./features/characters/Characters.jsx";
 import CreateCharacter from "./features/characters/CreateCharacter.jsx";
 
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+import Lobby from "./features/player/Lobby.jsx";
 
 import Profile from "./features/profile/Profile.jsx";
 
@@ -108,6 +109,9 @@ function App() {
 
           {/* Party Finder route */}
           <Route path="party-finder" element={<PartyFinder />} />
+
+          {/* Campaign Lobby Demo route */}
+          <Route path="campaign/:campaignId/lobby" element={<Lobby />} />
 
           {/* Profile route */}
           <Route path="profile" element={<Profile />} />

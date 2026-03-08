@@ -32,6 +32,7 @@ const campaignSchema = new mongoose.Schema({
   campaignType: { type: String, default: "D&D" }, // D&D, Pathfinder, etc.
   status: { type: String, enum: ["active", "inactive", "archived"], default: "inactive" },
   joinRequests: [joinRequestSchema],
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 }, {
   timestamps: true,
 });

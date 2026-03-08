@@ -1,19 +1,23 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
+import { useNavigate } from "react-router-dom";
 
 function PartyFinder() {
   const { token, user } = useAuth();
-  const [mode, setMode] = useState("browse"); // "browse", "host", or "join"
+  const navigate = useNavigate();
+  const [mode, setMode] = useState("browse"); // "browse" or "host"
   const [campaigns, setCampaigns] = useState([]);
-  const [joinableCampaigns, setJoinableCampaigns] = useState([]);
   const [myHostableCampaigns, setMyHostableCampaigns] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notification, setNotification] = useState({ message: "", type: "" });
   const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [accessCode, setAccessCode] = useState("");
   const [userCharacters, setUserCharacters] = useState([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
+  const [requestStatuses, setRequestStatuses] = useState({});
+  const [blockUserChecked, setBlockUserChecked] = useState({});
 
   // Fetch available campaigns (hosted ones)
   const fetchAvailableCampaigns = async () => {
@@ -27,28 +31,6 @@ function PartyFinder() {
       if (!response.ok) throw new Error("Failed to fetch campaigns");
       const data = await response.json();
       setCampaigns(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch joinable campaigns
-  const fetchJoinableCampaigns = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const response = await fetch("http://localhost:5001/api/campaigns/finder/joinable", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch campaigns");
-      const data = await response.json();
-      setJoinableCampaigns(data);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -101,8 +83,6 @@ function PartyFinder() {
   useEffect(() => {
     if (mode === "browse") {
       fetchAvailableCampaigns();
-    } else if (mode === "join") {
-      fetchJoinableCampaigns();
       if (userCharacters.length === 0) {
         fetchUserCharacters();
       }
@@ -137,11 +117,12 @@ function PartyFinder() {
       }
 
       setError("");
-      alert("Join request sent successfully!");
+      setNotification({ message: "Join request sent successfully!", type: "success" });
+      setTimeout(() => setNotification({ message: "", type: "" }), 3000);
       setAccessCode("");
       setSelectedCampaign(null);
       setSelectedCharacterId("");
-      fetchJoinableCampaigns();
+      fetchAvailableCampaigns();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -198,17 +179,19 @@ function PartyFinder() {
   const rejectJoinRequest = async (campaignId, requestId) => {
     try {
       setLoading(true);
+      const shouldBlock = blockUserChecked[`${campaignId}-${requestId}`] || false;
       const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request/${requestId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ action: "reject" })
+        body: JSON.stringify({ action: "reject", blockUser: shouldBlock })
       });
 
       if (!response.ok) throw new Error("Failed to reject request");
       await fetchMyHostableCampaigns();
+      setBlockUserChecked({});
       setError("");
     } catch (err) {
       setError(err.message);
@@ -229,12 +212,6 @@ function PartyFinder() {
           Browse Hosting Campaigns
         </button>
         <button
-          onClick={() => setMode("join")}
-          style={mode === "join" ? styles.activeModeBtn : styles.modeBtn}
-        >
-          Find Campaigns to Join
-        </button>
-        <button
           onClick={() => setMode("host")}
           style={mode === "host" ? styles.activeModeBtn : styles.modeBtn}
         >
@@ -243,6 +220,14 @@ function PartyFinder() {
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
+      {notification.message && (
+        <div style={{
+          ...styles.notification,
+          backgroundColor: notification.type === 'success' ? '#4CAF50' : '#FF9800'
+        }}>
+          {notification.message}
+        </div>
+      )}
       {loading && <p style={styles.loading}>Loading campaigns...</p>}
 
       {mode === "browse" && !loading && (
@@ -251,57 +236,59 @@ function PartyFinder() {
           {campaigns.length === 0 ? (
             <p style={styles.empty}>No campaigns currently hosting</p>
           ) : (
-            campaigns.map((campaign) => (
-              <div key={campaign._id} style={styles.campaignCard}>
-                <h3>{campaign.title}</h3>
-                <p>{campaign.description}</p>
-                <div style={styles.campaignInfo}>
-                  <span>Type: {campaign.campaignType}</span>
-                  <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
-                  <span>DM: {campaign.createdBy.username}</span>
+            campaigns.map((campaign) => {
+              const userRequest = campaign.joinRequests?.find(r => 
+                r.userId?._id?.toString() === user?._id?.toString() || 
+                r.userId?.toString() === user?._id?.toString()
+              );
+              const requestStatus = userRequest?.status;
+              
+              // Check if user is already a member of the campaign
+              const isMember = campaign.members?.some(m => 
+                m.userId?._id?.toString() === user?._id?.toString() || 
+                m.userId?.toString() === user?._id?.toString()
+              );
+              
+              return (
+                <div key={campaign._id} style={styles.campaignCard}>
+                  <h3>{campaign.title}</h3>
+                  <p>{campaign.description}</p>
+                  <div style={styles.campaignInfo}>
+                    <span>Type: {campaign.campaignType}</span>
+                    <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
+                    <span>DM: {campaign.createdBy?.username || "Unknown"}</span>
+                  </div>
+                  {requestStatus && (
+                    <div style={{
+                      ...styles.campaignInfo,
+                      padding: '10px',
+                      backgroundColor: requestStatus === 'approved' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
+                      borderRadius: '4px',
+                      marginBottom: '10px'
+                    }}>
+                      <span style={{ color: requestStatus === 'approved' ? '#4CAF50' : requestStatus === 'pending' ? '#FF9800' : '#FF6B6B', fontWeight: 'bold' }}>
+                        {requestStatus === 'approved' ? '✓ Approved' : requestStatus === 'pending' ? '⏳ Pending' : '❌ Rejected'}
+                      </span>
+                    </div>
+                  )}
+                  {(requestStatus === 'approved' || isMember) && (
+                    <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)}>
+                      Enter Lobby
+                    </Button>
+                  )}
+                  {!isMember && requestStatus !== 'approved' && requestStatus !== 'pending' && (
+                    <Button onClick={() => {
+                      setSelectedCampaign(campaign._id);
+                      if (userCharacters.length === 0) {
+                        fetchUserCharacters();
+                      }
+                    }}>
+                      {requestStatus === 'rejected' ? 'Send Another Request' : 'Request to Join'}
+                    </Button>
+                  )}
                 </div>
-                <Button onClick={() => {
-                  setSelectedCampaign(campaign._id);
-                  if (userCharacters.length === 0) {
-                    fetchUserCharacters();
-                  }
-                }}>
-                  Request to Join
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-
-      {mode === "join" && !loading && (
-        <div style={styles.campaignList}>
-          <h2>Available Campaigns</h2>
-          {joinableCampaigns.length === 0 ? (
-            <p style={styles.empty}>No campaigns available to join</p>
-          ) : (
-            joinableCampaigns.map((campaign) => (
-              <div key={campaign._id} style={styles.campaignCard}>
-                <h3>{campaign.title}</h3>
-                <p>{campaign.description}</p>
-                <div style={styles.campaignInfo}>
-                  <span>Type: {campaign.campaignType}</span>
-                  <span>Status: {campaign.status}</span>
-                  <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
-                  <span>DM: {campaign.createdBy.username}</span>
-                </div>
-                <Button
-                  onClick={() => {
-                    setSelectedCampaign(campaign._id);
-                    if (userCharacters.length === 0) {
-                      fetchUserCharacters();
-                    }
-                  }}
-                >
-                  Request to Join
-                </Button>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
@@ -333,7 +320,22 @@ function PartyFinder() {
                     <p><strong>Pending Requests: {campaign.joinRequests.filter(r => r.status === "pending").length}</strong></p>
                     {campaign.joinRequests.filter(r => r.status === "pending").map(req => (
                       <div key={req._id} style={styles.requestItem}>
-                        <span>{req.userId.username}</span>
+                        <div style={{ flex: 1 }}>
+                          <span><strong>{req.userId?.username || "Unknown User"}</strong> requested to join</span>
+                          <div style={{ marginTop: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '12px' }}>
+                              <input
+                                type="checkbox"
+                                checked={blockUserChecked[`${campaign._id}-${req._id}`] || false}
+                                onChange={(e) => setBlockUserChecked({
+                                  ...blockUserChecked,
+                                  [`${campaign._id}-${req._id}`]: e.target.checked
+                                })}
+                              />
+                              Block this user
+                            </label>
+                          </div>
+                        </div>
                         <div style={{display: "flex", gap: "10px"}}>
                           <button
                             onClick={() => approveJoinRequest(campaign._id, req._id)}
@@ -359,13 +361,18 @@ function PartyFinder() {
                 >
                   {campaign.isHosting ? "Stop Hosting" : "Start Hosting"}
                 </button>
+                {campaign.isHosting && (
+                  <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)} style={{ marginTop: '10px' }}>
+                    Enter Lobby
+                  </Button>
+                )}
               </div>
             ))
           )}
         </div>
       )}
 
-      {selectedCampaign && mode !== "host" && (
+      {selectedCampaign && mode === "browse" && (
         <div style={styles.modal}>
           <div style={styles.modalContent}>
             <h3>Request to Join Campaign</h3>
@@ -512,6 +519,14 @@ const styles = {
     borderRadius: "6px",
     marginBottom: "20px",
     textAlign: "center"
+  },
+  notification: {
+    color: "#fff",
+    padding: "12px",
+    borderRadius: "6px",
+    marginBottom: "20px",
+    textAlign: "center",
+    fontWeight: "bold"
   },
   empty: {
     textAlign: "center",
