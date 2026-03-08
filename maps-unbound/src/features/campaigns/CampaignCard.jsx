@@ -106,15 +106,6 @@ const statusStyle = {
   boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
 };
 
-const systemStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "0.56rem",
-  letterSpacing: "0.08em",
-  textTransform: "uppercase",
-  color: "#b8a47f",
-  textShadow: "0 1px 6px rgba(0,0,0,0.7)",
-};
-
 const descStyle = {
   margin: 0,
   fontFamily: "'Crimson Text', serif",

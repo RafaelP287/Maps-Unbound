@@ -6,12 +6,7 @@ import placeholderImage from "./images/DnD.jpg";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
 import CampaignHero from "./CampaignHero.jsx";
-
-const formatStartDate = (value) => {
-  if (!value) return "TBD";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
-};
+import CampaignSections from "./CampaignSections.jsx";
 
 function DMView({ campaign, refetch }) {
   const { token } = useAuth();
@@ -183,59 +178,7 @@ function DMView({ campaign, refetch }) {
             </div>
           )}
 
-          {/* Details panel */}
-          <div className="campaign-details-panel">
-            <div className="campaign-details-header">
-              <span className="campaign-details-icon">⚜</span>
-              <span className="campaign-details-heading">Campaign Details</span>
-              <span className="campaign-details-icon">⚜</span>
-            </div>
-            <div className="campaign-details-grid">
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Dungeon Master</span>
-                <span className="campaign-detail-val">
-                  {dm}
-                  <span className="badge-dm">You</span>
-                </span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">System</span>
-                <span className="campaign-detail-val">D&D 5e (2014)</span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Style</span>
-                <span className="campaign-detail-val">{campaign.playStyle || "Online"}</span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Status</span>
-                <span className="campaign-detail-val">{campaign.status || "Planning"}</span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Start Date</span>
-                <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Adventurers</span>
-                <span className="campaign-detail-val">
-                  {players.length > 0
-                    ? players.map((p) => p.userId?.username).join(" · ")
-                    : <em style={{ color: "#7a6e5e" }}>No players yet</em>}
-                </span>
-              </div>
-              <div className="campaign-detail-divider" />
-              <div className="campaign-detail-row">
-                <span className="campaign-detail-key">Party Size</span>
-                <span className="campaign-detail-val">
-                  {players.length}/{campaign.maxPlayers || 5}
-                </span>
-              </div>
-            </div>
-          </div>
+          <CampaignSections campaign={campaign} dm={dm} players={players} isDM />
 
           {/* DM Controls */}
           <div className="campaign-dm-panel">
