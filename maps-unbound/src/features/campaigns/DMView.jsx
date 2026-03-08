@@ -199,8 +199,8 @@ function DMView({ campaign, refetch }) {
                 </>
               ) : (
                 <>
-                  <button className="btn-edit" onClick={() => setIsEditing(true)}>✏  Edit Campaign</button>
-                  <button className="btn-delete" onClick={() => setShowDeleteConfirm(true)}>🗑  Delete</button>
+                  <button className="btn-edit" onClick={() => setIsEditing(true)}>Edit Campaign</button>
+                  <button className="btn-delete" onClick={() => setShowDeleteConfirm(true)}>Delete</button>
                 </>
               )}
             </div>
