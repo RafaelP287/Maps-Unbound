@@ -35,6 +35,7 @@ function ViewCampaignPage() {
   const dmMember = campaign.members.find((m) => m.role === "DM");
   const isDM = dmMember?.userId?._id?.toString() === user?.id?.toString();
 
+  // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
   return isDM
     ? <DMView campaign={campaign} refetch={refetch} />
     : <PlayerView campaign={campaign} user={user} />;

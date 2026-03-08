@@ -7,6 +7,7 @@ import CampaignSections from "./CampaignSections.jsx";
 function PlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
   const dm = dmMember?.userId?.username || "Unknown";
+  // Player-facing roster excludes the DM for party-size displays.
   const players = campaign.members.filter((m) => m.role === "Player");
   const backgroundImage = campaign.image || placeholderImage;
 

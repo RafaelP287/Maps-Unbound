@@ -29,6 +29,7 @@ function CreateCampaignPage() {
     e.preventDefault();
     setError(null);
 
+    // Normalize user input once so all validation and payload fields use consistent values.
     const title = form.title.trim();
     const description = form.description.trim();
     const maxPlayers = Number(form.maxPlayers);
@@ -45,12 +46,14 @@ function CreateCampaignPage() {
       setError("Max players must be between 1 and 12.");
       return;
     }
+    // maxPlayers is for player slots only; DM is not counted in this cap.
     if (players.length > maxPlayers) {
       setError("Party exceeds max players. Increase max players or remove some players.");
       return;
     }
 
     setLoading(true);
+    // API expects a unified members array; include creator first as canonical DM entry.
     const members = [{ userId: user.id, role: "DM" }, ...players.map((p) => ({ userId: p.userId, role: "Player" }))];
     try {
       const response = await fetch("/api/campaigns", {

@@ -46,6 +46,7 @@ function DMView({ campaign, refetch }) {
   const handleSave = async () => {
     setSaving(true); setSaveError(null);
     try {
+      // Keep front-end guardrails aligned with backend limits for faster feedback.
       const maxPlayers = Number(editMaxPlayers);
       if (!Number.isFinite(maxPlayers) || maxPlayers < 1 || maxPlayers > 12) {
         throw new Error("Max players must be between 1 and 12.");
@@ -53,6 +54,7 @@ function DMView({ campaign, refetch }) {
       if (editPlayers.length > maxPlayers) {
         throw new Error("Party exceeds max players. Increase max players or remove players.");
       }
+      // Preserve DM membership while applying player edits; backend authorizes updates by DM role.
       const dmEntry = { userId: dmMember.userId._id, role: "DM" };
       const memberPayload = [dmEntry, ...editPlayers.map((p) => ({ userId: p.userId, role: "Player" }))];
       const res = await fetch(`/api/campaigns/${id}`, {
@@ -77,6 +79,7 @@ function DMView({ campaign, refetch }) {
   };
 
   const handleCancelEdit = () => {
+    // Reset edit state back to server values.
     setEditTitle(campaign.title || "");
     setEditDescription(campaign.description || "");
     setEditImage(campaign.image || "");
@@ -92,6 +95,7 @@ function DMView({ campaign, refetch }) {
   const handleDelete = async () => {
     setDeleting(true);
     try {
+      // Hard delete campaign and return to list after successful API confirmation.
       const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
       navigate("/campaigns");

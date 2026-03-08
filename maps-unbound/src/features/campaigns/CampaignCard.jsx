@@ -5,6 +5,7 @@ const CampaignCard = ({ campaign, currentUser }) => {
   // Determine user's role in the campaign and total members
   const member = campaign.members.find((m) => m.userId === currentUser);
   const isDM = member && member.role === "DM";
+  // Card count reflects everyone in campaign (DM + players).
   const totalPlayers = campaign.members.length;
   const status = campaign.status || "Planning";
 

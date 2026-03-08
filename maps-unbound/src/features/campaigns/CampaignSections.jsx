@@ -9,6 +9,7 @@ const formatStartDate = (value) => {
 function CampaignSections({ campaign, dm, players, isDM = false, user = null }) {
   return (
     <div className="campaign-sections-stack">
+      {/* Important campaign metadata shown at top for quick scanning. */}
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
@@ -62,6 +63,7 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
         </div>
       </section>
 
+      {/* Placeholder scaffolds below are intentionally simple so each section can evolve into richer card collections. */}
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
@@ -72,6 +74,7 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
           Character sheets and party roster for this campaign.
         </p>
         <div className="campaign-section-placeholder">
+          {/* Character-to-campaign linking is not modeled yet; this marks the eventual slot. */}
           <span className="campaign-section-empty">No character sheets linked yet.</span>
         </div>
         <div className="campaign-section-actions">
@@ -92,6 +95,7 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
           Campaign maps, encounter layouts, and location handouts.
         </p>
         <div className="campaign-map-placeholder">
+          {/* Future map cards (thumbnail/title/scene tags) should render in this region. */}
           <span className="campaign-section-empty">No campaign maps linked yet.</span>
         </div>
         <div className="campaign-section-actions">
@@ -112,6 +116,7 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
           Session notes, recaps, and major story beats over time.
         </p>
         <div className="campaign-timeline-item">
+          {/* Timeline entries will become repeatable cards (session date, recap, key outcomes). */}
           <span className="campaign-section-empty">No sessions logged yet.</span>
         </div>
         <div className="campaign-section-actions">

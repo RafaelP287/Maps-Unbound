@@ -15,10 +15,12 @@ function CampaignsPage() {
     if (!isLoggedIn) { setLoading(false); return; }
     const fetchCampaigns = async () => {
       try {
+        // Fetch only campaigns the current user can access.
         const res = await fetch("http://localhost:5001/api/campaigns", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
+        // Backend returns [] when empty; keep UI mapping logic stable with array fallback.
         setCampaigns(data || []);
       } catch (err) {
         console.error("Error fetching campaigns:", err);
