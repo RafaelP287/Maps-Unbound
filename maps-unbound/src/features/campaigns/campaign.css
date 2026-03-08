@@ -311,6 +311,31 @@
   white-space: nowrap;
 }
 
+.campaign-session-cta {
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(201, 168, 76, 0.16) 0%, rgba(0, 0, 0, 0) 42%),
+    rgba(30, 20, 8, 0.55);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.btn-start-session {
+  width: 100%;
+  max-width: 360px;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 0.9rem 1.2rem;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: var(--bg-deep);
+  box-shadow: 0 6px 22px rgba(201, 168, 76, 0.32);
+}
+
 /* DM Panel */
 .campaign-dm-panel {
   background: rgba(201, 168, 76, 0.07);

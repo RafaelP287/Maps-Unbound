@@ -416,6 +416,21 @@ function DMView({ campaign, refetch }) {
             />
           )}
 
+          {!isEditing && (
+            <section className="campaign-session-cta">
+              <button
+                type="button"
+                className="btn-start-session"
+                onClick={() => navigate("/maps")}
+              >
+                ▶ Start Session
+              </button>
+              <p className="campaign-helper-text">
+                Open the map board and session tools for this campaign.
+              </p>
+            </section>
+          )}
+
           {/* DM Controls */}
           <div className="campaign-dm-panel">
             <span className="campaign-dm-label">⚔ DM Controls</span>
