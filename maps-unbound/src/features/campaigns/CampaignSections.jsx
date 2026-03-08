@@ -11,9 +11,9 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
     <div className="campaign-sections-stack">
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Important Details</span>
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
         </div>
         <div className="campaign-details-grid">
           <div className="campaign-detail-row">
@@ -64,9 +64,9 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
 
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Characters</span>
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
         </div>
         <p className="campaign-section-subtext">
           Character sheets and party roster for this campaign.
@@ -84,9 +84,9 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
 
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Maps</span>
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
         </div>
         <p className="campaign-section-subtext">
           Campaign maps, encounter layouts, and location handouts.
@@ -104,9 +104,9 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
 
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Session Timeline</span>
-          <span className="campaign-details-icon">⚜</span>
+          <span className="campaign-details-icon">✦</span>
         </div>
         <p className="campaign-section-subtext">
           Session notes, recaps, and major story beats over time.
