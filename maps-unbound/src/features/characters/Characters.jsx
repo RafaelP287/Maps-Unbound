@@ -1,11 +1,23 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
+
+import Gate from "../../shared/Gate.jsx";
 import CharacterCard from "./CharacterCard";
 import Button from "../../shared/Button.jsx";
 import dwarfImage from "./images/Dwarf-fighter.jpg";
 import elfImage from "./images/Elf-wizard.png";
 
 const Characters = () => {
+  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+
+  if (!isLoggedIn) {
+    return (
+      <Gate>
+        Sign in to access your characters.
+      </Gate>
+    );
+  }
 
   const [characters] = useState([
     {
