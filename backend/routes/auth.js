@@ -56,17 +56,19 @@ router.post('/signup', async (req, res) => {
       password: hashedPassword,
     });
 
-    // Generate token
+    // Generate JWT token for authentication
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || 'maps-unbound-secret-key',
       { expiresIn: '7d' }
     );
 
+    // Return user object with _id (not 'id') for consistency with MongoDB documents
+    // Frontend Socket.io connection requires user._id to be present
     res.status(201).json({
       message: 'User created successfully',
       user: {
-        _id: user._id,
+        _id: user._id,  // Using _id to match MongoDB field naming
         username: user.username,
         email: user.email,
       },
@@ -118,16 +120,19 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || 'maps-unbound-secret-key',
       { expiresIn: '7d' }
     );
 
+    // Return user object with _id (not 'id') for consistency with MongoDB documents
+    // Frontend Socket.io connection requires user._id to be present
     res.status(200).json({
       message: 'Login successful',
       user: {
-        _id: user._id,
+        _id: user._id,  // Using _id to match MongoDB field naming
         username: user.username,
         email: user.email,
       },

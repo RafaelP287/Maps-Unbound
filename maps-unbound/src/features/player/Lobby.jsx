@@ -1,37 +1,89 @@
+/**
+ * Lobby Component
+ * 
+ * Real-time campaign lobby interface using Socket.io for WebSocket communication.
+ * Provides live chat messaging, player presence tracking, and event notifications.
+ * 
+ * Features:
+ * - Real-time chat messaging between campaign members
+ * - Live player join/leave notifications
+ * - Connection status monitoring with debug logging
+ * - Auto-scroll chat messages
+ * - Room-based communication (isolated per campaign)
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 function Lobby() {
+  // Get campaignId from URL parameters (e.g., /campaign/:campaignId/lobby)
   const { campaignId } = useParams();
+  
+  // Get authenticated user from AuthContext
   const { user } = useAuth();
+  
+  // State for live events feed (player joins/leaves)
   const [events, setEvents] = useState([]);
+  
+  // State for chat messages with username and timestamp
   const [messages, setMessages] = useState([]);
+  
+  // State for current message being typed
   const [messageInput, setMessageInput] = useState('');
+  
+  // Socket.io connection status (true = connected, false = disconnected)
   const [connected, setConnected] = useState(false);
+  
+  // Array of player userIds currently in the lobby
   const [players, setPlayers] = useState([]);
+  
+  // Debug log for troubleshooting connection issues (visible in UI)
   const [debugLog, setDebugLog] = useState([]);
+  
+  // Reference to the Socket.io client instance (persists across renders)
   const socketRef = useRef(null);
+  
+  // Reference to the bottom of messages container for auto-scrolling
   const messagesEndRef = useRef(null);
 
+  /**
+   * Add a timestamped message to the debug log
+   * Logs are visible in the UI's debug panel and browser console
+   * @param {string} msg - The debug message to log
+   */
   const addDebugLog = (msg) => {
     setDebugLog((prev) => [...prev, `${new Date().toLocaleTimeString()}: ${msg}`]);
     console.log(msg);
   };
 
+  /**
+   * Scroll chat messages container to bottom (latest message)
+   * Uses smooth scrolling behavior for better UX
+   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Auto-scroll to bottom whenever new messages arrive
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  /**
+   * Socket.io Connection Effect
+   * 
+   * Establishes WebSocket connection when component mounts and user/campaign are available.
+   * Sets up event listeners for real-time communication.
+   * Cleans up connection on unmount or when dependencies change.
+   */
   useEffect(() => {
+    // Debug: Log current state for troubleshooting
     addDebugLog(`📊 campaignId: ${campaignId || 'MISSING'}`);
     addDebugLog(`📊 user: ${user ? JSON.stringify({_id: user._id, username: user.username}) : 'MISSING'}`);
     
+    // Validation: Ensure we have required data before connecting
     if (!campaignId || !user?._id) {
       addDebugLog('❌ Missing campaignId or userId - cannot connect');
       return;
@@ -39,37 +91,50 @@ function Lobby() {
 
     addDebugLog(`🔌 Attempting to connect... campaignId: ${campaignId}, userId: ${user._id}`);
 
+    // Initialize Socket.io client with server URL from environment variable
+    // Uses WebSocket transport for real-time bidirectional communication
     const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001', {
-      transports: ['websocket'],
-      withCredentials: true,
+      transports: ['websocket'], // Force WebSocket (no polling fallback)
+      withCredentials: true,      // Send cookies with requests
     });
 
+    // Store socket instance in ref so it persists across renders
     socketRef.current = socket;
 
+    // Event: 'connect' - Fired when socket successfully connects to server
     socket.on('connect', () => {
       addDebugLog('✓ Socket connected: ' + socket.id);
       setConnected(true);
+      // Immediately join the campaign-specific room after connecting
       socket.emit('join-room', { campaignId, userId: user._id });
     });
 
+    // Event: 'room-joined' - Confirmation that we successfully joined the campaign room
+    // Server sends this only to the user who joined
     socket.on('room-joined', (payload) => {
       addDebugLog('✓ Room joined: ' + payload.room);
       setEvents((prev) => [
         ...prev,
         `✓ You joined room ${payload.room}`,
       ]);
+      // Add ourselves to the players list (use Set to prevent duplicates)
       setPlayers((prev) => [...new Set([...prev, payload.userId])]);
     });
 
+    // Event: 'player-joined' - Broadcast when another player joins the campaign
+    // Server broadcasts this to all OTHER users in the room
     socket.on('player-joined', (payload) => {
       addDebugLog('🎉 Player joined: ' + payload.userId);
       setEvents((prev) => [
         ...prev,
         `🎉 Player ${payload.userId} joined the campaign!`,
       ]);
+      // Add new player to the players list (use Set to prevent duplicates)
       setPlayers((prev) => [...new Set([...prev, payload.userId])]);
     });
 
+    // Event: 'chat-message' - Received when any user sends a message in this room
+    // Includes the message content, sender info, and timestamp
     socket.on('chat-message', (payload) => {
       addDebugLog('💬 Message from: ' + payload.username);
       setMessages((prev) => [
@@ -78,20 +143,25 @@ function Lobby() {
           userId: payload.userId,
           username: payload.username,
           message: payload.message,
-          timestamp: new Date().toLocaleTimeString(),
+          timestamp: new Date().toLocaleTimeString(), // Convert server timestamp to local time
         }
       ]);
     });
 
+    // Event: 'disconnect' - Fired when connection to server is lost
     socket.on('disconnect', () => {
       addDebugLog('❌ Socket disconnected');
       setConnected(false);
     });
 
+    // Event: 'connect_error' - Fired when connection attempt fails
+    // Useful for debugging network or CORS issues
     socket.on('connect_error', (error) => {
       addDebugLog('❌ Connection error: ' + error.message);
     });
 
+    // Cleanup function: Remove all event listeners and disconnect when component unmounts
+    // or when campaignId/userId changes (to prevent memory leaks and duplicate listeners)
     return () => {
       addDebugLog('🔌 Cleaning up socket connection');
       socket.off('connect');
@@ -102,19 +172,28 @@ function Lobby() {
       socket.off('connect_error');
       socket.disconnect();
     };
-  }, [campaignId, user?._id]);
+  }, [campaignId, user?._id]); // Re-run effect if campaignId or userId changes
 
+  /**
+   * Send a chat message to the campaign room
+   * Emits 'send-message' event to server, which broadcasts to all room members
+   * @param {Event} e - Form submit event
+   */
   const sendMessage = (e) => {
     e.preventDefault();
+    
+    // Validation: Don't send empty messages or if not connected
     if (!messageInput.trim() || !socketRef.current) return;
 
+    // Emit message event to server with all required data
     socketRef.current.emit('send-message', {
-      campaignId,
-      userId: user._id,
-      username: user.username,
-      message: messageInput,
+      campaignId,        // Which campaign room to send to
+      userId: user._id,  // Sender's user ID
+      username: user.username, // Sender's display name
+      message: messageInput,   // The actual message content
     });
 
+    // Clear input field after sending
     setMessageInput('');
   };
 

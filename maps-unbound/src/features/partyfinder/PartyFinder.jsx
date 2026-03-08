@@ -237,13 +237,17 @@ function PartyFinder() {
             <p style={styles.empty}>No campaigns currently hosting</p>
           ) : (
             campaigns.map((campaign) => {
+              // Find the current user's join request in this campaign (if any)
+              // Handle both populated (userId._id) and unpopulated (userId) references
               const userRequest = campaign.joinRequests?.find(r => 
                 r.userId?._id?.toString() === user?._id?.toString() || 
                 r.userId?.toString() === user?._id?.toString()
               );
-              const requestStatus = userRequest?.status;
+              const requestStatus = userRequest?.status; // 'pending', 'approved', or 'rejected'
               
               // Check if user is already a member of the campaign
+              // Members array is populated when join request is approved
+              // This handles cases where joinRequest may have been removed after approval
               const isMember = campaign.members?.some(m => 
                 m.userId?._id?.toString() === user?._id?.toString() || 
                 m.userId?.toString() === user?._id?.toString()
@@ -258,6 +262,7 @@ function PartyFinder() {
                     <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
                     <span>DM: {campaign.createdBy?.username || "Unknown"}</span>
                   </div>
+                  {/* Display status notification if user has made a join request */}
                   {requestStatus && (
                     <div style={{
                       ...styles.campaignInfo,
@@ -271,11 +276,14 @@ function PartyFinder() {
                       </span>
                     </div>
                   )}
+                  {/* Show "Enter Lobby" button if user is approved OR already a member */}
+                  {/* isMember check is critical for users whose joinRequest was removed after approval */}
                   {(requestStatus === 'approved' || isMember) && (
                     <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)}>
                       Enter Lobby
                     </Button>
                   )}
+                  {/* Show "Request to Join" button if user is not a member and has no pending/approved request */}
                   {!isMember && requestStatus !== 'approved' && requestStatus !== 'pending' && (
                     <Button onClick={() => {
                       setSelectedCampaign(campaign._id);
