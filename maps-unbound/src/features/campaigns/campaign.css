@@ -390,6 +390,37 @@
   flex-wrap: wrap;
 }
 
+.campaign-btn-link {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.55rem 1.2rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.campaign-btn-link:hover {
+  opacity: 0.88;
+}
+
+.campaign-btn-link:active {
+  transform: scale(0.98);
+}
+
+.campaign-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 /* Button Variants */
 .btn-edit {
   background: linear-gradient(135deg, var(--gold), var(--gold-light));

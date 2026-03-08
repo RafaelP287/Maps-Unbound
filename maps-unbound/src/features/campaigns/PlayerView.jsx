@@ -27,7 +27,7 @@ function PlayerView({ campaign, user }) {
 
           {/* Footer */}
           <div className="campaign-footer">
-            <Link to="/campaigns"><button className="btn-ghost">← Back to Campaigns</button></Link>
+            <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
           </div>
         </div>
       </div>

@@ -16,10 +16,14 @@ function ViewCampaignPage() {
   }
 
   if (error) {
+    const showLoginCta = error.toLowerCase().includes("sign in");
     return (
       <div className="campaign-full-center">
         <p className="campaign-error-msg">⚠ {error}</p>
-        <Link to="/campaigns"><button className="btn-ghost">← Back to Campaigns</button></Link>
+        <div className="campaign-btn-row">
+          {showLoginCta && <Link to="/login" className="btn-primary campaign-btn-link">Sign In</Link>}
+          <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
+        </div>
       </div>
     );
   }
@@ -28,6 +32,7 @@ function ViewCampaignPage() {
     return (
       <div className="campaign-full-center">
         <p className="campaign-error-msg">Campaign not found.</p>
+        <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
       </div>
     );
   }

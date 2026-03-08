@@ -182,7 +182,13 @@ function DMView({ campaign, refetch }) {
             </div>
           )}
 
-          <CampaignSections campaign={campaign} dm={dm} players={players} isDM />
+          <CampaignSections
+            campaign={campaign}
+            dm={dm}
+            players={players}
+            isDM
+            onStartEditing={() => setIsEditing(true)}
+          />
 
           {/* DM Controls */}
           <div className="campaign-dm-panel">
@@ -208,7 +214,7 @@ function DMView({ campaign, refetch }) {
 
           {/* Footer */}
           <div className="campaign-footer">
-            <Link to="/campaigns"><button className="btn-ghost">← Back to Campaigns</button></Link>
+            <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
           </div>
         </div>
       </div>

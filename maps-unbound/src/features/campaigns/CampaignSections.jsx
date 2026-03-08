@@ -6,7 +6,7 @@ const formatStartDate = (value) => {
   return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
 };
 
-function CampaignSections({ campaign, dm, players, isDM = false, user = null }) {
+function CampaignSections({ campaign, dm, players, isDM = false, user = null, onStartEditing = null }) {
   return (
     <div className="campaign-sections-stack">
       {/* Important campaign metadata shown at top for quick scanning. */}
@@ -79,9 +79,14 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
         </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">0 linked sheets</span>
-          <Link to="/characters">
-            <button className="btn-ghost">{isDM ? "Manage Characters" : "View Characters"}</button>
-          </Link>
+          <div className="campaign-inline-actions">
+            <Link to="/characters" className="btn-ghost campaign-btn-link">
+              {isDM ? "Manage Characters" : "View Characters"}
+            </Link>
+            <Link to="/create-character" className="btn-primary campaign-btn-link">
+              Create Character
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -100,9 +105,14 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
         </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">0 linked maps</span>
-          <Link to="/maps">
-            <button className="btn-ghost">{isDM ? "Manage Maps" : "View Maps"}</button>
-          </Link>
+          <div className="campaign-inline-actions">
+            <Link to="/maps" className="btn-ghost campaign-btn-link">
+              {isDM ? "Manage Maps" : "View Maps"}
+            </Link>
+            <Link to="/maps" className="btn-primary campaign-btn-link">
+              {isDM ? "Prep Encounter Map" : "Open Map Board"}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -121,7 +131,16 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null }) 
         </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">0 timeline entries</span>
-          <button className="btn-ghost" disabled>Coming Soon</button>
+          <div className="campaign-inline-actions">
+            {isDM ? (
+              <button className="btn-ghost" onClick={onStartEditing} type="button">
+                Edit Campaign Notes
+              </button>
+            ) : (
+              <Link to="/campaigns" className="btn-ghost campaign-btn-link">View Campaigns</Link>
+            )}
+            <span className="campaign-helper-text">Session timeline cards are coming soon.</span>
+          </div>
         </div>
       </section>
     </div>
