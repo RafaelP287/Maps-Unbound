@@ -6,6 +6,52 @@ import User from "../models/User.js";
 const router = express.Router();
 const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
 const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
+const QUEST_STATUSES = new Set(["In Progress", "Blocked", "Completed"]);
+
+const normalizeCurrentQuest = (input) => {
+  if (!input) return null;
+
+  const title = input.title?.trim?.() || "";
+  const objective = input.objective?.trim?.() || "";
+  if (!title && !objective) return null;
+
+  const status = QUEST_STATUSES.has(input.status) ? input.status : "In Progress";
+  return {
+    title,
+    objective,
+    status,
+    updatedAt: new Date(),
+  };
+};
+
+const normalizeNpcs = (input) => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((npc) => ({
+      name: npc?.name?.trim?.() || "",
+      role: npc?.role?.trim?.() || "",
+      notes: npc?.notes?.trim?.() || "",
+    }))
+    .filter((npc) => npc.name)
+    .slice(0, 100);
+};
+
+const normalizeLoot = (input) => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((item) => {
+      const rawQuantity = Number(item?.quantity);
+      const quantity = Number.isFinite(rawQuantity) ? Math.trunc(rawQuantity) : 1;
+      return {
+        name: item?.name?.trim?.() || "",
+        quantity: Math.max(1, Math.min(999, quantity)),
+        holder: item?.holder?.trim?.() || "",
+        notes: item?.notes?.trim?.() || "",
+      };
+    })
+    .filter((item) => item.name)
+    .slice(0, 150);
+};
 
 // --- Auth Middleware ---
 // May need to move this to another file for reuse in maps and character.
@@ -98,6 +144,9 @@ router.post("/", verifyToken, async (req, res) => {
       maxPlayers,
       startDate,
       status,
+      currentQuest: normalizeCurrentQuest(req.body.currentQuest),
+      npcs: normalizeNpcs(req.body.npcs),
+      loot: normalizeLoot(req.body.loot),
       members,
     });
     await campaign.save();
@@ -158,6 +207,16 @@ router.put("/:id", verifyToken, async (req, res) => {
 
     if (req.body.status && !STATUSES.has(req.body.status)) {
       return res.status(400).json({ error: "Invalid campaign status" });
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "currentQuest")) {
+      req.body.currentQuest = normalizeCurrentQuest(req.body.currentQuest);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "npcs")) {
+      req.body.npcs = normalizeNpcs(req.body.npcs);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "loot")) {
+      req.body.loot = normalizeLoot(req.body.loot);
     }
 
     const incomingMembers = Array.isArray(req.body.members) ? req.body.members : campaign.members;

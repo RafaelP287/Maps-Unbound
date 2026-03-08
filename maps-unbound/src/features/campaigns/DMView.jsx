@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -12,6 +12,7 @@ function DMView({ campaign, refetch }) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
+  const editFocusRef = useRef(null);
 
   // Derived campaign data
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -29,6 +30,24 @@ function DMView({ campaign, refetch }) {
     campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : ""
   );
   const [editStatus, setEditStatus] = useState(campaign.status || "Planning");
+  const [editCurrentQuestTitle, setEditCurrentQuestTitle] = useState(campaign.currentQuest?.title || "");
+  const [editCurrentQuestObjective, setEditCurrentQuestObjective] = useState(campaign.currentQuest?.objective || "");
+  const [editCurrentQuestStatus, setEditCurrentQuestStatus] = useState(campaign.currentQuest?.status || "In Progress");
+  const [editNpcs, setEditNpcs] = useState(
+    (campaign.npcs || []).map((npc) => ({
+      name: npc?.name || "",
+      role: npc?.role || "",
+      notes: npc?.notes || "",
+    }))
+  );
+  const [editLoot, setEditLoot] = useState(
+    (campaign.loot || []).map((item) => ({
+      name: item?.name || "",
+      quantity: item?.quantity || 1,
+      holder: item?.holder || "",
+      notes: item?.notes || "",
+    }))
+  );
   const [editPlayers, setEditPlayers] = useState(
     players.map((m) => ({ userId: m.userId._id, username: m.userId.username }))
   );
@@ -54,6 +73,30 @@ function DMView({ campaign, refetch }) {
       if (editPlayers.length > maxPlayers) {
         throw new Error("Party exceeds max players. Increase max players or remove players.");
       }
+      const questTitle = editCurrentQuestTitle.trim();
+      const questObjective = editCurrentQuestObjective.trim();
+      const npcs = editNpcs.map((npc) => ({
+        name: npc.name.trim(),
+        role: npc.role.trim(),
+        notes: npc.notes.trim(),
+      })).filter((npc) => npc.name);
+      const loot = editLoot.map((item) => {
+        const quantity = Number(item.quantity);
+        return {
+          name: item.name.trim(),
+          quantity: Number.isFinite(quantity) ? Math.max(1, Math.min(999, Math.trunc(quantity))) : 1,
+          holder: item.holder.trim(),
+          notes: item.notes.trim(),
+        };
+      }).filter((item) => item.name);
+      const currentQuest = (questTitle || questObjective)
+        ? {
+            title: questTitle,
+            objective: questObjective,
+            status: editCurrentQuestStatus,
+            updatedAt: new Date().toISOString(),
+          }
+        : null;
       // Preserve DM membership while applying player edits; backend authorizes updates by DM role.
       const dmEntry = { userId: dmMember.userId._id, role: "DM" };
       const memberPayload = [dmEntry, ...editPlayers.map((p) => ({ userId: p.userId, role: "Player" }))];
@@ -68,6 +111,9 @@ function DMView({ campaign, refetch }) {
           maxPlayers,
           startDate: editStartDate || undefined,
           status: editStatus,
+          currentQuest,
+          npcs,
+          loot,
           members: memberPayload,
         }),
       });
@@ -87,9 +133,34 @@ function DMView({ campaign, refetch }) {
     setEditMaxPlayers(campaign.maxPlayers || 5);
     setEditStartDate(campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : "");
     setEditStatus(campaign.status || "Planning");
+    setEditCurrentQuestTitle(campaign.currentQuest?.title || "");
+    setEditCurrentQuestObjective(campaign.currentQuest?.objective || "");
+    setEditCurrentQuestStatus(campaign.currentQuest?.status || "In Progress");
+    setEditNpcs(
+      (campaign.npcs || []).map((npc) => ({
+        name: npc?.name || "",
+        role: npc?.role || "",
+        notes: npc?.notes || "",
+      }))
+    );
+    setEditLoot(
+      (campaign.loot || []).map((item) => ({
+        name: item?.name || "",
+        quantity: item?.quantity || 1,
+        holder: item?.holder || "",
+        notes: item?.notes || "",
+      }))
+    );
     setEditPlayers(players.map((m) => ({ userId: m.userId._id, username: m.userId.username })));
     setSaveError(null);
     setIsEditing(false);
+  };
+
+  const startEditing = () => {
+    setIsEditing(true);
+    requestAnimationFrame(() => {
+      editFocusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   const handleDelete = async () => {
@@ -110,7 +181,7 @@ function DMView({ campaign, refetch }) {
         <div className="campaign-hero-bg-fade" />
       </div>
 
-      <div className="campaign-content-wrap">
+      <div className="campaign-content-wrap" ref={editFocusRef}>
         <CampaignHero
           campaign={campaign}
           isEditing={isEditing}
@@ -182,13 +253,168 @@ function DMView({ campaign, refetch }) {
             </div>
           )}
 
-          <CampaignSections
-            campaign={campaign}
-            dm={dm}
-            players={players}
-            isDM
-            onStartEditing={() => setIsEditing(true)}
-          />
+          {isEditing && (
+            <section className="campaign-section-panel campaign-quest-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Current Quest Tracker</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Quest Title</span>
+                <input
+                  type="text"
+                  maxLength="120"
+                  value={editCurrentQuestTitle}
+                  onChange={(e) => setEditCurrentQuestTitle(e.target.value)}
+                  placeholder="Recover the Sunken Sigil"
+                />
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Objective</span>
+                <textarea
+                  className="campaign-quest-objective"
+                  maxLength="500"
+                  value={editCurrentQuestObjective}
+                  onChange={(e) => setEditCurrentQuestObjective(e.target.value)}
+                  placeholder="Track the sigil to the flooded catacombs beneath Thornwatch."
+                />
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Progress</span>
+                <select className="campaign-select" value={editCurrentQuestStatus} onChange={(e) => setEditCurrentQuestStatus(e.target.value)}>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Blocked">Blocked</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <p className="campaign-helper-text">
+                Leave title and objective blank to clear the current quest.
+              </p>
+            </section>
+          )}
+
+          {isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">NPC Tracker</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-edit-list">
+                {editNpcs.length === 0 && <p className="campaign-helper-text">No NPCs added yet.</p>}
+                {editNpcs.map((npc, idx) => (
+                  <div className="campaign-edit-item" key={`npc-${idx}`}>
+                    <input
+                      type="text"
+                      maxLength="80"
+                      placeholder="NPC name"
+                      value={npc.name}
+                      onChange={(e) => setEditNpcs((prev) => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))}
+                    />
+                    <input
+                      type="text"
+                      maxLength="120"
+                      placeholder="Role (Guide, Merchant, Rival...)"
+                      value={npc.role}
+                      onChange={(e) => setEditNpcs((prev) => prev.map((p, i) => i === idx ? { ...p, role: e.target.value } : p))}
+                    />
+                    <textarea
+                      maxLength="400"
+                      placeholder="Notes"
+                      value={npc.notes}
+                      onChange={(e) => setEditNpcs((prev) => prev.map((p, i) => i === idx ? { ...p, notes: e.target.value } : p))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      onClick={() => setEditNpcs((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Remove NPC
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-edit"
+                onClick={() => setEditNpcs((prev) => [...prev, { name: "", role: "", notes: "" }])}
+              >
+                + Add NPC
+              </button>
+            </section>
+          )}
+
+          {isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Loot Tracker</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-edit-list">
+                {editLoot.length === 0 && <p className="campaign-helper-text">No loot added yet.</p>}
+                {editLoot.map((item, idx) => (
+                  <div className="campaign-edit-item" key={`loot-${idx}`}>
+                    <input
+                      type="text"
+                      maxLength="120"
+                      placeholder="Loot item"
+                      value={item.name}
+                      onChange={(e) => setEditLoot((prev) => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))}
+                    />
+                    <div className="campaign-field-grid">
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) => setEditLoot((prev) => prev.map((p, i) => i === idx ? { ...p, quantity: e.target.value } : p))}
+                      />
+                      <input
+                        type="text"
+                        maxLength="80"
+                        placeholder="Held by"
+                        value={item.holder}
+                        onChange={(e) => setEditLoot((prev) => prev.map((p, i) => i === idx ? { ...p, holder: e.target.value } : p))}
+                      />
+                    </div>
+                    <textarea
+                      maxLength="300"
+                      placeholder="Loot notes"
+                      value={item.notes}
+                      onChange={(e) => setEditLoot((prev) => prev.map((p, i) => i === idx ? { ...p, notes: e.target.value } : p))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      onClick={() => setEditLoot((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Remove Loot
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-edit"
+                onClick={() => setEditLoot((prev) => [...prev, { name: "", quantity: 1, holder: "", notes: "" }])}
+              >
+                + Add Loot
+              </button>
+            </section>
+          )}
+
+          {!isEditing && (
+            <CampaignSections
+              campaign={campaign}
+              dm={dm}
+              players={players}
+              isDM
+              onStartEditing={startEditing}
+            />
+          )}
 
           {/* DM Controls */}
           <div className="campaign-dm-panel">
@@ -205,7 +431,7 @@ function DMView({ campaign, refetch }) {
                 </>
               ) : (
                 <>
-                  <button className="btn-edit" onClick={() => setIsEditing(true)}>Edit Campaign</button>
+                  <button className="btn-edit" onClick={startEditing}>Edit Campaign</button>
                   <button className="btn-delete" onClick={() => setShowDeleteConfirm(true)}>Delete</button>
                 </>
               )}

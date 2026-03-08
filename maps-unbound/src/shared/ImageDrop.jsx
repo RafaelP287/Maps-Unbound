@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 
 // imagePreview  – current image data URL (or null/empty)
 // onImageChange – called with new data URL, or null when removed
-// compact       – tighter padding + fade-mask preview; used in ViewCampaign
+// compact       – tighter padding for campaign edit mode
 function ImageDrop({ imagePreview, onImageChange, compact = false }) {
   const [imageError, setImageError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -27,7 +27,7 @@ function ImageDrop({ imagePreview, onImageChange, compact = false }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const previewStyle = compact ? previewWrapMaskedStyle : previewWrapStyle;
+  const previewStyle = previewWrapStyle;
 
   return (
     <div style={fieldGroupStyle}>
@@ -78,21 +78,13 @@ const dropHintStyle = { color: "#7a6e5e", fontSize: "0.78rem", margin: 0 };
 /* Default preview: hard clip */
 const previewWrapStyle = { position: "relative", borderRadius: "8px", overflow: "hidden" };
 
-/* Compact preview: fade-mask top & bottom (used in ViewCampaign) */
-const previewWrapMaskedStyle = {
-  position: "relative",
-  borderRadius: "8px",
-  WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-  maskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)",
-};
-
 const previewImgStyle = { width: "100%", maxHeight: "200px", objectFit: "cover", display: "block" };
 
 const previewOverlayStyle = {
   position: "absolute",
   bottom: 0, left: 0, right: 0,
   padding: "0.5rem",
-  background: "linear-gradient(transparent, rgba(0,0,0,0.75))",
+  background: "rgba(0,0,0,0.45)",
   display: "flex",
   justifyContent: "flex-end",
 };

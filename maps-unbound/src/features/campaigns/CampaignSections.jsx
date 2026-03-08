@@ -6,9 +6,54 @@ const formatStartDate = (value) => {
   return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
 };
 
+const formatQuestUpdated = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
+};
+
 function CampaignSections({ campaign, dm, players, isDM = false, user = null, onStartEditing = null }) {
+  const currentQuest = campaign.currentQuest;
+  const npcs = campaign.npcs || [];
+  const loot = campaign.loot || [];
+  const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
+  const questUpdated = formatQuestUpdated(currentQuest?.updatedAt);
+
   return (
     <div className="campaign-sections-stack">
+      <section className="campaign-section-panel campaign-quest-panel">
+        <div className="campaign-details-header">
+          <span className="campaign-details-icon">✦</span>
+          <span className="campaign-details-heading">Current Quest Tracker</span>
+          <span className="campaign-details-icon">✦</span>
+        </div>
+        {hasQuest ? (
+          <div className="campaign-quest-content">
+            <div className="campaign-quest-title-row">
+              <h3 className="campaign-quest-title">{currentQuest.title || "Untitled Quest"}</h3>
+              <span className={`campaign-quest-status quest-${(currentQuest.status || "In Progress").toLowerCase().replace(/\s+/g, "-")}`}>
+                {currentQuest.status || "In Progress"}
+              </span>
+            </div>
+            <p className="campaign-quest-objective-text">
+              {currentQuest.objective || "No objective details added yet."}
+            </p>
+            {questUpdated && (
+              <p className="campaign-helper-text">Updated {questUpdated}</p>
+            )}
+          </div>
+        ) : (
+          <div className="campaign-quest-empty">
+            <p className="campaign-section-empty">No active quest selected yet.</p>
+            {isDM && (
+              <button className="btn-edit" onClick={onStartEditing} type="button">
+                Set Current Quest
+              </button>
+            )}
+          </div>
+        )}
+      </section>
+
       {/* Important campaign metadata shown at top for quick scanning. */}
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
@@ -60,6 +105,69 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null, on
               )}
             </span>
           </div>
+        </div>
+      </section>
+
+      <section className="campaign-section-panel">
+        <div className="campaign-details-header">
+          <span className="campaign-details-icon">✦</span>
+          <span className="campaign-details-heading">NPCs</span>
+          <span className="campaign-details-icon">✦</span>
+        </div>
+        {npcs.length > 0 ? (
+          <div className="campaign-resource-list">
+            {npcs.map((npc, idx) => (
+              <article className="campaign-resource-item" key={`npc-${idx}`}>
+                <div className="campaign-resource-title-row">
+                  <h3 className="campaign-resource-title">{npc.name}</h3>
+                  {npc.role && <span className="campaign-resource-meta">{npc.role}</span>}
+                </div>
+                {npc.notes && <p className="campaign-resource-notes">{npc.notes}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <span className="campaign-section-empty">No NPCs tracked yet.</span>
+        )}
+        <div className="campaign-section-actions">
+          <span className="campaign-resource-count">{npcs.length} tracked NPCs</span>
+          {isDM && (
+            <button className="btn-ghost" onClick={onStartEditing} type="button">
+              Manage NPCs
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="campaign-section-panel">
+        <div className="campaign-details-header">
+          <span className="campaign-details-icon">✦</span>
+          <span className="campaign-details-heading">Loot</span>
+          <span className="campaign-details-icon">✦</span>
+        </div>
+        {loot.length > 0 ? (
+          <div className="campaign-resource-list">
+            {loot.map((item, idx) => (
+              <article className="campaign-resource-item" key={`loot-${idx}`}>
+                <div className="campaign-resource-title-row">
+                  <h3 className="campaign-resource-title">{item.name}</h3>
+                  <span className="campaign-resource-meta">x{item.quantity || 1}</span>
+                </div>
+                {item.holder && <p className="campaign-resource-holder">Held by: {item.holder}</p>}
+                {item.notes && <p className="campaign-resource-notes">{item.notes}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <span className="campaign-section-empty">No loot tracked yet.</span>
+        )}
+        <div className="campaign-section-actions">
+          <span className="campaign-resource-count">{loot.length} loot entries</span>
+          {isDM && (
+            <button className="btn-ghost" onClick={onStartEditing} type="button">
+              Manage Loot
+            </button>
+          )}
         </div>
       </section>
 
