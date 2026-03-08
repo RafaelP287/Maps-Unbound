@@ -549,3 +549,49 @@
   flex-direction: column;
   gap: 1.25rem;
 }
+
+.campaign-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+.campaign-helper-text {
+  color: #8c7b62;
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.campaign-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.25rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gold) 50%),
+    linear-gradient(135deg, var(--gold) 50%, transparent 50%),
+    linear-gradient(to right, rgba(201, 168, 76, 0.22), rgba(201, 168, 76, 0.08));
+  background-position:
+    calc(100% - 17px) calc(50% - 3px),
+    calc(100% - 11px) calc(50% - 3px),
+    calc(100% - 2.2rem) 50%;
+  background-size: 6px 6px, 6px 6px, 1px 70%;
+  background-repeat: no-repeat;
+  border-color: rgba(201, 168, 76, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(201, 168, 76, 0.08);
+}
+
+.campaign-select:hover {
+  border-color: rgba(201, 168, 76, 0.5);
+}
+
+.campaign-select option {
+  background: #1a1306;
+  color: #e8dcca;
+}
+
+@media (max-width: 720px) {
+  .campaign-field-grid {
+    grid-template-columns: 1fr;
+  }
+}

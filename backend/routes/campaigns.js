@@ -4,6 +4,8 @@ import Campaign from "../models/Campaign.js";
 import User from "../models/User.js";
 
 const router = express.Router();
+const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
+const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
 
 // --- Auth Middleware ---
 // May need to move this to another file for reuse in maps and character.
@@ -46,8 +48,58 @@ router.get("/users/search", verifyToken, async (req, res) => {
 // Create a new campaign
 router.post("/", verifyToken, async (req, res) => {
   try {
-    const { title, description, image, members } = req.body;
-    const campaign = new Campaign({ title, description, image, members });
+    const title = req.body.title?.trim();
+    if (!title || title.length < 3) {
+      return res.status(400).json({ error: "Title must be at least 3 characters" });
+    }
+
+    const memberIds = Array.isArray(req.body.members) ? req.body.members : [];
+    const uniquePlayerIds = new Set();
+    for (const member of memberIds) {
+      const id = member?.userId?.toString();
+      if (!id || id === req.user.userId) continue;
+      uniquePlayerIds.add(id);
+    }
+
+    const maxPlayersValue = Number(req.body.maxPlayers);
+    const maxPlayers = Number.isFinite(maxPlayersValue) ? Math.trunc(maxPlayersValue) : 5;
+    if (maxPlayers < 1 || maxPlayers > 12) {
+      return res.status(400).json({ error: "Max players must be between 1 and 12" });
+    }
+
+    const members = [
+      { userId: req.user.userId, role: "DM" },
+      ...Array.from(uniquePlayerIds).map((id) => ({ userId: id, role: "Player" })),
+    ];
+    if (uniquePlayerIds.size > maxPlayers) {
+      return res.status(400).json({ error: "Party size exceeds max players" });
+    }
+
+    const playStyle = req.body.playStyle || "Online";
+    if (!PLAY_STYLES.has(playStyle)) {
+      return res.status(400).json({ error: "Invalid play style" });
+    }
+
+    const status = req.body.status || "Planning";
+    if (!STATUSES.has(status)) {
+      return res.status(400).json({ error: "Invalid campaign status" });
+    }
+
+    const startDate = req.body.startDate ? new Date(req.body.startDate) : undefined;
+    if (startDate && Number.isNaN(startDate.getTime())) {
+      return res.status(400).json({ error: "Invalid start date" });
+    }
+
+    const campaign = new Campaign({
+      title,
+      description: req.body.description?.trim(),
+      image: req.body.image,
+      playStyle,
+      maxPlayers,
+      startDate,
+      status,
+      members,
+    });
     await campaign.save();
     res.status(201).json(campaign);
   } catch (err) {
@@ -100,10 +152,29 @@ router.put("/:id", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Only the DM can update this campaign" });
     }
 
+    if (req.body.playStyle && !PLAY_STYLES.has(req.body.playStyle)) {
+      return res.status(400).json({ error: "Invalid play style" });
+    }
+
+    if (req.body.status && !STATUSES.has(req.body.status)) {
+      return res.status(400).json({ error: "Invalid campaign status" });
+    }
+
+    const incomingMembers = Array.isArray(req.body.members) ? req.body.members : campaign.members;
+    const incomingMaxPlayersRaw = req.body.maxPlayers ?? campaign.maxPlayers ?? 5;
+    const incomingMaxPlayers = Number(incomingMaxPlayersRaw);
+    if (!Number.isFinite(incomingMaxPlayers) || incomingMaxPlayers < 1 || incomingMaxPlayers > 12) {
+      return res.status(400).json({ error: "Max players must be between 1 and 12" });
+    }
+    const incomingPlayerCount = incomingMembers.filter((m) => m.role === "Player").length;
+    if (incomingPlayerCount > incomingMaxPlayers) {
+      return res.status(400).json({ error: "Party size exceeds max players" });
+    }
+
     const updatedCampaign = await Campaign.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true, runValidators: true }
     );
     res.json(updatedCampaign);
   } catch (err) {

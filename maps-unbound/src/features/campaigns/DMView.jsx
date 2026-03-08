@@ -7,6 +7,12 @@ import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 
+const formatStartDate = (value) => {
+  if (!value) return "TBD";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
+};
+
 function DMView({ campaign, refetch }) {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -22,6 +28,12 @@ function DMView({ campaign, refetch }) {
   const [editTitle, setEditTitle] = useState(campaign.title || "");
   const [editDescription, setEditDescription] = useState(campaign.description || "");
   const [editImage, setEditImage] = useState(campaign.image || "");
+  const [editPlayStyle, setEditPlayStyle] = useState(campaign.playStyle || "Online");
+  const [editMaxPlayers, setEditMaxPlayers] = useState(campaign.maxPlayers || 5);
+  const [editStartDate, setEditStartDate] = useState(
+    campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : ""
+  );
+  const [editStatus, setEditStatus] = useState(campaign.status || "Planning");
   const [editPlayers, setEditPlayers] = useState(
     players.map((m) => ({ userId: m.userId._id, username: m.userId.username }))
   );
@@ -39,12 +51,28 @@ function DMView({ campaign, refetch }) {
   const handleSave = async () => {
     setSaving(true); setSaveError(null);
     try {
+      const maxPlayers = Number(editMaxPlayers);
+      if (!Number.isFinite(maxPlayers) || maxPlayers < 1 || maxPlayers > 12) {
+        throw new Error("Max players must be between 1 and 12.");
+      }
+      if (editPlayers.length > maxPlayers) {
+        throw new Error("Party exceeds max players. Increase max players or remove players.");
+      }
       const dmEntry = { userId: dmMember.userId._id, role: "DM" };
       const memberPayload = [dmEntry, ...editPlayers.map((p) => ({ userId: p.userId, role: "Player" }))];
       const res = await fetch(`/api/campaigns/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: editTitle, description: editDescription, image: editImage || undefined, members: memberPayload }),
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription,
+          image: editImage || undefined,
+          playStyle: editPlayStyle,
+          maxPlayers,
+          startDate: editStartDate || undefined,
+          status: editStatus,
+          members: memberPayload,
+        }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
       await refetch();
@@ -57,6 +85,10 @@ function DMView({ campaign, refetch }) {
     setEditTitle(campaign.title || "");
     setEditDescription(campaign.description || "");
     setEditImage(campaign.image || "");
+    setEditPlayStyle(campaign.playStyle || "Online");
+    setEditMaxPlayers(campaign.maxPlayers || 5);
+    setEditStartDate(campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : "");
+    setEditStatus(campaign.status || "Planning");
     setEditPlayers(players.map((m) => ({ userId: m.userId._id, username: m.userId.username })));
     setSaveError(null);
     setIsEditing(false);
@@ -111,6 +143,46 @@ function DMView({ campaign, refetch }) {
             />
           )}
 
+          {isEditing && (
+            <div className="campaign-field-grid">
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Play Style</span>
+                <select className="campaign-select" value={editPlayStyle} onChange={(e) => setEditPlayStyle(e.target.value)}>
+                  <option value="Online">Online</option>
+                  <option value="In Person">In Person</option>
+                  <option value="Hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Status</span>
+                <select className="campaign-select" value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                  <option value="Planning">Planning</option>
+                  <option value="Active">Active</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Max Players</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={editMaxPlayers}
+                  onChange={(e) => setEditMaxPlayers(e.target.value)}
+                />
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Start Date</span>
+                <input
+                  type="date"
+                  value={editStartDate}
+                  onChange={(e) => setEditStartDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Details panel */}
           <div className="campaign-details-panel">
             <div className="campaign-details-header">
@@ -128,11 +200,38 @@ function DMView({ campaign, refetch }) {
               </div>
               <div className="campaign-detail-divider" />
               <div className="campaign-detail-row">
+                <span className="campaign-detail-key">System</span>
+                <span className="campaign-detail-val">D&D 5e (2014)</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Style</span>
+                <span className="campaign-detail-val">{campaign.playStyle || "Online"}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Status</span>
+                <span className="campaign-detail-val">{campaign.status || "Planning"}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Start Date</span>
+                <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
                 <span className="campaign-detail-key">Adventurers</span>
                 <span className="campaign-detail-val">
                   {players.length > 0
                     ? players.map((p) => p.userId?.username).join(" · ")
                     : <em style={{ color: "#7a6e5e" }}>No players yet</em>}
+                </span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Party Size</span>
+                <span className="campaign-detail-val">
+                  {players.length}/{campaign.maxPlayers || 5}
                 </span>
               </div>
             </div>

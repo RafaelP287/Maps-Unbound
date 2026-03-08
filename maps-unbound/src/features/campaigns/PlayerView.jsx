@@ -3,6 +3,12 @@ import { Link } from "react-router-dom";
 import placeholderImage from "./images/DnD.jpg";
 import CampaignHero from "./CampaignHero.jsx";
 
+const formatStartDate = (value) => {
+  if (!value) return "TBD";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
+};
+
 function PlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
   const dm = dmMember?.userId?.username || "Unknown";
@@ -35,6 +41,26 @@ function PlayerView({ campaign, user }) {
               </div>
               <div className="campaign-detail-divider" />
               <div className="campaign-detail-row">
+                <span className="campaign-detail-key">System</span>
+                <span className="campaign-detail-val">D&D 5e (2014)</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Style</span>
+                <span className="campaign-detail-val">{campaign.playStyle || "Online"}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Status</span>
+                <span className="campaign-detail-val">{campaign.status || "Planning"}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Start Date</span>
+                <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
                 <span className="campaign-detail-key">Adventurers</span>
                 <span className="campaign-detail-val">
                   {players.length > 0
@@ -47,6 +73,13 @@ function PlayerView({ campaign, user }) {
                         </span>
                       )).reduce((acc, el, i) => i === 0 ? [el] : [...acc, " · ", el], [])
                     : <em style={{ color: "#7a6e5e" }}>No players yet</em>}
+                </span>
+              </div>
+              <div className="campaign-detail-divider" />
+              <div className="campaign-detail-row">
+                <span className="campaign-detail-key">Party Size</span>
+                <span className="campaign-detail-val">
+                  {players.length}/{campaign.maxPlayers || 5}
                 </span>
               </div>
             </div>

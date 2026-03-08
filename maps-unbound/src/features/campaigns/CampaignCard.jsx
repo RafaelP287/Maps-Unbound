@@ -6,6 +6,7 @@ const CampaignCard = ({ campaign, currentUser }) => {
   const member = campaign.members.find((m) => m.userId === currentUser);
   const isDM = member && member.role === "DM";
   const totalPlayers = campaign.members.length;
+  const status = campaign.status || "Planning";
 
   return (
     <Link
@@ -22,6 +23,10 @@ const CampaignCard = ({ campaign, currentUser }) => {
 
       {/* Bottom overlay */}
       <div className="card-overlay" style={overlayStyle}>
+        <div style={metaRowStyle}>
+          <span style={statusStyle}>{status}</span>
+          <span style={systemStyle}>D&D 5e (2014)</span>
+        </div>
         <h3 style={titleStyle}>{campaign.title}</h3>
         <p style={descStyle}>{campaign.description}</p>
         <div style={footerRowStyle}>
@@ -75,6 +80,33 @@ const titleStyle = {
   color: "#e8c96a",
   letterSpacing: "0.04em",
   lineHeight: 1.3,
+};
+
+const metaRowStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: "0.6rem",
+};
+
+const statusStyle = {
+  fontFamily: "'Cinzel', serif",
+  fontSize: "0.56rem",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  border: "1px solid rgba(201,168,76,0.35)",
+  borderRadius: "999px",
+  padding: "2px 7px",
+  color: "#d7c08e",
+  background: "rgba(201,168,76,0.12)",
+};
+
+const systemStyle = {
+  fontFamily: "'Cinzel', serif",
+  fontSize: "0.56rem",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#8f7e60",
 };
 
 const descStyle = {
