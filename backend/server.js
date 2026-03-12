@@ -5,9 +5,19 @@ import connectDB from "./config/db.js";
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+if (!process.env.MONGO_URI) {
+  console.error('MONGO_URI is not defined in .env');
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is not defined in .env');
+  process.exit(1);
+}
+
 // Middleware to parse JSON bodies (The data sent by frontend)
 app.use(urlencoded({ extended: false }));
-app.use(json());
+app.use(json({ limit: "15mb" }));
 app.use(cors());
 
 // --- Import route files ---

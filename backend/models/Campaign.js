@@ -12,7 +12,7 @@ const campaignSchema = new mongoose.Schema({
   description: { type: String },
   image: { type: String },
   members: [memberSchema],
-});
+}, {timestamps: true});
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 
