@@ -18,6 +18,7 @@ import loginRoutes from './routes/login.js';
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
 import partyRoutes from './routes/partyRoutes.js';
+import assetRoutes from './routes/assets.js';
 
 // ---  Mount the routes ---
 app.use('/api/characters', characterRoutes);
@@ -27,6 +28,7 @@ app.use('/api/login', loginRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/parties', partyRoutes);
+app.use('/api/assets', assetRoutes);
 
 // Debugging Middleware (Add this to see what is happening)
 app.use((req, res, next) => {

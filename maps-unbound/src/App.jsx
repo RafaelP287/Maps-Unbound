@@ -16,6 +16,8 @@ import CreateCharacter from "./features/characters/CreateCharacter.jsx";
 
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
 
+import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
+
 import Profile from "./features/profile/Profile.jsx";
 
 import Signup from "./features/auth/Signup.jsx";
@@ -108,6 +110,9 @@ function App() {
 
           {/* Party Finder route */}
           <Route path="party-finder" element={<PartyFinder />} />
+
+          {/* Asset Finder route */}
+          <Route path="asset-finder" element={<AssetFinder />} />
 
           {/* Profile route */}
           <Route path="profile" element={<Profile />} />
