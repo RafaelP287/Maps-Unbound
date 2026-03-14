@@ -49,9 +49,22 @@ function CampaignsPage() {
             <span className="campaign-header-rune-lg">✦</span>
           </div>
           <div className="campaign-header-divider" />
-          <Link to="/campaigns/new" style={{ marginTop: "1.5rem" }}>
-            <button className="btn-primary">+ Forge New Campaign</button>
-          </Link>
+          <div
+            style={{
+              marginTop: "1.5rem",
+              display: "flex",
+              gap: "0.75rem",
+              justifyContent: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <Link to="/campaigns/new">
+              <button className="btn-primary">+ Forge New Campaign</button>
+            </Link>
+            <Link to="/session">
+              <button className="btn-primary">▶ Start Session</button>
+            </Link>
+          </div>
         </header>
 
         {/* Campaign grid */}
