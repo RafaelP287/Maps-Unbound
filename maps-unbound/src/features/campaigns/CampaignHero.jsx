@@ -1,4 +1,4 @@
-// Shared hero section used by both DMView and PlayerView.
+// Shared hero section used by both CampaignDMView and CampaignPlayerView.
 // In edit mode (DM only), renders editable title/description inputs.
 // In view mode, renders the styled read-only header.
 

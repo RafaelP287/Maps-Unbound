@@ -8,7 +8,7 @@ import PlayerSearch from "../../shared/PlayerSearch.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 
-function DMView({ campaign, refetch }) {
+function CampaignDMView({ campaign, refetch }) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
@@ -482,4 +482,4 @@ function DMView({ campaign, refetch }) {
   );
 }
 
-export default DMView;
+export default CampaignDMView;

@@ -4,7 +4,7 @@ import placeholderImage from "./images/DnD.jpg";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 
-function PlayerView({ campaign, user }) {
+function CampaignPlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
   const dm = dmMember?.userId?.username || "Unknown";
   // Player-facing roster excludes the DM for party-size displays.
@@ -35,4 +35,4 @@ function PlayerView({ campaign, user }) {
   );
 }
 
-export default PlayerView;
+export default CampaignPlayerView;

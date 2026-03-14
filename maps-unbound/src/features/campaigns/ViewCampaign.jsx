@@ -3,8 +3,8 @@ import { useAuth } from "../../context/AuthContext.jsx";
 
 import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "./use-campaign.js";
-import DMView from "./DMView.jsx";
-import PlayerView from "./PlayerView.jsx";
+import CampaignDMView from "./CampaignDMView.jsx";
+import CampaignPlayerView from "./CampaignPlayerView.jsx";
 
 function ViewCampaignPage() {
   const { id } = useParams();
@@ -42,8 +42,8 @@ function ViewCampaignPage() {
 
   // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
   return isDM
-    ? <DMView campaign={campaign} refetch={refetch} />
-    : <PlayerView campaign={campaign} user={user} />;
+    ? <CampaignDMView campaign={campaign} refetch={refetch} />
+    : <CampaignPlayerView campaign={campaign} user={user} />;
 }
 
 export default ViewCampaignPage;

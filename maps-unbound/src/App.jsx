@@ -10,7 +10,7 @@ import Maps from "./features/maps/Maps.jsx";
 import Session from "./features/session/Session.jsx";
 import SessionDMView from "./features/session/SessionDMView.jsx";
 
-import Campaigns from "./features/campaigns/Campaigns.jsx";
+import Campaigns from "./features/campaigns/CampaignsPage.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
 
