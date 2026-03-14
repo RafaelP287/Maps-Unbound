@@ -421,7 +421,7 @@ function DMView({ campaign, refetch }) {
               <button
                 type="button"
                 className="btn-start-session"
-                onClick={() => navigate("/maps")}
+                onClick={() => navigate("/session", { state: { campaign } })}
               >
                 ▶ Start Session
               </button>
