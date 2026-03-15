@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { useState, useRef, useCallback } from "react";
 import { ThreeDDice } from "dddice-js";
 import AppLayout from "./layout/AppLayout.jsx";
+import SessionLayout from "./layout/SessionLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 
@@ -78,6 +79,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="session/dm" element={<SessionLayout />}>
+          <Route index element={<SessionDMView />} />
+        </Route>
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
           <Route index element={<Home />} />
@@ -100,7 +104,6 @@ function App() {
           {/* Session routes */}
           <Route path="session">
             <Route index element={<Session />} />
-            <Route path="dm" element={<SessionDMView />} />
           </Route>
 
           {/* Character Routes */}
