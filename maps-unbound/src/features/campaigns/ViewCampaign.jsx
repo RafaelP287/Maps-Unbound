@@ -1,136 +1,49 @@
-import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import placeholderImage from "./images/DnD.jpg";
-import Button from "../../shared/Button.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+
+import LoadingPage from "../../shared/Loading.jsx";
+import useCampaign from "./use-campaign.js";
+import CampaignDMView from "./CampaignDMView.jsx";
+import CampaignPlayerView from "./CampaignPlayerView.jsx";
 
 function ViewCampaignPage() {
-  const { id } = useParams(); // Get campaign data from url
-  const [campaign, setCampaign] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { id } = useParams();
+  const { user, loading: authLoading } = useAuth();
+  const { campaign, loading, error, refetch } = useCampaign(id);
 
-  useEffect(() => {
-    // Handle missing id
-    if (!id) {
-      setError("No campaign ID provided.");
-      setLoading(false);
-      return;
-    }
+  if (loading || authLoading) {
+    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
+  }
 
-    console.log("Fetching campaign with ID:", id);
-
-    fetch("http://localhost:5001/api/campaigns/" + id)
-      .then((res) => {
-        console.log("Response status:", res.status);
-        if (!res.ok) throw new Error(`Server returned status ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        console.log("Fetched campaign data:", data);
-        if (!data || !data._id) {
-          setError("Campaign not found.");
-        } else {
-          setCampaign(data);
-        }
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching campaign:", err);
-        setError("Failed to load campaign.");
-        setLoading(false);
-      });
-  }, [id]); // Re-run effect if ID changes.
-
-  if (loading) return <p style={{ textAlign: "center" }}>Loading campaign...</p>;
-  if (error) return <p style={{ textAlign: "center", color: "red" }}>{error}</p>;
-  if (!campaign) return <p style={{ textAlign: "center" }}>Campaign not found.</p>;
-
-  // Safe member access
-  const dm = campaign.members?.find((m) => m.role === "DM")?.userId || "Unknown";
-  const players = campaign.members?.filter((m) => m.role === "Player") || [];
-  const backgroundImage = campaign.image || placeholderImage;
-
-  return (
-    <div
-      style={{
-        ...pageStyle,
-        backgroundImage: `url(${backgroundImage})`,
-      }}
-    >
-      <div style={overlayStyle}>
-        <div style={headerStyle}>
-          <h1>{campaign.title}</h1>
-          <p>{campaign.description}</p>
-        </div>
-
-        <div style={detailsStyle}>
-          <h2>Campaign Details</h2>
-          <p>
-            <strong>DM:</strong> {dm}
-          </p>
-          <p>
-            <strong>Players ({players.length}):</strong>{" "}
-            {players.map((p) => p.userId).join(", ") || "None"}
-          </p>
-        </div>
-
-        <div style={endStyle}>
-          <Link to="/campaigns">
-            <Button primary>Back to Campaigns</Button>
-          </Link>
+  if (error) {
+    const showLoginCta = error.toLowerCase().includes("sign in");
+    return (
+      <div className="campaign-full-center">
+        <p className="campaign-error-msg">⚠ {error}</p>
+        <div className="campaign-btn-row">
+          {showLoginCta && <Link to="/login" className="btn-primary campaign-btn-link">Sign In</Link>}
+          <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (!campaign) {
+    return (
+      <div className="campaign-full-center">
+        <p className="campaign-error-msg">Campaign not found.</p>
+        <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
+      </div>
+    );
+  }
+
+  const dmMember = campaign.members.find((m) => m.role === "DM");
+  const isDM = dmMember?.userId?._id?.toString() === user?.id?.toString();
+
+  // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
+  return isDM
+    ? <CampaignDMView campaign={campaign} refetch={refetch} />
+    : <CampaignPlayerView campaign={campaign} user={user} />;
 }
-
-/* Styles */
-const pageStyle = {
-  position: "relative",
-  width: "100%",
-  minHeight: "100vh",
-  backgroundSize: "cover",
-  backgroundPosition: "center",
-  backgroundRepeat: "no-repeat",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  padding: "2rem",
-  boxSizing: "border-box",
-};
-
-const overlayStyle = {
-  backgroundColor: "rgba(0,0,0,0.5)",
-  padding: "2rem",
-  borderRadius: "12px",
-  color: "#fff",
-  maxWidth: "900px",
-  width: "90%",
-  boxSizing: "border-box",
-  display: "flex",
-  flexDirection: "column",
-  gap: "1.5rem",
-  textAlign: "center",
-};
-
-const headerStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "0.5rem",
-};
-
-const detailsStyle = {
-  backgroundColor: "rgba(0,0,0,0.4)",
-  padding: "1rem",
-  borderRadius: "8px",
-  textAlign: "left",
-};
-
-const endStyle = {
-  display: "flex",
-  justifyContent: "center",
-  marginTop: "1rem",
-};
 
 export default ViewCampaignPage;

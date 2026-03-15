@@ -59,7 +59,7 @@ router.post('/signup', async (req, res) => {
     // Generate JWT token for authentication
     const token = jwt.sign(
       { userId: user._id, username: user.username },
-      process.env.JWT_SECRET || 'maps-unbound-secret-key',
+      process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 

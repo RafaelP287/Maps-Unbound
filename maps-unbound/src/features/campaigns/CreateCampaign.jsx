@@ -1,216 +1,214 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
-import Button from "../../shared/Button.jsx";
+
+import ImageDrop from "../../shared/ImageDrop.jsx";
+import PlayerSearch from "../../shared/PlayerSearch.jsx";
 
 function CreateCampaignPage() {
-    const navigate = useNavigate();
-    const { token } = useAuth();
-    const [form, setForm] = useState({
-        title: "",
-        description: "",
-        isPublic: true,
-        accessCode: "",
-        maxPlayers: 6,
-        minLevel: 1,
-        campaignType: "D&D"
-    });
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    playStyle: "Online",
+    maxPlayers: 5,
+    startDate: "",
+    status: "Planning",
+  });
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [players, setPlayers] = useState([]);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
+  const updateForm = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const addPlayer = (player) => setPlayers((p) => [...p, player]);
+  const removePlayer = (userId) => setPlayers((p) => p.filter((x) => x.userId !== userId));
 
-        try {
-            const response = await fetch("http://localhost:5001/api/campaigns", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify(form)
-            });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || "Failed to create campaign");
-            }
+    // Normalize user input once so all validation and payload fields use consistent values.
+    const title = form.title.trim();
+    const description = form.description.trim();
+    const maxPlayers = Number(form.maxPlayers);
 
-            const data = await response.json();
-            console.log("Campaign created successfully:", data);
-            navigate("/campaigns");
-        } catch (err) {
-            console.error("Campaign creation error:", err);
-            setError(err.message || "Failed to create campaign. Please try again.");
-        } finally {
-            setLoading(false);
-        }
-    };
+    if (title.length < 3) {
+      setError("Campaign title must be at least 3 characters.");
+      return;
+    }
+    if (description.length < 10) {
+      setError("Description must be at least 10 characters.");
+      return;
+    }
+    if (!Number.isFinite(maxPlayers) || maxPlayers < 1 || maxPlayers > 12) {
+      setError("Max players must be between 1 and 12.");
+      return;
+    }
+    // maxPlayers is for player slots only; DM is not counted in this cap.
+    if (players.length > maxPlayers) {
+      setError("Party exceeds max players. Increase max players or remove some players.");
+      return;
+    }
 
-    return (
-        <>
-            <div style={headerStyle}>
-                <h1>Create New Campaign</h1>
-                <p>Start a new adventure!</p>
+    setLoading(true);
+    // API expects a unified members array; include creator first as canonical DM entry.
+    const currentUserId = user?._id || user?.id;
+    const members = [{ userId: currentUserId, role: "DM" }, ...players.map((p) => ({ userId: p.userId, role: "Player" }))];
+    try {
+      const response = await fetch("/api/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title,
+          description,
+          playStyle: form.playStyle,
+          maxPlayers,
+          startDate: form.startDate || undefined,
+          status: form.status,
+          image: imagePreview ?? undefined,
+          members,
+        }),
+      });
+      if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Failed to create campaign"); }
+      navigate("/campaigns");
+    } catch (err) { setError(err.message); } finally { setLoading(false); }
+  };
+
+  return (
+    <div className="campaign-page-padded">
+      <div className="campaign-content-narrow">
+        {/* Header */}
+        <header className="campaign-page-header">
+          <div className="campaign-header-divider" />
+          <div className="campaign-header-row">
+            <span className="campaign-header-rune">✦</span>
+            <h1 className="campaign-page-title">Forge a New Campaign</h1>
+            <span className="campaign-header-rune">✦</span>
+          </div>
+          <p className="campaign-page-subtitle">Chronicle your legend — name it, describe it, assemble your party.</p>
+          <div className="campaign-header-divider" />
+        </header>
+
+        {error && (
+          <div className="campaign-error-banner">
+            <span style={{ marginRight: "0.5rem" }}>⚠</span>{error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="campaign-form">
+          {/* Title */}
+          <div className="campaign-field-group">
+            <label className="campaign-field-label">Campaign Title</label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => updateForm("title", e.target.value)}
+              required
+              maxLength={80}
+              placeholder="e.g. Curse of the Crimson Throne"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="campaign-field-group">
+            <label className="campaign-field-label">Description</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => updateForm("description", e.target.value)}
+              required
+              maxLength={500}
+              placeholder="Set the scene — what awaits your adventurers?"
+              style={{ minHeight: "110px", resize: "vertical" }}
+            />
+            <span className="campaign-helper-text">{form.description.length}/500</span>
+          </div>
+
+          <div className="campaign-section-divider">
+            <div className="campaign-section-line" />
+            <span className="campaign-section-label">Campaign Setup</span>
+            <div className="campaign-section-line" />
+          </div>
+
+          <div className="campaign-field-grid">
+            <div className="campaign-field-group">
+              <label className="campaign-field-label">Play Style</label>
+              <select
+                className="campaign-select"
+                value={form.playStyle}
+                onChange={(e) => updateForm("playStyle", e.target.value)}
+              >
+                <option value="Online">Online</option>
+                <option value="In Person">In Person</option>
+                <option value="Hybrid">Hybrid</option>
+              </select>
             </div>
 
-            {error && <div style={errorStyle}>{error}</div>}
+            <div className="campaign-field-group">
+              <label className="campaign-field-label">Status</label>
+              <select
+                className="campaign-select"
+                value={form.status}
+                onChange={(e) => updateForm("status", e.target.value)}
+              >
+                <option value="Planning">Planning</option>
+                <option value="Active">Active</option>
+                <option value="On Hold">On Hold</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
 
-            <form onSubmit={handleSubmit} style={formStyle}>
-                <label style={labelStyle}>
-                    Campaign Title:
-                    <input 
-                        type="text" 
-                        value={form.title} 
-                        onChange={e => setForm({...form, title: e.target.value})} 
-                        required 
-                        style={inputStyle}
-                        placeholder="Enter campaign title"
-                    />
-                </label>
+            <div className="campaign-field-group">
+              <label className="campaign-field-label">Max Players</label>
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={form.maxPlayers}
+                onChange={(e) => updateForm("maxPlayers", e.target.value)}
+                required
+              />
+            </div>
 
-                <label style={labelStyle}>
-                    Description:
-                    <textarea 
-                        value={form.description} 
-                        onChange={e => setForm({...form, description: e.target.value})} 
-                        required 
-                        style={{...inputStyle, height: "100px"}}
-                        placeholder="Describe your campaign"
-                    />
-                </label>
+            <div className="campaign-field-group">
+              <label className="campaign-field-label">Start Date</label>
+              <input
+                type="date"
+                value={form.startDate}
+                onChange={(e) => updateForm("startDate", e.target.value)}
+              />
+            </div>
+          </div>
 
-                <label style={labelStyle}>
-                    Campaign Type:
-                    <select 
-                        value={form.campaignType} 
-                        onChange={e => setForm({...form, campaignType: e.target.value})} 
-                        style={inputStyle}
-                    >
-                        <option value="D&D">Dungeons & Dragons</option>
-                        <option value="Pathfinder">Pathfinder</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </label>
+          {/* Separator */}
+          <div className="campaign-section-divider">
+            <div className="campaign-section-line" />
+            <span className="campaign-section-label">Campaign Artwork</span>
+            <div className="campaign-section-line" />
+          </div>
 
-                <label style={labelStyle}>
-                    <input 
-                        type="checkbox" 
-                        checked={form.isPublic} 
-                        onChange={e => setForm({...form, isPublic: e.target.checked})} 
-                        style={{marginRight: "8px"}}
-                    />
-                    Make Campaign Public
-                </label>
+          <ImageDrop imagePreview={imagePreview} onImageChange={setImagePreview} />
 
-                {!form.isPublic && (
-                    <label style={labelStyle}>
-                        Access Code (leave blank for no code):
-                        <input 
-                            type="text" 
-                            value={form.accessCode} 
-                            onChange={e => setForm({...form, accessCode: e.target.value})} 
-                            style={inputStyle}
-                            placeholder="Optional access code"
-                        />
-                    </label>
-                )}
+          {/* Separator */}
+          <div className="campaign-section-divider">
+            <div className="campaign-section-line" />
+            <span className="campaign-section-label">Assemble Your Party</span>
+            <div className="campaign-section-line" />
+          </div>
 
-                <label style={labelStyle}>
-                    Max Players:
-                    <input 
-                        type="number" 
-                        value={form.maxPlayers} 
-                        onChange={e => setForm({...form, maxPlayers: parseInt(e.target.value)})} 
-                        min="1"
-                        max="20"
-                        style={inputStyle}
-                    />
-                </label>
+          <PlayerSearch players={players} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} />
+          <span className="campaign-helper-text">
+            Party slots used: {players.length}/{form.maxPlayers || 0} (DM not included)
+          </span>
 
-                <label style={labelStyle}>
-                    Minimum Character Level:
-                    <input 
-                        type="number" 
-                        value={form.minLevel} 
-                        onChange={e => setForm({...form, minLevel: parseInt(e.target.value)})} 
-                        min="1"
-                        max="20"
-                        style={inputStyle}
-                    />
-                </label>
-
-                <div style={buttonGroupStyle}>
-                    <button type="button" onClick={() => navigate("/campaigns")} style={cancelButtonStyle}>
-                        Cancel
-                    </button>
-                    <Button type="submit" disabled={loading}>
-                        {loading ? "Creating..." : "Create Campaign"}
-                    </Button>
-                </div>
-            </form>
-        </>
-    )
+          <button type="submit" className="btn-submit" disabled={loading}>
+            {loading ? "Forging the chronicle…" : "⚔  Create Campaign"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 }
-
-/* Styles */
-const headerStyle = {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "1rem",
-    gap: "0.5rem"
-};
-
-const formStyle = {
-    display: "flex",
-    flexDirection: "column",
-    gap: "1rem",
-    maxWidth: "400px",
-    margin: "0 auto"
-};
-
-const labelStyle = {
-    display: "flex",
-    flexDirection: "column",
-    fontWeight: "bold"
-};
-
-const inputStyle = {
-    padding: "8px",
-    borderRadius: "4px",
-    border: "1px solid #ccc",
-    marginTop: "4px"
-};
-
-const errorStyle = {
-    backgroundColor: "#ff4444",
-    color: "#fff",
-    padding: "12px",
-    borderRadius: "6px",
-    marginBottom: "20px",
-    textAlign: "center",
-    margin: "20px auto",
-    maxWidth: "400px"
-};
-
-const buttonGroupStyle = {
-    display: "flex",
-    gap: "10px",
-    justifyContent: "center",
-    marginTop: "1rem"
-};
-
-const cancelButtonStyle = {
-    padding: "8px 20px",
-    borderRadius: "4px",
-    border: "1px solid #ccc",
-    backgroundColor: "#333",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "14px"
-};
 
 export default CreateCampaignPage;

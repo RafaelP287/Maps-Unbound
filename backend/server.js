@@ -41,7 +41,7 @@ const io = new Server(server, {
 
 // Middleware
 app.use(cors());         // Enable CORS for all routes
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json({ limit: "15mb" })); // Parse JSON request bodies
 
 // MongoDB Connection
 mongoose

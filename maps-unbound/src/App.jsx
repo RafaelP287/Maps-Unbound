@@ -7,7 +7,10 @@ import Home from "./features/home/Home.jsx";
 
 import Maps from "./features/maps/Maps.jsx";
 
-import Campaigns from "./features/campaigns/Campaigns.jsx";
+import Session from "./features/session/Session.jsx";
+import SessionDMView from "./features/session/SessionDMView.jsx";
+
+import Campaigns from "./features/campaigns/CampaignsPage.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
 
@@ -94,11 +97,16 @@ function App() {
               />
             } 
           />
-          
+
+          {/* Session routes */}
+          <Route path="session">
+            <Route index element={<Session />} />
+            <Route path="dm" element={<SessionDMView />} />
+          </Route>
+
           {/* Character Routes */}
           <Route path="characters" element={<Characters />} />
           <Route path="create-character" element={<CreateCharacter />} />
-
 
           {/* Campaign routes */}
           <Route path="campaigns">
