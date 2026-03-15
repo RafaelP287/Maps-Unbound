@@ -1,10 +1,13 @@
 import { Link, useSearchParams } from "react-router-dom";
+import useCampaign from "../campaigns/use-campaign";
 import "./session.css";
 
 function Session() {
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
+    const { campaign, loading } = useCampaign(campaignId);
     const dmLink = campaignId ? `/session/dm?campaignId=${campaignId}` : "/session/dm";
+    const campaignName = loading ? "Loading..." : campaign?.title || "Unknown Campaign";
 
     return (
         <div className="session-page">
@@ -12,7 +15,7 @@ function Session() {
                 <h1>Session Page</h1>
                 <p>This will probably be a lobby waiting page or a page to select the campaign.</p>
                 {campaignId && (
-                    <p>Selected campaign: {campaignId}</p>
+                    <p>Selected campaign: {campaignName}</p>
                 )}
                 <p>Button to test for DM View.</p>
                 <div className="session-actions">

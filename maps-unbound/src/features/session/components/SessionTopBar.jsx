@@ -1,16 +1,19 @@
 import { Link } from "react-router-dom";
 
-function SessionTopBar() {
+function SessionTopBar({ campaignName = "Campaign Name", sessionName = "Session Name", players = [] }) {
+    const fallbackPlayers = ["?", "?", "?", "?"].map((initial) => ({ initial, username: "Unknown" }));
+    const renderedPlayers = players.length > 0 ? players : fallbackPlayers;
+
     return (
         <header className="session-dm__top session-dm__panel">
             <div className="session-dm__top-group">
                 <div className="session-dm__top-block">
                     <span className="session-dm__top-label">Campaign</span>
-                    <span className="session-dm__top-value">Campaign Name</span>
+                    <span className="session-dm__top-value">{campaignName}</span>
                 </div>
                 <div className="session-dm__top-block">
                     <span className="session-dm__top-label">Session</span>
-                    <span className="session-dm__top-value">Session Name</span>
+                    <span className="session-dm__top-value">{sessionName}</span>
                 </div>
             </div>
             <div className="session-dm__top-center">
@@ -22,10 +25,15 @@ function SessionTopBar() {
             </div>
             <div className="session-dm__top-group">
                 <div className="session-dm__top-players" aria-label="Players">
-                    <span className="session-dm__player-dot" />
-                    <span className="session-dm__player-dot" />
-                    <span className="session-dm__player-dot" />
-                    <span className="session-dm__player-dot" />
+                    {renderedPlayers.map((player, idx) => (
+                        <span
+                            key={`${player.username}-${idx}`}
+                            className="session-dm__player-avatar"
+                            data-username={player.username}
+                        >
+                            {player.initial}
+                        </span>
+                    ))}
                 </div>
                 <Link to="/session" className="session-dm__exit">
                     Exit Session

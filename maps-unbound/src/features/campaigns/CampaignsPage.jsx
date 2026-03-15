@@ -61,9 +61,13 @@ function CampaignsPage() {
             <Link to="/campaigns/new">
               <button className="btn-primary">+ Forge New Campaign</button>
             </Link>
-            <Link to="/session">
-              <button className="btn-primary">▶ Start Session</button>
-            </Link>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => window.alert("Going to add an overlay soon! Start session from inside campaign view for DMs.")}
+            >
+              ▶ Start Session
+            </button>
           </div>
         </header>
 

@@ -179,12 +179,46 @@
   background: rgba(8, 6, 3, 0.5);
 }
 
-.session-dm__player-dot {
-  width: 18px;
-  height: 18px;
+.session-dm__player-avatar {
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   background: rgba(201, 168, 76, 0.2);
   border: 1px solid rgba(201, 168, 76, 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  color: var(--gold-light);
+  position: relative;
+}
+
+.session-dm__player-avatar::after {
+  content: attr(data-username);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  background: rgba(10, 8, 4, 0.95);
+  border: 1px solid rgba(201, 168, 76, 0.5);
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+.session-dm__player-avatar:hover::after,
+.session-dm__player-avatar:focus-visible::after {
+  opacity: 1;
 }
 
 .session-dm__exit {
