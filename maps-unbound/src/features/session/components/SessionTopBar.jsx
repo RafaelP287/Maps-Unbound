@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 
-function SessionTopBar({ campaignName = "Campaign Name", sessionName = "Session Name", players = [] }) {
+function SessionTopBar({ campaignName = "Campaign Name", sessionName = "Session Name", players = [], campaignId }) {
     const fallbackPlayers = ["?", "?", "?", "?"].map((initial) => ({ initial, username: "Unknown" }));
     const renderedPlayers = players.length > 0 ? players : fallbackPlayers;
+    const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
     return (
         <header className="session-dm__top session-dm__panel">
@@ -35,7 +36,7 @@ function SessionTopBar({ campaignName = "Campaign Name", sessionName = "Session 
                         </span>
                     ))}
                 </div>
-                <Link to="/session" className="session-dm__exit">
+                <Link to={exitLink} className="session-dm__exit">
                     Exit Session
                 </Link>
             </div>

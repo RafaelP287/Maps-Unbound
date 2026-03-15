@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import useCampaign from "../campaigns/use-campaign";
 import "./session.css";
+import LoadingPage from "../../shared/Loading.jsx";
 
 function Session() {
     const [searchParams] = useSearchParams();
@@ -8,6 +9,10 @@ function Session() {
     const { campaign, loading } = useCampaign(campaignId);
     const dmLink = campaignId ? `/session/dm?campaignId=${campaignId}` : "/session/dm";
     const campaignName = loading ? "Loading..." : campaign?.title || "Unknown Campaign";
+
+    if (loading) {
+        return <LoadingPage>Preparing the session...</LoadingPage>;
+    }
 
     return (
         <div className="session-page">

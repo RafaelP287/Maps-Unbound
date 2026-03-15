@@ -229,17 +229,17 @@
   font-size: 0.65rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: var(--gold);
-  border: 1px solid rgba(201, 168, 76, 0.4);
+  color: #ff8f6b;
+  border: 1px solid rgba(255, 143, 107, 0.5);
   border-radius: var(--radius-sm);
   padding: 0.45rem 1rem;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 .session-dm__exit:hover {
-  background: rgba(201, 168, 76, 0.12);
-  color: var(--gold-light);
-  border-color: rgba(201, 168, 76, 0.6);
+  background: rgba(255, 143, 107, 0.12);
+  color: #ffd3c4;
+  border-color: rgba(255, 143, 107, 0.8);
 }
 
 .session-dm__status {
@@ -571,6 +571,11 @@
   position: absolute;
   top: 0.6rem;
   right: 0.6rem;
+}
+
+.session-dm__collapse-btn--left {
+  right: auto;
+  left: 0.6rem;
 }
 
 .session-dm__collapse-icon {

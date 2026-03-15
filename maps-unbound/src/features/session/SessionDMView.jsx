@@ -6,6 +6,7 @@ import SessionBottomPanel from "./components/SessionBottomPanel";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import useCampaign from "../campaigns/use-campaign";
+import LoadingPage from "../../shared/Loading.jsx";
 import "./session.css";
 
 function SessionDMView() {
@@ -34,11 +35,16 @@ function SessionDMView() {
         isBottomCollapsed ? "is-bottom-collapsed" : "",
     ].filter(Boolean).join(" ");
 
+    if (loading) {
+        return <LoadingPage>Preparing the session board...</LoadingPage>;
+    }
+
     return (
         <div className={collapseClassName}>
             <SessionTopBar
                 campaignName={campaignName}
                 players={players}
+                campaignId={campaignId}
             />
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}

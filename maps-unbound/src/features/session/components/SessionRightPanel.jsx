@@ -3,7 +3,7 @@ function SessionRightPanel({ isCollapsed, onToggle }) {
         <aside className="session-dm__right session-dm__panel session-dm__panel--collapsible">
             <button
                 type="button"
-                className="session-dm__collapse-btn session-dm__collapse-btn--panel"
+                className="session-dm__collapse-btn session-dm__collapse-btn--panel session-dm__collapse-btn--left"
                 aria-pressed={isCollapsed}
                 aria-label={isCollapsed ? "Expand right panel" : "Collapse right panel"}
                 onClick={onToggle}
