@@ -92,6 +92,7 @@ function SessionDMView() {
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}
                 onToggle={() => setIsLeftCollapsed((prev) => !prev)}
+                turns={mockTurns}
             />
             <SessionMapCanvas
                 showTurnOrder={isRightCollapsed}

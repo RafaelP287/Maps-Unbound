@@ -453,6 +453,18 @@
   color: var(--gold-light);
 }
 
+.session-dm__tabs--full {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.session-dm__tabs--full .session-dm__tab {
+  flex: 1;
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+}
+
 .session-dm__split {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
@@ -578,6 +590,161 @@
   border-radius: var(--radius-sm);
   background: rgba(8, 6, 3, 0.6);
   border: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+.session-dm__sheet-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.session-dm__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 6, 3, 0.6);
+  border: 1px solid rgba(201, 168, 76, 0.18);
+}
+
+.session-dm__sheet-button {
+  border: none;
+  background: rgba(8, 6, 3, 0.6);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+  color: inherit;
+  width: 100%;
+}
+
+.session-dm__sheet-button:hover {
+  border-color: rgba(201, 168, 76, 0.4);
+}
+
+.session-dm__sheet-button:focus-visible {
+  outline: 2px solid rgba(201, 168, 76, 0.6);
+  outline-offset: 2px;
+}
+
+.session-dm__sheet-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.session-dm__sheet-name {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  color: var(--text-base);
+}
+
+.session-dm__sheet-detail {
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.session-dm__sheet-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.session-dm__sheet-stat {
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  background: rgba(10, 8, 4, 0.6);
+}
+
+.session-dm__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.session-dm__detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.session-dm__ghost--small {
+  font-size: 0.6rem;
+  padding: 0.3rem 0.7rem;
+}
+
+.session-dm__detail-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.session-dm__detail-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--gold-light);
+  letter-spacing: 0.05em;
+}
+
+.session-dm__detail-sub {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-faint);
+}
+
+.session-dm__detail-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.session-dm__detail-card {
+  padding: 0.65rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: rgba(8, 6, 3, 0.6);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.session-dm__detail-label {
+  font-family: var(--font-heading);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.session-dm__detail-value {
+  font-family: var(--font-heading);
+  font-size: 0.9rem;
+  color: var(--gold-light);
+}
+
+.session-dm__detail-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.session-dm__detail-list {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--text-base);
 }
 
 .session-dm__feed-item p {
@@ -753,15 +920,28 @@
   text-align: center;
 }
 
+.session-dm__left.is-collapsed {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
 .session-dm__collapsed-label {
   font-family: var(--font-heading);
   font-size: 0.7rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--gold-light);
-  transform: rotate(90deg);
   transform-origin: center;
   white-space: nowrap;
+}
+
+.session-dm__right.is-collapsed .session-dm__collapsed-label {
+  transform: rotate(90deg);
+}
+
+.session-dm__left.is-collapsed .session-dm__collapsed-label {
+  transform: rotate(-90deg);
 }
 
 @media (max-width: 1200px) {
