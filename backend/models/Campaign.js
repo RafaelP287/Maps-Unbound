@@ -51,6 +51,7 @@ const campaignSchema = new mongoose.Schema({
   npcs: { type: [npcSchema], default: [] },
   loot: { type: [lootSchema], default: [] },
   members: [memberSchema],
+  sessionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Session", default: [] },
 }, {timestamps: true});
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
