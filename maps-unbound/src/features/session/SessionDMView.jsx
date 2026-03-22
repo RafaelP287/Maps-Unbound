@@ -27,6 +27,49 @@ function SessionDMView() {
                 initial: username.slice(0, 1).toUpperCase() || "?",
             };
         });
+    const mockTurns = [
+        {
+            order: 1,
+            name: "Astra Vex",
+            hp: "24 / 31",
+            kind: "Player",
+            className: "Rogue",
+            level: 6,
+            isActive: true,
+        },
+        {
+            order: 2,
+            name: "Korrin Holt",
+            hp: "38 / 44",
+            kind: "Player",
+            className: "Fighter",
+            level: 7,
+        },
+        {
+            order: 3,
+            name: "Red Wing",
+            hp: "112 / 140",
+            kind: "Enemy",
+            cr: "CR 8",
+            creatureType: "Dragon",
+        },
+        {
+            order: 4,
+            name: "Lyra Dawn",
+            hp: "19 / 28",
+            kind: "NPC",
+            className: "Cleric",
+            level: 5,
+        },
+        {
+            order: 5,
+            name: "Onyx Shade",
+            hp: "27 / 30",
+            kind: "Enemy",
+            cr: "CR 4",
+            creatureType: "Humanoid",
+        },
+    ];
 
     const collapseClassName = [
         "session-dm",
@@ -50,10 +93,14 @@ function SessionDMView() {
                 isCollapsed={isLeftCollapsed}
                 onToggle={() => setIsLeftCollapsed((prev) => !prev)}
             />
-            <SessionMapCanvas />
+            <SessionMapCanvas
+                showTurnOrder={isRightCollapsed}
+                turns={mockTurns}
+            />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
+                turns={mockTurns}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}
