@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 import CampaignCard from "./CampaignCard.jsx";
@@ -10,6 +10,19 @@ function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showStartSession, setShowStartSession] = useState(false);
+  const navigate = useNavigate();
+  const dmCampaigns = useMemo(() => {
+    return campaigns.filter((campaign) => {
+      const dmMember = campaign.members?.find((member) => member.role === "DM");
+      if (!dmMember) return false;
+      const dmUserId =
+        typeof dmMember.userId === "object"
+          ? dmMember.userId?._id || dmMember.userId?.id
+          : dmMember.userId;
+      return String(dmUserId) === String(user?.id);
+    });
+  }, [campaigns, user?.id]);
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
@@ -64,7 +77,7 @@ function CampaignsPage() {
             <button
               type="button"
               className="btn-primary"
-              onClick={() => window.alert("Going to add an overlay soon! Start session from inside campaign view for DMs.")}
+              onClick={() => setShowStartSession(true)}
             >
               ▶ Start Session
             </button>
@@ -86,6 +99,58 @@ function CampaignsPage() {
           )}
         </div>
       </div>
+      {showStartSession && (
+        <div
+          className="campaign-modal-overlay"
+          onClick={() => setShowStartSession(false)}
+          role="presentation"
+        >
+          <div
+            className="campaign-modal-box campaign-session-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="campaign-session-header">
+              <div>
+                <h3 className="campaign-modal-title">Start a Session</h3>
+                <p className="campaign-modal-body">Choose a campaign you DM.</p>
+              </div>
+              <button
+                type="button"
+                className="btn-ghost campaign-session-close"
+                onClick={() => setShowStartSession(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="campaign-session-list">
+              {dmCampaigns.map((campaign) => (
+                <button
+                  key={campaign._id}
+                  type="button"
+                  className="campaign-session-item"
+                  onClick={() => {
+                    setShowStartSession(false);
+                    navigate(`/session/dm?campaignId=${campaign._id}`);
+                  }}
+                >
+                  <div>
+                    <div className="campaign-session-title">{campaign.title}</div>
+                    <div className="campaign-session-meta">
+                      {campaign.members?.length || 0} members • {campaign.status}
+                    </div>
+                  </div>
+                  <span className="campaign-session-action">Start</span>
+                </button>
+              ))}
+              {dmCampaigns.length === 0 && (
+                <div className="campaign-session-empty">
+                  You are not the DM of any campaigns yet.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

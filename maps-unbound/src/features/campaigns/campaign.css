@@ -757,6 +757,82 @@ textarea.campaign-quest-objective {
   line-height: 1.6;
 }
 
+/* Start Session Overlay */
+.campaign-session-modal {
+  border-color: rgba(201, 168, 76, 0.45);
+  max-width: 520px;
+  text-align: left;
+}
+
+.campaign-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.campaign-session-close {
+  padding: 0.35rem 0.85rem;
+}
+
+.campaign-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.campaign-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: rgba(12, 9, 5, 0.7);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--text-base);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.campaign-session-item:hover {
+  border-color: rgba(201, 168, 76, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.campaign-session-title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+
+.campaign-session-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.campaign-session-action {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-session-empty {
+  padding: 1rem;
+  border-radius: 10px;
+  background: rgba(12, 9, 5, 0.6);
+  border: 1px dashed rgba(201, 168, 76, 0.3);
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
 /* Empty State */
 .campaign-empty {
   display: flex;
