@@ -8,6 +8,17 @@ const participantSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const noteSchema = new mongoose.Schema(
+  {
+    authorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    authorRole: { type: String, enum: ["DM", "Player"], required: true },
+    content: { type: String, trim: true, maxlength: 5000, required: true },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const sessionSchema = new mongoose.Schema(
   {
     campaignId: { type: mongoose.Schema.Types.ObjectId, ref: "Campaign", required: true },
@@ -22,7 +33,7 @@ const sessionSchema = new mongoose.Schema(
     startedAt: { type: Date },
     endedAt: { type: Date },
     summary: { type: String, trim: true, maxlength: 2000 },
-    notes: { type: String, trim: true, maxlength: 5000 },
+    notes: { type: [noteSchema], default: [] },
     tags: { type: [String], default: [] },
     participants: { type: [participantSchema], default: [] },
   },

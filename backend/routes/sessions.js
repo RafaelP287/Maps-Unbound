@@ -5,6 +5,7 @@ import Campaign from "../models/Campaign.js";
 
 const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
+const NOTE_ROLES = new Set(["DM", "Player"]);
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -68,7 +69,18 @@ router.post("/", verifyToken, async (req, res) => {
       status,
       scheduledFor,
       summary: req.body.summary?.trim(),
-      notes: req.body.notes?.trim(),
+      notes: Array.isArray(req.body.notes)
+        ? req.body.notes
+            .map((note) => ({
+              authorId: note?.authorId,
+              authorRole: NOTE_ROLES.has(note?.authorRole) ? note.authorRole : "Player",
+              content: note?.content?.trim?.() || "",
+              createdAt: note?.createdAt ? new Date(note.createdAt) : new Date(),
+              updatedAt: note?.updatedAt ? new Date(note.updatedAt) : new Date(),
+            }))
+            .filter((note) => note.authorId && note.content)
+            .slice(0, 200)
+        : [],
       tags: Array.isArray(req.body.tags) ? req.body.tags.filter(Boolean).slice(0, 20) : [],
       participants: Array.isArray(req.body.participants) ? req.body.participants : [],
     });
