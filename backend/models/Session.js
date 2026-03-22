@@ -8,17 +8,6 @@ const participantSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const journalEntrySchema = new mongoose.Schema(
-  {
-    title: { type: String, trim: true, maxlength: 120 },
-    content: { type: String, trim: true, maxlength: 5000, required: true },
-    authorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    createdAt: { type: Date, default: Date.now },
-    updatedAt: { type: Date, default: Date.now },
-  },
-  { _id: false }
-);
-
 const sessionSchema = new mongoose.Schema(
   {
     campaignId: { type: mongoose.Schema.Types.ObjectId, ref: "Campaign", required: true },
@@ -36,7 +25,6 @@ const sessionSchema = new mongoose.Schema(
     notes: { type: String, trim: true, maxlength: 5000 },
     tags: { type: [String], default: [] },
     participants: { type: [participantSchema], default: [] },
-    journalEntries: { type: [journalEntrySchema], default: [] },
   },
   { timestamps: true }
 );

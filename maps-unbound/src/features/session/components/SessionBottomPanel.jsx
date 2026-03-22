@@ -39,7 +39,7 @@ function SessionBottomPanel({ isCollapsed, onToggle }) {
             </button>
             {isCollapsed && (
                 <div className="session-dm__collapsed-label" aria-hidden="true">
-                    Chat &amp; Tools
+                    Chat, Notes &amp; Tools
                 </div>
             )}
             {!isCollapsed && (
@@ -70,6 +70,19 @@ function SessionBottomPanel({ isCollapsed, onToggle }) {
                             <input type="text" placeholder="Send a message to the table..." />
                             <button className="session-dm__ghost" type="button">Send</button>
                         </div>
+                    </section>
+                    <section className="session-dm__notes">
+                        <div className="session-dm__panel-header">
+                            <div>
+                                <p className="session-dm__panel-title">Session Notes</p>
+                                <p className="session-dm__panel-subtitle">Track key moments and reminders</p>
+                            </div>
+                            <button className="session-dm__ghost" type="button">Save</button>
+                        </div>
+                        <textarea
+                            className="session-dm__notes-input"
+                            placeholder="Jot down NPCs, clues, or session beats..."
+                        />
                     </section>
                     <aside className="session-dm__quick-tools">
                         <div className="session-dm__panel-header">

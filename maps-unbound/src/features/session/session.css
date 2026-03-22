@@ -667,7 +667,7 @@
 /* Bottom Bar (Chat + Tools) */
 .session-dm__bottom-split {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
   gap: 1.25rem;
   height: 100%;
   min-height: 0;
@@ -742,6 +742,26 @@
   flex-direction: column;
   gap: 0.85rem;
   min-width: 0;
+}
+
+.session-dm__notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.session-dm__notes-input {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  background: rgba(8, 6, 3, 0.6);
+  color: var(--text-base);
+  font-family: var(--font-body);
 }
 
 /* Map Canvas */

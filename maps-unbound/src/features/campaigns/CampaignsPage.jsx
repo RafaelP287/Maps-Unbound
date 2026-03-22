@@ -130,7 +130,7 @@ function CampaignsPage() {
                   className="campaign-session-item"
                   onClick={() => {
                     setShowStartSession(false);
-                    navigate(`/session/dm?campaignId=${campaign._id}`);
+                    navigate(`/session?campaignId=${campaign._id}`);
                   }}
                 >
                   <div>
