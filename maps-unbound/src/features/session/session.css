@@ -273,6 +273,7 @@
   align-items: center;
   gap: 1.5rem;
   min-width: 0;
+  overflow: visible;
 }
 
 .session-dm__top-group {

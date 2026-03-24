@@ -17,7 +17,7 @@ function Session() {
     return (
         <div className="session-page">
             <div className="session-card">
-                <h1>Session Page</h1>
+                <h1>Session Lobby</h1>
                 <p>This will probably be a lobby waiting page or a page to select the campaign.</p>
                 {campaignId && (
                     <p>Selected campaign: {campaignName}</p>
