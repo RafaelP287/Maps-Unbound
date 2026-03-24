@@ -19,10 +19,10 @@ const ONE_GB = 1073741824; // 1GB in bytes
 // Generate an Upload URL (Enforces 1MB limit & 1GB total user limit)
 export const generateUploadData = async (req, res) => {
   try {
-    const { category, isPublic, fileSize, fileName } = req.body;
-    const owner = req.body.username; // Ideally from req.user.username in JWT middleware
+    // Takes the body payload
+    const { category, isPublic, fileSize, fileName, fileType } = req.body;
+    const owner = req.body.username; 
 
-    // Validate category and file size
     if (!["image", "audio"].includes(category)) {
       return res.status(400).json({ message: "Invalid category. Must be image or audio." });
     }
@@ -30,30 +30,42 @@ export const generateUploadData = async (req, res) => {
       return res.status(400).json({ message: "File exceeds the 1MB limit." });
     }
 
-    // Check total user storage limit (1GB)
+    // Validates the fileType matches the category
+    if (category === 'image' && !fileType.startsWith('image/')) {
+       return res.status(400).json({ message: "File type must be an image." });
+    }
+
+    // Finds all assets that belong to a certain User
     const userAssets = await Asset.aggregate([
       { $match: { owner } },
       { $group: { _id: null, totalSize: { $sum: "$size" } } },
     ]);
     
+    // Validates that the current User does not have over 1GB accumulated over their uploaded assets.
     const currentTotalSize = userAssets.length > 0 ? userAssets[0].totalSize : 0;
     if (currentTotalSize + fileSize > ONE_GB) {
       return res.status(403).json({ message: "Upload denied. Exceeds 1GB total storage limit." });
     }
 
-    // Define S3 path (e.g., public/johndoe/image/uuid-filename.png)
+    // Constants for S3 uploading
     const visibilityFolder = isPublic ? "public" : "private";
     const fileExtension = fileName.split('.').pop();
     const s3Key = `${visibilityFolder}/${owner}/${category}/${uuidv4()}.${fileExtension}`;
 
-    // Create Presigned POST rules
+    // Creates a presigned URL that lasts for the Expires time (also contains all data like fields, conditions, and metadata)
     const { url, fields } = await createPresignedPost(s3Client, {
       Bucket: BUCKET_NAME,
       Key: s3Key,
       Conditions: [
-        ["content-length-range", 0, ONE_MB], // AWS natively blocks files > 1MB here
+        ["content-length-range", 0, ONE_MB], 
+        // Security: Enforce that the user MUST upload this specific content type
+        ["eq", "$Content-Type", fileType] 
       ],
-      Expires: 300, // URL valid for 5 minutes
+      // Metadata: Set the default Content-Type field for the S3 object
+      Fields: {
+        "Content-Type": fileType 
+      },
+      Expires: 300, 
     });
 
     res.status(200).json({ url, fields, s3Key });

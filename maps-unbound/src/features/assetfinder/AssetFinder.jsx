@@ -91,6 +91,7 @@ function AssetFinder() {
           isPublic: uploadData.isPublic,
           fileSize: uploadData.file.size,
           fileName: uploadData.file.name,
+          fileType: uploadData.file.type,
           username: user.username,
         }),
       });
