@@ -1,5 +1,6 @@
-import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import Asset from "../models/Asset.js";
 
@@ -98,12 +99,32 @@ export const confirmUpload = async (req, res) => {
   }
 };
 
+// Helper function to attach signed URLs to an array of assets
+const attachSignedUrls = async (assets) => {
+  return Promise.all(
+    assets.map(async (asset) => {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: asset.s3Key,
+      });
+      
+      // Generate a URL valid for 1 hour (3600 seconds)
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+      // Convert Mongoose document to plain object to safely overwrite the URL
+      const assetObj = asset.toObject ? asset.toObject() : asset;
+      return { ...assetObj, url: signedUrl };
+    })
+  );
+};
+
 // Get User's Own Assets
 export const getUserAssets = async (req, res) => {
   try {
     const owner = req.body.username; 
     const assets = await Asset.find({ owner }).sort({ createdAt: -1 });
-    res.status(200).json(assets);
+    const assetsWithUrls = await attachSignedUrls(assets);
+    res.status(200).json(assetsWithUrls);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch assets", error: error.message });
   }
@@ -113,7 +134,8 @@ export const getUserAssets = async (req, res) => {
 export const getPublicAssets = async (req, res) => {
   try {
     const publicAssets = await Asset.find({ isPublic: true }).sort({ createdAt: -1 });
-    res.status(200).json(publicAssets);
+    const assetsWithUrls = await attachSignedUrls(publicAssets);
+    res.status(200).json(assetsWithUrls);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch public assets", error: error.message });
   }
