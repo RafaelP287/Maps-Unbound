@@ -50,9 +50,13 @@ function AssetFinder() {
     setSelectedAsset(null);
     
     try {
-      // Append the username as a query parameter for the 'owned' tab
+      // Define the endpoint based on the active tab
+      const endpoint = activeTab === "public" ? "/api/assets/public" : "/api/assets/my-assets";
+      
       let fetchUrl = `${apiServer}${endpoint}`;
-      if (activeTab === "owned") {
+      
+      // Defensively check that user exists before reading the username
+      if (activeTab === "owned" && user?.username) {
         fetchUrl += `?username=${encodeURIComponent(user.username)}`;
       }
 
@@ -69,7 +73,8 @@ function AssetFinder() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, token, user.username, showToast]);
+  // Protect the dependency array with optional chaining (?.)
+  }, [activeTab, token, user?.username, showToast]);
 
   useEffect(() => {
     if (isLoggedIn && (activeTab === "public" || activeTab === "owned")) {
