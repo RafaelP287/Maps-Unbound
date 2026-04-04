@@ -121,9 +121,18 @@ const attachSignedUrls = async (assets) => {
 // Get User's Own Assets
 export const getUserAssets = async (req, res) => {
   try {
-    const owner = req.body.username; 
+    // Look in the query string, not the body, for GET requests
+    const owner = req.query.username; 
+    
+    if (!owner) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
     const assets = await Asset.find({ owner }).sort({ createdAt: -1 });
+    
+    // (Assuming you kept the attachSignedUrls logic from earlier)
     const assetsWithUrls = await attachSignedUrls(assets);
+    
     res.status(200).json(assetsWithUrls);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch assets", error: error.message });

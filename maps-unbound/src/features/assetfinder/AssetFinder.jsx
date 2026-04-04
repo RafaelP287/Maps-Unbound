@@ -46,14 +46,19 @@ function AssetFinder() {
   // Fetch Assets based on Tab
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
-    setAssets([]); // Clear current view
+    setAssets([]); 
     setSelectedAsset(null);
     
     try {
-      const endpoint = activeTab === "public" ? "/api/assets/public" : "/api/assets/my-assets";
-      const response = await fetch(`${apiServer}${endpoint}`, {
+      // Append the username as a query parameter for the 'owned' tab
+      let fetchUrl = `${apiServer}${endpoint}`;
+      if (activeTab === "owned") {
+        fetchUrl += `?username=${encodeURIComponent(user.username)}`;
+      }
+
+      const response = await fetch(fetchUrl, {
+        method: "GET",
         headers: { Authorization: `Bearer ${token}` },
-        username: user.username
       });
       
       if (!response.ok) throw new Error("Failed to fetch assets.");
@@ -64,7 +69,7 @@ function AssetFinder() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, token, showToast]);
+  }, [activeTab, token, user.username, showToast]);
 
   useEffect(() => {
     if (isLoggedIn && (activeTab === "public" || activeTab === "owned")) {
