@@ -31,6 +31,8 @@ function Navbar() {
             <Link to="/characters" className={isActive("/characters")}>Characters</Link>
             <Link to="/campaigns" className={isActive("/campaigns")}>Campaigns</Link>
             <Link to="/party-finder" className={isActive("/party-finder")}>Party Finder</Link>
+            <Link to="/asset-finder" className={isActive("/asset-finder")}>Asset Finder</Link>
+            <Link to="/ruleset" className={isActive("/ruleset")}>Compendium</Link>
 
             <div style={dividerStyle} />
 
@@ -46,9 +48,14 @@ function Navbar() {
             </button>
           </>
         ) : (
-          <Link to="/login" className="nav-signin-btn">
-            Enter the Realm
-          </Link>
+          <>
+            <Link to="/ruleset" className={isActive("/ruleset")}>
+              Compendium
+            </Link>
+            <Link to="/login" className="nav-signin-btn">
+              Enter the Realm
+            </Link>
+          </>
         )}
       </div>
     </nav>

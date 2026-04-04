@@ -29,6 +29,7 @@ import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
 import partyRoutes from './routes/partyRoutes.js';
 import assetRoutes from './routes/assets.js';
+import dndProxy from './routes/dndProxy.js';
 
 // ---  Mount the routes ---
 app.use('/api/characters', characterRoutes);
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/parties', partyRoutes);
 app.use('/api/assets', assetRoutes);
+app.use('/api/dnd', dndProxy);
 
 // Debugging Middleware (Add this to see what is happening)
 app.use((req, res, next) => {

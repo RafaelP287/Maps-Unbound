@@ -18,6 +18,8 @@ import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
 
 import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
 
+import RulesetReader from "./features/ruleset/RulesetReader.jsx";
+
 import Profile from "./features/profile/Profile.jsx";
 
 import Signup from "./features/auth/Signup.jsx";
@@ -113,6 +115,9 @@ function App() {
 
           {/* Asset Finder route */}
           <Route path="asset-finder" element={<AssetFinder />} />
+
+          {/* Ruleset Reader route */}
+          <Route path="ruleset" element={<RulesetReader />} />
 
           {/* Profile route */}
           <Route path="profile" element={<Profile />} />
