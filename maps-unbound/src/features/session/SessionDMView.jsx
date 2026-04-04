@@ -13,6 +13,7 @@ function SessionDMView() {
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
+    const [isCombatState, setIsCombatState] = useState(false);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const sessionNameParam = searchParams.get("sessionName");
@@ -49,6 +50,7 @@ function SessionDMView() {
                 campaignId={campaignId}
                 sceneName=""
                 sessionName={sessionNameParam || ""}
+                isCombatState={isCombatState}
             />
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}
@@ -58,6 +60,7 @@ function SessionDMView() {
             <SessionMapCanvas
                 showTurnOrder={isRightCollapsed}
                 turns={turns}
+                onCombatStateChange={setIsCombatState}
             />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}

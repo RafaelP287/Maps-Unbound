@@ -1,21 +1,5 @@
 function SessionBottomPanel({ isCollapsed, onToggle }) {
-    const chatMessages = [
-        {
-            name: "Astra",
-            text: "I’ll scout ahead and mark the trap.",
-            time: "6:42 PM",
-        },
-        {
-            name: "Lyra",
-            text: "Hold. I can cast guidance on Korrin.",
-            time: "6:43 PM",
-        },
-        {
-            name: "DM",
-            text: "The corridor hums with arcane energy.",
-            time: "6:44 PM",
-        },
-    ];
+    const chatMessages = [];
 
     return (
         <footer

@@ -6,6 +6,7 @@ function SessionTopBar({
     players = [],
     campaignId,
     sceneName = "SCENE",
+    isCombatState = false,
 }) {
     const fallbackPlayers = ["?", "?", "?", "?"].map((initial) => ({ initial, username: "Unknown" }));
     const renderedPlayers = players.length > 0 ? players : fallbackPlayers;
@@ -13,6 +14,7 @@ function SessionTopBar({
 
     return (
         <header className="session-dm__top session-dm__panel">
+            {isCombatState && <div className="session-dm__combat-indicator">IN COMBAT</div>}
             <div className="session-dm__top-group">
                 <div className="session-dm__top-block">
                     <span className="session-dm__top-label">Campaign</span>

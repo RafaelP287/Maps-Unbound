@@ -28,7 +28,7 @@ function SessionRightPanel({ isCollapsed, onToggle, turns = [] }) {
                     <div className="session-dm__panel-header">
                         <div>
                             <p className="session-dm__panel-title">Turn Record</p>
-                            <p className="session-dm__panel-subtitle">Round 4 · Initiative</p>
+                            <p className="session-dm__panel-subtitle">Round #</p>
                         </div>
                         <button className="session-dm__ghost" type="button">
                             Advance
