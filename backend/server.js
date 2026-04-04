@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
 import sessionRoutes from './routes/sessions.js';
+import encounterRoutes from './routes/encounters.js';
 
 dotenv.config({ path: '../.env' });
 
@@ -36,6 +37,7 @@ mongoose
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/encounters', encounterRoutes);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Maps Unbound API' });

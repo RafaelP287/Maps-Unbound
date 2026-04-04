@@ -15,61 +15,20 @@ function SessionDMView() {
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
+    const sessionNameParam = searchParams.get("sessionName");
     const { campaign, loading } = useCampaign(campaignId);
 
-    const campaignName = loading ? "Loading..." : campaign?.title || "Campaign Name";
+    const campaignName = loading ? "Loading..." : campaign?.title || "";
     const players = (campaign?.members || [])
         .filter((member) => member.role === "Player")
         .map((member) => {
-            const username = member.userId?.username || "Unknown";
+            const username = member.userId?.username || "";
             return {
                 username,
-                initial: username.slice(0, 1).toUpperCase() || "?",
+                initial: username.slice(0, 1).toUpperCase() || "",
             };
         });
-    const mockTurns = [
-        {
-            order: 1,
-            name: "Astra Vex",
-            hp: "24 / 31",
-            kind: "Player",
-            className: "Rogue",
-            level: 6,
-            isActive: true,
-        },
-        {
-            order: 2,
-            name: "Korrin Holt",
-            hp: "38 / 44",
-            kind: "Player",
-            className: "Fighter",
-            level: 7,
-        },
-        {
-            order: 3,
-            name: "Red Wing",
-            hp: "112 / 140",
-            kind: "Enemy",
-            cr: "CR 8",
-            creatureType: "Dragon",
-        },
-        {
-            order: 4,
-            name: "Lyra Dawn",
-            hp: "19 / 28",
-            kind: "NPC",
-            className: "Cleric",
-            level: 5,
-        },
-        {
-            order: 5,
-            name: "Onyx Shade",
-            hp: "27 / 30",
-            kind: "Enemy",
-            cr: "CR 4",
-            creatureType: "Humanoid",
-        },
-    ];
+    const turns = [];
 
     const collapseClassName = [
         "session-dm",
@@ -88,20 +47,22 @@ function SessionDMView() {
                 campaignName={campaignName}
                 players={players}
                 campaignId={campaignId}
+                sceneName=""
+                sessionName={sessionNameParam || ""}
             />
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}
                 onToggle={() => setIsLeftCollapsed((prev) => !prev)}
-                turns={mockTurns}
+                turns={turns}
             />
             <SessionMapCanvas
                 showTurnOrder={isRightCollapsed}
-                turns={mockTurns}
+                turns={turns}
             />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
-                turns={mockTurns}
+                turns={turns}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}

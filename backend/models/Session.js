@@ -64,6 +64,8 @@ const sessionSchema = new mongoose.Schema(
     summary: { type: String, trim: true, maxlength: 2000 },
     notes: { type: [noteSchema], default: [] },
     encounterRecords: { type: [encounterRecordSchema], default: [] },
+    encounterIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Encounter", default: [] },
+    activeEncounterId: { type: mongoose.Schema.Types.ObjectId, ref: "Encounter", default: null },
     tags: { type: [String], default: [] },
     participants: { type: [participantSchema], default: [] },
   },

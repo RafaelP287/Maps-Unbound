@@ -1,6 +1,9 @@
 function SessionMapCanvas({ showTurnOrder = false, turns = [] }) {
     return (
         <main className="session-dm__map">
+            <button type="button" className="session-dm__map-btn session-dm__map-btn--map">
+                Map
+            </button>
             <div className="session-dm__map-overlay">
                 <div>
                     <h2>Map Canvas</h2>
@@ -24,6 +27,9 @@ function SessionMapCanvas({ showTurnOrder = false, turns = [] }) {
                     </div>
                 </aside>
             )}
+            <button type="button" className="session-dm__map-btn session-dm__map-btn--combat">
+                Combat
+            </button>
         </main>
     )
 }

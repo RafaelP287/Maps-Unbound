@@ -1,4 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import useCampaign from "../campaigns/use-campaign";
 import "./session.css";
 import LoadingPage from "../../shared/Loading.jsx";
@@ -7,7 +8,10 @@ function Session() {
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const { campaign, loading } = useCampaign(campaignId);
-    const dmLink = campaignId ? `/session/dm?campaignId=${campaignId}` : "/session/dm";
+    const [sessionName, setSessionName] = useState("Session Name");
+    const dmLink = campaignId
+        ? `/session/dm?campaignId=${campaignId}&sessionName=${encodeURIComponent(sessionName)}`
+        : `/session/dm?sessionName=${encodeURIComponent(sessionName)}`;
     const campaignName = loading ? "Loading..." : campaign?.title || "Unknown Campaign";
 
     if (loading) {
@@ -22,6 +26,16 @@ function Session() {
                 {campaignId && (
                     <p>Selected campaign: {campaignName}</p>
                 )}
+                <label className="session-lobby__label" htmlFor="session-name-input">
+                    Session name (DM):
+                </label>
+                <input
+                    id="session-name-input"
+                    className="session-lobby__input"
+                    type="text"
+                    value={sessionName}
+                    onChange={(e) => setSessionName(e.target.value)}
+                />
                 <p>Button to test for DM View.</p>
                 <div className="session-actions">
                     <Link to={dmLink}>
