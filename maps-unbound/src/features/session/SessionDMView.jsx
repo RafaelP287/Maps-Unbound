@@ -14,6 +14,9 @@ function SessionDMView() {
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
     const [isCombatState, setIsCombatState] = useState(false);
+    const [sceneName, setSceneName] = useState("");
+    const [turns, setTurns] = useState([]);
+    const [combatRound, setCombatRound] = useState(0);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const sessionNameParam = searchParams.get("sessionName");
@@ -29,7 +32,47 @@ function SessionDMView() {
                 initial: username.slice(0, 1).toUpperCase() || "",
             };
         });
-    const turns = [];
+    const playerCharacterNames = players.map((player) => player.username).filter(Boolean);
+
+    const handleTurnsChange = (nextTurns) => {
+        if (!nextTurns || nextTurns.length === 0) {
+            setTurns([]);
+            setCombatRound(0);
+            return;
+        }
+
+        const normalizedTurns = nextTurns.map((turn, idx) => ({
+            ...turn,
+            order: idx + 1,
+            isActive: idx === 0,
+            isNext: idx === 1,
+        }));
+
+        setTurns(normalizedTurns);
+        setCombatRound(0);
+    };
+
+    const handleAdvanceTurn = () => {
+        if (turns.length === 0) {
+            return;
+        }
+
+        const currentActiveIndex = turns.findIndex((turn) => turn.isActive);
+        const activeIndex = currentActiveIndex >= 0 ? currentActiveIndex : 0;
+        const nextActiveIndex = (activeIndex + 1) % turns.length;
+        const isEndingLastTurn = activeIndex === turns.length - 1;
+
+        const nextTurns = turns.map((turn, idx) => ({
+            ...turn,
+            isActive: idx === nextActiveIndex,
+            isNext: idx === ((nextActiveIndex + 1) % turns.length),
+        }));
+
+        setTurns(nextTurns);
+        if (isEndingLastTurn) {
+            setCombatRound((prevRound) => prevRound + 1);
+        }
+    };
 
     const collapseClassName = [
         "session-dm",
@@ -48,7 +91,7 @@ function SessionDMView() {
                 campaignName={campaignName}
                 players={players}
                 campaignId={campaignId}
-                sceneName=""
+                sceneName={sceneName}
                 sessionName={sessionNameParam || ""}
                 isCombatState={isCombatState}
             />
@@ -61,11 +104,16 @@ function SessionDMView() {
                 showTurnOrder={isRightCollapsed}
                 turns={turns}
                 onCombatStateChange={setIsCombatState}
+                onSceneNameChange={setSceneName}
+                onTurnsChange={handleTurnsChange}
+                playerCharacterNames={playerCharacterNames}
             />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
                 turns={turns}
+                round={combatRound}
+                onAdvanceTurn={handleAdvanceTurn}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}

@@ -884,24 +884,13 @@
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.6);
 }
 
-.session-dm__map-viewport {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  z-index: 0;
-  cursor: grab;
-  touch-action: none;
-}
-
-.session-dm__map-viewport.is-dragging {
-  cursor: grabbing;
-}
-
 .session-dm__map-image {
   position: absolute;
-  transform: translate(-50%, -50%);
-  user-select: none;
-  -webkit-user-drag: none;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
 }
 
 .session-dm__map::before {
@@ -963,6 +952,133 @@
 .session-dm__map-btn--combat {
   bottom: 1rem;
   right: 1rem;
+}
+
+.session-dm__combat-setup-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.64);
+  backdrop-filter: blur(2px);
+}
+
+.session-dm__combat-setup {
+  width: min(980px, 94%);
+  max-height: min(80vh, 700px);
+  overflow: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 87, 87, 0.35);
+  background: linear-gradient(140deg, rgba(18, 10, 10, 0.96), rgba(10, 6, 6, 0.96));
+  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.7);
+  padding: 1rem;
+}
+
+.session-dm__combat-setup-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.session-dm__combat-setup-header h3 {
+  margin: 0;
+  font-family: var(--font-heading);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  color: #ff8585;
+}
+
+.session-dm__combat-setup-header p {
+  margin: 0.25rem 0 0;
+  color: var(--text-faint);
+  font-size: 0.92rem;
+}
+
+.session-dm__combat-setup-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.session-dm__combat-setup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.session-dm__combat-row {
+  display: grid;
+  grid-template-columns: auto 110px minmax(180px, 1fr) 100px 100px auto;
+  align-items: end;
+  gap: 0.55rem;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  border-radius: var(--radius-sm);
+  background: rgba(10, 8, 4, 0.6);
+  padding: 0.55rem;
+}
+
+.session-dm__combat-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-heading);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-light);
+}
+
+.session-dm__combat-select,
+.session-dm__combat-input,
+.session-dm__combat-number {
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 168, 76, 0.32);
+  background: rgba(8, 6, 3, 0.78);
+  color: var(--text-base);
+  font-family: var(--font-body);
+  padding: 0 0.55rem;
+}
+
+.session-dm__combat-select {
+  font-family: var(--font-heading);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.session-dm__combat-number-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: var(--font-heading);
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.session-dm__combat-number {
+  width: 100%;
+}
+
+.session-dm__combat-error {
+  margin: 0.75rem 0 0;
+  color: #ff8d8d;
+  font-size: 0.9rem;
+}
+
+.session-dm__combat-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
 }
 
 .session-dm__map-picker-backdrop {
@@ -1053,6 +1169,12 @@
 .session-dm__map-option:hover,
 .session-dm__map-option.is-selected {
   border-color: rgba(201, 168, 76, 0.62);
+}
+
+@media (max-width: 900px) {
+  .session-dm__combat-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .session-dm__map-overlay {

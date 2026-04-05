@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import EncounterOverlay from "./EncounterOverlay";
 
 const MAP_OPTIONS = Object.entries(
     import.meta.glob("../map_placeholder/*.{jpg,jpeg,png,webp}", { eager: true, import: "default" })
@@ -13,118 +14,178 @@ const MAP_OPTIONS = Object.entries(
         .trim(),
 }));
 
-function SessionMapCanvas({ showTurnOrder = false, turns = [], onCombatStateChange }) {
+function SessionMapCanvas({
+    showTurnOrder = false,
+    turns = [],
+    onCombatStateChange,
+    onSceneNameChange,
+    onTurnsChange,
+    playerCharacterNames = [],
+}) {
     const [isCombatState, setIsCombatState] = useState(false);
     const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
+    const [isCombatSetupOpen, setIsCombatSetupOpen] = useState(false);
+    const [combatSetupError, setCombatSetupError] = useState("");
+    const [draftParticipants, setDraftParticipants] = useState([]);
     const [selectedMap, setSelectedMap] = useState(null);
-    const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
-    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-    const [pan, setPan] = useState({ x: 0, y: 0 });
-    const [isDraggingMap, setIsDraggingMap] = useState(false);
-    const dragStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
-    const viewportRef = useRef(null);
+    const rowIdRef = useRef(0);
 
-    useEffect(() => {
-        if (!selectedMap || !viewportRef.current) {
-            return undefined;
+    const nextRowId = () => {
+        rowIdRef.current += 1;
+        return rowIdRef.current;
+    };
+
+    const defaultHpByKind = (kind) => {
+        if (kind === "Player") {
+            return 35;
         }
+        if (kind === "NPC") {
+            return 20;
+        }
+        return 26;
+    };
 
-        const element = viewportRef.current;
-        const observer = new ResizeObserver((entries) => {
-            const entry = entries[0];
-            if (!entry) {
-                return;
+    const defaultDetailByKind = (kind) => {
+        if (kind === "Enemy") {
+            return { creatureType: "Creature", cr: "CR 1" };
+        }
+        if (kind === "NPC") {
+            return { className: "NPC", level: 1 };
+        }
+        return { className: "Adventurer", level: 1 };
+    };
+
+    const suggestedName = (kind, list) => {
+        if (kind === "Player") {
+            const used = new Set(list.filter((item) => item.kind === "Player").map((item) => item.name));
+            const nextPlayer = playerCharacterNames.find((name) => name && !used.has(name));
+            if (nextPlayer) {
+                return nextPlayer;
             }
-            setViewportSize({
-                width: entry.contentRect.width,
-                height: entry.contentRect.height,
-            });
-        });
-
-        observer.observe(element);
-        return () => observer.disconnect();
-    }, [selectedMap]);
-
-    const mapDisplay = useMemo(() => {
-        if (!imageNaturalSize.width || !imageNaturalSize.height || !viewportSize.width || !viewportSize.height) {
-            return { width: 0, height: 0, maxX: 0, maxY: 0 };
         }
+        const count = list.filter((item) => item.kind === kind).length + 1;
+        return `${kind} ${count}`;
+    };
 
-        const coverScale = Math.max(
-            viewportSize.width / imageNaturalSize.width,
-            viewportSize.height / imageNaturalSize.height
-        );
-        const width = imageNaturalSize.width * coverScale;
-        const height = imageNaturalSize.height * coverScale;
-
-        return {
-            width,
-            height,
-            maxX: Math.max(0, (width - viewportSize.width) / 2),
-            maxY: Math.max(0, (height - viewportSize.height) / 2),
-        };
-    }, [imageNaturalSize.height, imageNaturalSize.width, viewportSize.height, viewportSize.width]);
-
-    const clampPan = (x, y) => ({
-        x: Math.min(mapDisplay.maxX, Math.max(-mapDisplay.maxX, x)),
-        y: Math.min(mapDisplay.maxY, Math.max(-mapDisplay.maxY, y)),
+    const createParticipant = (kind, list, seed = {}) => ({
+        id: seed.id ?? nextRowId(),
+        include: seed.include ?? true,
+        kind,
+        name: seed.name ?? suggestedName(kind, list),
+        initiative: seed.initiative ?? 10,
+        hp: seed.hp ?? defaultHpByKind(kind),
     });
 
-    useEffect(() => {
-        setPan((prev) => clampPan(prev.x, prev.y));
-    }, [mapDisplay.maxX, mapDisplay.maxY]);
+    const openCombatSetup = () => {
+        const seededFromTurns = turns.map((turn) =>
+            createParticipant(turn.kind || "Enemy", [], {
+                include: true,
+                name: turn.name || "",
+                initiative: typeof turn.initiative === "number" ? turn.initiative : 10,
+                hp: typeof turn.hp === "number" ? turn.hp : defaultHpByKind(turn.kind || "Enemy"),
+            })
+        );
+
+        const seededFromPlayers = playerCharacterNames.map((name) =>
+            createParticipant("Player", [], {
+                id: nextRowId(),
+                include: true,
+                name,
+                initiative: 10,
+                hp: defaultHpByKind("Player"),
+            })
+        );
+
+        const startingRows = seededFromTurns.length > 0 ? seededFromTurns : seededFromPlayers;
+        setDraftParticipants(startingRows.length > 0 ? startingRows : [createParticipant("Enemy", [])]);
+        setCombatSetupError("");
+        setIsCombatSetupOpen(true);
+    };
+
+    const applyCombatSetup = () => {
+        const activeRows = draftParticipants.filter((row) => row.include && row.name.trim());
+        if (activeRows.length === 0) {
+            setCombatSetupError("Add at least one included participant before starting combat.");
+            return;
+        }
+
+        const sortedRows = [...activeRows].sort((a, b) => {
+            if (b.initiative !== a.initiative) {
+                return b.initiative - a.initiative;
+            }
+            return a.name.localeCompare(b.name);
+        });
+
+        const computedTurns = sortedRows.map((row, idx) => ({
+            order: idx + 1,
+            initiative: Number(row.initiative) || 0,
+            name: row.name.trim(),
+            kind: row.kind,
+            hp: Number(row.hp) || defaultHpByKind(row.kind),
+            isActive: idx === 0,
+            isNext: idx === 1,
+            ...defaultDetailByKind(row.kind),
+        }));
+
+        if (onTurnsChange) {
+            onTurnsChange(computedTurns);
+        }
+
+        setIsCombatState(true);
+        if (onCombatStateChange) {
+            onCombatStateChange(true);
+        }
+        setIsCombatSetupOpen(false);
+    };
+
+    const addParticipant = (kind) => {
+        setDraftParticipants((prev) => [...prev, createParticipant(kind, prev)]);
+    };
+
+    const toggleParticipantInclude = (id, include) => {
+        setDraftParticipants((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, include } : item))
+        );
+    };
+
+    const updateParticipantKind = (id, kind) => {
+        setDraftParticipants((prev) =>
+            prev.map((item) =>
+                item.id === id ? { ...item, kind, hp: defaultHpByKind(kind) } : item
+            )
+        );
+    };
+
+    const updateParticipantName = (id, name) => {
+        setDraftParticipants((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, name } : item))
+        );
+    };
+
+    const updateParticipantInitiative = (id, initiative) => {
+        setDraftParticipants((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, initiative } : item))
+        );
+    };
+
+    const updateParticipantHp = (id, hp) => {
+        setDraftParticipants((prev) =>
+            prev.map((item) => (item.id === id ? { ...item, hp } : item))
+        );
+    };
+
+    const removeParticipant = (id) => {
+        setDraftParticipants((prev) => prev.filter((item) => item.id !== id));
+    };
 
     return (
         <main className={["session-dm__map", isCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
             {selectedMap && (
-                <div
-                    ref={viewportRef}
-                    className={["session-dm__map-viewport", isDraggingMap ? "is-dragging" : ""].filter(Boolean).join(" ")}
-                    onPointerDown={(event) => {
-                        event.currentTarget.setPointerCapture(event.pointerId);
-                        dragStartRef.current = {
-                            x: event.clientX,
-                            y: event.clientY,
-                            panX: pan.x,
-                            panY: pan.y,
-                        };
-                        setIsDraggingMap(true);
-                    }}
-                    onPointerMove={(event) => {
-                        if (!isDraggingMap) {
-                            return;
-                        }
-                        const deltaX = event.clientX - dragStartRef.current.x;
-                        const deltaY = event.clientY - dragStartRef.current.y;
-                        setPan(clampPan(dragStartRef.current.panX + deltaX, dragStartRef.current.panY + deltaY));
-                    }}
-                    onPointerUp={(event) => {
-                        event.currentTarget.releasePointerCapture(event.pointerId);
-                        setIsDraggingMap(false);
-                    }}
-                    onPointerLeave={() => setIsDraggingMap(false)}
-                >
-                    <img
-                        className="session-dm__map-image"
-                        src={selectedMap.src}
-                        alt={`${selectedMap.name} map`}
-                        draggable={false}
-                        onLoad={(event) => {
-                            const target = event.currentTarget;
-                            setImageNaturalSize({
-                                width: target.naturalWidth,
-                                height: target.naturalHeight,
-                            });
-                            setPan({ x: 0, y: 0 });
-                        }}
-                        style={{
-                            width: mapDisplay.width ? `${mapDisplay.width}px` : undefined,
-                            height: mapDisplay.height ? `${mapDisplay.height}px` : undefined,
-                            left: `calc(50% + ${pan.x}px)`,
-                            top: `calc(50% + ${pan.y}px)`,
-                        }}
-                    />
-                </div>
+                <img
+                    className="session-dm__map-image"
+                    src={selectedMap.src}
+                    alt={`${selectedMap.name} map`}
+                />
             )}
             <button
                 type="button"
@@ -166,18 +227,36 @@ function SessionMapCanvas({ showTurnOrder = false, turns = [], onCombatStateChan
                 type="button"
                 className="session-dm__map-btn session-dm__map-btn--combat"
                 onClick={() => {
-                    setIsCombatState((prev) => {
-                        const nextValue = !prev;
-                        if (onCombatStateChange) {
-                            onCombatStateChange(nextValue);
+                    if (isCombatState) {
+                        setIsCombatState(false);
+                        if (onTurnsChange) {
+                            onTurnsChange([]);
                         }
-                        return nextValue;
-                    });
+                        if (onCombatStateChange) {
+                            onCombatStateChange(false);
+                        }
+                        return;
+                    }
+                    openCombatSetup();
                 }}
                 aria-pressed={isCombatState}
             >
                 {isCombatState ? "End Combat" : "Combat"}
             </button>
+            <EncounterOverlay
+                isOpen={isCombatSetupOpen}
+                draftParticipants={draftParticipants}
+                combatSetupError={combatSetupError}
+                onClose={() => setIsCombatSetupOpen(false)}
+                onAddParticipant={addParticipant}
+                onToggleInclude={toggleParticipantInclude}
+                onKindChange={updateParticipantKind}
+                onNameChange={updateParticipantName}
+                onInitiativeChange={updateParticipantInitiative}
+                onHpChange={updateParticipantHp}
+                onRemove={removeParticipant}
+                onApply={applyCombatSetup}
+            />
             {isMapPickerOpen && (
                 <div className="session-dm__map-picker-backdrop" role="dialog" aria-modal="true" aria-label="Choose map">
                     <div className="session-dm__map-picker">
@@ -198,6 +277,9 @@ function SessionMapCanvas({ showTurnOrder = false, turns = [], onCombatStateChan
                                     ].filter(Boolean).join(" ")}
                                     onClick={() => {
                                         setSelectedMap(option);
+                                        if (onSceneNameChange) {
+                                            onSceneNameChange(option.name);
+                                        }
                                         setIsMapPickerOpen(false);
                                     }}
                                 >
