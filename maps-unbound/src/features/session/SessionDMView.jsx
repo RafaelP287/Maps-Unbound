@@ -4,16 +4,19 @@ import SessionMapCanvas from "./components/SessionMapCanvas";
 import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import useCampaign from "../campaigns/use-campaign";
 import LoadingPage from "../../shared/Loading.jsx";
 import "./session.css";
 
 function SessionDMView() {
+    const navigate = useNavigate();
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
     const [isCombatState, setIsCombatState] = useState(false);
+    const [isSessionPaused, setIsSessionPaused] = useState(false);
+    const [isEndSessionConfirmOpen, setIsEndSessionConfirmOpen] = useState(false);
     const [sceneName, setSceneName] = useState("");
     const [turns, setTurns] = useState([]);
     const [combatRound, setCombatRound] = useState(0);
@@ -33,6 +36,29 @@ function SessionDMView() {
             };
         });
     const playerCharacterNames = players.map((player) => player.username).filter(Boolean);
+    const sheetEntities = [
+        ...players.map((player, idx) => ({
+            kind: "Player",
+            name: player.username || `Player ${idx + 1}`,
+            className: "Adventurer",
+            level: 1,
+            hp: 30,
+        })),
+        ...(campaign?.npcs || []).map((npc, idx) => ({
+            kind: "NPC",
+            name: npc.name || `NPC ${idx + 1}`,
+            className: npc.role || "NPC",
+            level: 1,
+            hp: 20,
+        })),
+        ...(campaign?.enemies || []).map((enemy, idx) => ({
+            kind: "Enemy",
+            name: enemy.name || `Enemy ${idx + 1}`,
+            creatureType: enemy.role || "Enemy",
+            cr: "CR ?",
+            hp: 26,
+        })),
+    ];
 
     const handleTurnsChange = (nextTurns) => {
         if (!nextTurns || nextTurns.length === 0) {
@@ -80,6 +106,7 @@ function SessionDMView() {
         isRightCollapsed ? "is-right-collapsed" : "",
         isBottomCollapsed ? "is-bottom-collapsed" : "",
     ].filter(Boolean).join(" ");
+    const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
     if (loading) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
@@ -90,19 +117,22 @@ function SessionDMView() {
             <SessionTopBar
                 campaignName={campaignName}
                 players={players}
-                campaignId={campaignId}
                 sceneName={sceneName}
                 sessionName={sessionNameParam || ""}
                 isCombatState={isCombatState}
+                onPauseSession={() => setIsSessionPaused(true)}
+                onEndSession={() => setIsEndSessionConfirmOpen(true)}
             />
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}
                 onToggle={() => setIsLeftCollapsed((prev) => !prev)}
                 turns={turns}
+                entities={sheetEntities}
             />
             <SessionMapCanvas
-                showTurnOrder={isRightCollapsed}
                 turns={turns}
+                round={combatRound}
+                onAdvanceTurn={handleAdvanceTurn}
                 onCombatStateChange={setIsCombatState}
                 onSceneNameChange={setSceneName}
                 onTurnsChange={handleTurnsChange}
@@ -111,14 +141,50 @@ function SessionDMView() {
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
-                turns={turns}
-                round={combatRound}
-                onAdvanceTurn={handleAdvanceTurn}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}
                 onToggle={() => setIsBottomCollapsed((prev) => !prev)}
             />
+            {isSessionPaused && (
+                <div className="session-dm__pause-overlay" role="dialog" aria-modal="true" aria-label="Session paused">
+                    <div className="session-dm__pause-overlay-card">
+                        <h2>Session Is Currently Paused</h2>
+                        <p>Gameplay is paused. Resume when everyone is ready.</p>
+                        <button
+                            type="button"
+                            className="session-dm__exit session-dm__pause-overlay-btn"
+                            onClick={() => setIsSessionPaused(false)}
+                        >
+                            End Pause
+                        </button>
+                    </div>
+                </div>
+            )}
+            {isEndSessionConfirmOpen && (
+                <div className="session-dm__pause-overlay session-dm__confirm-overlay" role="dialog" aria-modal="true" aria-label="End session confirmation">
+                    <div className="session-dm__pause-overlay-card">
+                        <h2>End Session?</h2>
+                        <p>Are you sure you want to end this session now?</p>
+                        <div className="session-dm__confirm-actions">
+                            <button
+                                type="button"
+                                className="session-dm__exit session-dm__pause"
+                                onClick={() => setIsEndSessionConfirmOpen(false)}
+                            >
+                                Keep Session Open
+                            </button>
+                            <button
+                                type="button"
+                                className="session-dm__exit"
+                                onClick={() => navigate(exitLink)}
+                            >
+                                Yes, End Session
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

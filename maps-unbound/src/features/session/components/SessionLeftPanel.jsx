@@ -1,22 +1,29 @@
 import { useMemo, useState } from "react";
 
-function SessionLeftPanel({ isCollapsed, onToggle, turns = [] }) {
-    const players = turns.filter((turn) => turn.kind === "Player");
-    const npcs = turns.filter((turn) => turn.kind === "NPC");
-    const enemies = turns.filter((turn) => turn.kind === "Enemy");
+function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) {
+    const sourceEntities = entities.length > 0 ? entities : turns;
+    const normalizedEntities = useMemo(
+        () => sourceEntities.map((turn, idx) => ({
+            ...turn,
+            entityId: `${turn.kind}-${turn.name}-${idx}`,
+        })),
+        [sourceEntities]
+    );
+    const players = normalizedEntities.filter((turn) => turn.kind === "Player");
+    const npcs = normalizedEntities.filter((turn) => turn.kind === "NPC");
+    const enemies = normalizedEntities.filter((turn) => turn.kind === "Enemy");
     const [activeTab, setActiveTab] = useState("players");
     const [selectedEntityId, setSelectedEntityId] = useState(null);
 
     const entityById = useMemo(() => {
         const entries = [];
-        turns.forEach((turn) => {
+        normalizedEntities.forEach((turn) => {
             entries.push({
                 ...turn,
-                entityId: `${turn.kind}-${turn.name}`,
             });
         });
         return Object.fromEntries(entries.map((entry) => [entry.entityId, entry]));
-    }, [turns]);
+    }, [normalizedEntities]);
 
     const selectedEntity = selectedEntityId ? entityById[selectedEntityId] : null;
 
@@ -149,10 +156,10 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [] }) {
                                 <div className="session-dm__section">
                                     <div className="session-dm__sheet-list">
                                         {players.map((player) => {
-                                            const id = `Player-${player.name}`;
+                                            const id = player.entityId;
                                             return (
                                                 <button
-                                                    key={player.name}
+                                                    key={player.entityId}
                                                     type="button"
                                                     className="session-dm__sheet session-dm__sheet-button"
                                                     onClick={() => setSelectedEntityId(id)}
@@ -178,10 +185,10 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [] }) {
                                 <div className="session-dm__section">
                                     <div className="session-dm__sheet-list">
                                         {npcs.map((npc) => {
-                                            const id = `NPC-${npc.name}`;
+                                            const id = npc.entityId;
                                             return (
                                                 <button
-                                                    key={npc.name}
+                                                    key={npc.entityId}
                                                     type="button"
                                                     className="session-dm__sheet session-dm__sheet-button"
                                                     onClick={() => setSelectedEntityId(id)}
@@ -207,10 +214,10 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [] }) {
                                 <div className="session-dm__section">
                                     <div className="session-dm__sheet-list">
                                         {enemies.map((enemy) => {
-                                            const id = `Enemy-${enemy.name}`;
+                                            const id = enemy.entityId;
                                             return (
                                                 <button
-                                                    key={enemy.name}
+                                                    key={enemy.entityId}
                                                     type="button"
                                                     className="session-dm__sheet session-dm__sheet-button"
                                                     onClick={() => setSelectedEntityId(id)}

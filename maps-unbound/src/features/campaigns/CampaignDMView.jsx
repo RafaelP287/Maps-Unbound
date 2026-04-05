@@ -40,6 +40,13 @@ function CampaignDMView({ campaign, refetch }) {
       notes: npc?.notes || "",
     }))
   );
+  const [editEnemies, setEditEnemies] = useState(
+    (campaign.enemies || []).map((enemy) => ({
+      name: enemy?.name || "",
+      role: enemy?.role || "",
+      notes: enemy?.notes || "",
+    }))
+  );
   const [editLoot, setEditLoot] = useState(
     (campaign.loot || []).map((item) => ({
       name: item?.name || "",
@@ -80,6 +87,11 @@ function CampaignDMView({ campaign, refetch }) {
         role: npc.role.trim(),
         notes: npc.notes.trim(),
       })).filter((npc) => npc.name);
+      const enemies = editEnemies.map((enemy) => ({
+        name: enemy.name.trim(),
+        role: enemy.role.trim(),
+        notes: enemy.notes.trim(),
+      })).filter((enemy) => enemy.name);
       const loot = editLoot.map((item) => {
         const quantity = Number(item.quantity);
         return {
@@ -113,6 +125,7 @@ function CampaignDMView({ campaign, refetch }) {
           status: editStatus,
           currentQuest,
           npcs,
+          enemies,
           loot,
           members: memberPayload,
         }),
@@ -141,6 +154,13 @@ function CampaignDMView({ campaign, refetch }) {
         name: npc?.name || "",
         role: npc?.role || "",
         notes: npc?.notes || "",
+      }))
+    );
+    setEditEnemies(
+      (campaign.enemies || []).map((enemy) => ({
+        name: enemy?.name || "",
+        role: enemy?.role || "",
+        notes: enemy?.notes || "",
       }))
     );
     setEditLoot(
@@ -291,6 +311,57 @@ function CampaignDMView({ campaign, refetch }) {
               <p className="campaign-helper-text">
                 Leave title and objective blank to clear the current quest.
               </p>
+            </section>
+          )}
+
+          {isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Enemy Tracker</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-edit-list">
+                {editEnemies.length === 0 && <p className="campaign-helper-text">No enemies added yet.</p>}
+                {editEnemies.map((enemy, idx) => (
+                  <div className="campaign-edit-item" key={`enemy-${idx}`}>
+                    <input
+                      type="text"
+                      maxLength="80"
+                      placeholder="Enemy name"
+                      value={enemy.name}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))}
+                    />
+                    <input
+                      type="text"
+                      maxLength="120"
+                      placeholder="Role (Boss, Minion, Beast...)"
+                      value={enemy.role}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, role: e.target.value } : p))}
+                    />
+                    <textarea
+                      maxLength="400"
+                      placeholder="Notes"
+                      value={enemy.notes}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, notes: e.target.value } : p))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      onClick={() => setEditEnemies((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Remove Enemy
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-edit"
+                onClick={() => setEditEnemies((prev) => [...prev, { name: "", role: "", notes: "" }])}
+              >
+                + Add Enemy
+              </button>
             </section>
           )}
 

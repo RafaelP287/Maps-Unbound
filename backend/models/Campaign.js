@@ -23,6 +23,12 @@ const npcSchema = new mongoose.Schema({
   notes: { type: String, trim: true, maxlength: 400 },
 }, { _id: false });
 
+const enemySchema = new mongoose.Schema({
+  name: { type: String, trim: true, maxlength: 80, required: true },
+  role: { type: String, trim: true, maxlength: 120 },
+  notes: { type: String, trim: true, maxlength: 400 },
+}, { _id: false });
+
 const lootSchema = new mongoose.Schema({
   name: { type: String, trim: true, maxlength: 120, required: true },
   quantity: { type: Number, min: 1, max: 999, default: 1 },
@@ -49,6 +55,7 @@ const campaignSchema = new mongoose.Schema({
   },
   currentQuest: { type: currentQuestSchema, default: null },
   npcs: { type: [npcSchema], default: [] },
+  enemies: { type: [enemySchema], default: [] },
   loot: { type: [lootSchema], default: [] },
   members: [memberSchema],
   sessionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Session", default: [] },

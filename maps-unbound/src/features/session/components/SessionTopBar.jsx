@@ -1,17 +1,14 @@
-import { Link } from "react-router-dom";
-
 function SessionTopBar({
     campaignName = "Campaign Name",
     sessionName = "Session Name",
     players = [],
-    campaignId,
     sceneName = "SCENE",
     isCombatState = false,
+    onPauseSession,
+    onEndSession,
 }) {
     const fallbackPlayers = ["?", "?", "?", "?"].map((initial) => ({ initial, username: "Unknown" }));
     const renderedPlayers = players.length > 0 ? players : fallbackPlayers;
-    const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
-
     return (
         <header className="session-dm__top session-dm__panel">
             {isCombatState && <div className="session-dm__combat-indicator">IN COMBAT</div>}
@@ -41,9 +38,12 @@ function SessionTopBar({
                         </span>
                     ))}
                 </div>
-                <Link to={exitLink} className="session-dm__exit">
-                    Exit Session
-                </Link>
+                <button type="button" className="session-dm__exit session-dm__pause" onClick={onPauseSession}>
+                    Pause Session
+                </button>
+                <button type="button" className="session-dm__exit" onClick={onEndSession}>
+                    End Session
+                </button>
             </div>
         </header>
     )
