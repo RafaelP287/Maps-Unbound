@@ -61,6 +61,14 @@ router.post("/", verifyToken, async (req, res) => {
     if (scheduledFor && Number.isNaN(scheduledFor.getTime())) {
       return res.status(400).json({ error: "Invalid scheduledFor date" });
     }
+    const startedAt = req.body.startedAt ? new Date(req.body.startedAt) : undefined;
+    if (startedAt && Number.isNaN(startedAt.getTime())) {
+      return res.status(400).json({ error: "Invalid startedAt date" });
+    }
+    const endedAt = req.body.endedAt ? new Date(req.body.endedAt) : undefined;
+    if (endedAt && Number.isNaN(endedAt.getTime())) {
+      return res.status(400).json({ error: "Invalid endedAt date" });
+    }
 
     const session = new Session({
       campaignId,
@@ -68,6 +76,8 @@ router.post("/", verifyToken, async (req, res) => {
       sessionNumber,
       status,
       scheduledFor,
+      startedAt,
+      endedAt,
       summary: req.body.summary?.trim(),
       notes: Array.isArray(req.body.notes)
         ? req.body.notes
@@ -90,6 +100,81 @@ router.post("/", verifyToken, async (req, res) => {
     await campaign.save();
 
     res.status(201).json(session);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update a session (DM only)
+router.put("/:id", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can update this session" });
+    }
+
+    const updates = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "title")) {
+      const title = req.body.title?.trim?.() || "";
+      if (!title || title.length < 3) {
+        return res.status(400).json({ error: "Title must be at least 3 characters" });
+      }
+      updates.title = title;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "status")) {
+      if (!STATUSES.has(req.body.status)) {
+        return res.status(400).json({ error: "Invalid session status" });
+      }
+      updates.status = req.body.status;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "startedAt")) {
+      if (!req.body.startedAt) {
+        updates.startedAt = null;
+      } else {
+        const startedAt = new Date(req.body.startedAt);
+        if (Number.isNaN(startedAt.getTime())) {
+          return res.status(400).json({ error: "Invalid startedAt date" });
+        }
+        updates.startedAt = startedAt;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "endedAt")) {
+      if (!req.body.endedAt) {
+        updates.endedAt = null;
+      } else {
+        const endedAt = new Date(req.body.endedAt);
+        if (Number.isNaN(endedAt.getTime())) {
+          return res.status(400).json({ error: "Invalid endedAt date" });
+        }
+        updates.endedAt = endedAt;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "summary")) {
+      updates.summary = req.body.summary?.trim?.() || "";
+    }
+
+    const updatedSession = await Session.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    res.json(updatedSession);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -141,6 +226,36 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
 
     res.json(session);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete a session (DM only)
+router.delete("/:id", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can delete this session" });
+    }
+
+    await Session.findByIdAndDelete(req.params.id);
+    campaign.sessionIds = (campaign.sessionIds || []).filter(
+      (id) => id.toString() !== req.params.id
+    );
+    await campaign.save();
+
+    res.json({ message: "Session deleted" });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

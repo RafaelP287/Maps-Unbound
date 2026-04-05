@@ -79,8 +79,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="session/dm" element={<SessionLayout />}>
-          <Route index element={<SessionDMView />} />
+        <Route path="session" element={<SessionLayout />}>
+          <Route index element={<Session />} />
+          <Route path="dm" element={<SessionDMView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
@@ -100,11 +101,6 @@ function App() {
               />
             } 
           />
-
-          {/* Session routes */}
-          <Route path="session">
-            <Route index element={<Session />} />
-          </Route>
 
           {/* Character Routes */}
           <Route path="characters" element={<Characters />} />

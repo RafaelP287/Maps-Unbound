@@ -5,23 +5,28 @@ import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
 import LoadingPage from "../../shared/Loading.jsx";
 import "./session.css";
 
 function SessionDMView() {
     const navigate = useNavigate();
+    const { token } = useAuth();
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
     const [isCombatState, setIsCombatState] = useState(false);
     const [isSessionPaused, setIsSessionPaused] = useState(false);
     const [isEndSessionConfirmOpen, setIsEndSessionConfirmOpen] = useState(false);
+    const [endingSession, setEndingSession] = useState(false);
+    const [endSessionError, setEndSessionError] = useState("");
     const [sceneName, setSceneName] = useState("");
     const [turns, setTurns] = useState([]);
     const [combatRound, setCombatRound] = useState(0);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
+    const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
     const { campaign, loading } = useCampaign(campaignId);
 
@@ -108,6 +113,43 @@ function SessionDMView() {
     ].filter(Boolean).join(" ");
     const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
+    const handleEndSession = async () => {
+        if (endingSession) {
+            return;
+        }
+
+        if (!sessionId || !token) {
+            navigate(exitLink);
+            return;
+        }
+
+        setEndingSession(true);
+        setEndSessionError("");
+        try {
+            const res = await fetch(`/api/sessions/${sessionId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    status: "Completed",
+                    endedAt: new Date().toISOString(),
+                    summary: sceneName ? `Scene: ${sceneName}` : undefined,
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || "Failed to end session");
+            }
+            navigate(exitLink);
+        } catch (err) {
+            setEndSessionError(err.message || "Failed to end session.");
+        } finally {
+            setEndingSession(false);
+        }
+    };
+
     if (loading) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
     }
@@ -166,20 +208,26 @@ function SessionDMView() {
                     <div className="session-dm__pause-overlay-card">
                         <h2>End Session?</h2>
                         <p>Are you sure you want to end this session now?</p>
+                        {endSessionError && <p className="session-dm__pause-overlay-error">{endSessionError}</p>}
                         <div className="session-dm__confirm-actions">
                             <button
                                 type="button"
                                 className="session-dm__exit session-dm__pause"
-                                onClick={() => setIsEndSessionConfirmOpen(false)}
+                                onClick={() => {
+                                    setIsEndSessionConfirmOpen(false);
+                                    setEndSessionError("");
+                                }}
+                                disabled={endingSession}
                             >
                                 Keep Session Open
                             </button>
                             <button
                                 type="button"
                                 className="session-dm__exit"
-                                onClick={() => navigate(exitLink)}
+                                onClick={handleEndSession}
+                                disabled={endingSession}
                             >
-                                Yes, End Session
+                                {endingSession ? "Ending..." : "Yes, End Session"}
                             </button>
                         </div>
                     </div>

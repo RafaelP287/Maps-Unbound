@@ -11,6 +11,8 @@ function CampaignsPage() {
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showStartSession, setShowStartSession] = useState(false);
+  const [startingCampaignId, setStartingCampaignId] = useState("");
+  const [startSessionError, setStartSessionError] = useState("");
   const navigate = useNavigate();
   const dmCampaigns = useMemo(() => {
     return campaigns.filter((campaign) => {
@@ -49,6 +51,53 @@ function CampaignsPage() {
   if (!isLoggedIn) {
     return <Gate>Sign in to access your campaigns.</Gate>;
   }
+
+  const handleStartCampaignSession = async (campaign) => {
+    if (!campaign?._id || startingCampaignId) return;
+    setStartSessionError("");
+    setStartingCampaignId(campaign._id);
+    try {
+      const sessionsRes = await fetch(`/api/sessions?campaignId=${campaign._id}`, {
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      });
+      if (!sessionsRes.ok) {
+        const sessionsData = await sessionsRes.json().catch(() => ({}));
+        throw new Error(sessionsData.error || "Failed to load campaign sessions");
+      }
+      const existingSessions = await sessionsRes.json();
+      const nextSessionNumber = (Array.isArray(existingSessions) ? existingSessions.length : 0) + 1;
+
+      const createRes = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          campaignId: campaign._id,
+          title: `Session ${nextSessionNumber}`,
+          sessionNumber: nextSessionNumber,
+          status: "In Progress",
+          startedAt: new Date().toISOString(),
+          participants: (campaign.members || []).map((member) => ({
+            userId: member.userId?._id || member.userId,
+            role: member.role,
+          })),
+        }),
+      });
+      if (!createRes.ok) {
+        const createData = await createRes.json().catch(() => ({}));
+        throw new Error(createData.error || "Failed to start session");
+      }
+
+      const createdSession = await createRes.json();
+      setShowStartSession(false);
+      navigate(
+        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
+      );
+    } catch (err) {
+      setStartSessionError(err.message || "Failed to start session");
+    } finally {
+      setStartingCampaignId("");
+    }
+  };
 
   return (
     <div className="campaign-page-padded">
@@ -128,10 +177,8 @@ function CampaignsPage() {
                   key={campaign._id}
                   type="button"
                   className="campaign-session-item"
-                  onClick={() => {
-                    setShowStartSession(false);
-                    navigate(`/session?campaignId=${campaign._id}`);
-                  }}
+                  onClick={() => handleStartCampaignSession(campaign)}
+                  disabled={Boolean(startingCampaignId)}
                 >
                   <div>
                     <div className="campaign-session-title">{campaign.title}</div>
@@ -139,13 +186,18 @@ function CampaignsPage() {
                       {campaign.members?.length || 0} members • {campaign.status}
                     </div>
                   </div>
-                  <span className="campaign-session-action">Start</span>
+                  <span className="campaign-session-action">
+                    {startingCampaignId === campaign._id ? "Starting..." : "Start"}
+                  </span>
                 </button>
               ))}
               {dmCampaigns.length === 0 && (
                 <div className="campaign-session-empty">
                   You are not the DM of any campaigns yet.
                 </div>
+              )}
+              {startSessionError && (
+                <div className="campaign-session-empty">{startSessionError}</div>
               )}
             </div>
           </div>

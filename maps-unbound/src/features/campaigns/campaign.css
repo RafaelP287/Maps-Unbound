@@ -833,6 +833,14 @@ textarea.campaign-quest-objective {
   text-align: center;
 }
 
+.campaign-session-delete-list {
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  background: rgba(12, 9, 5, 0.55);
+}
+
 /* Empty State */
 .campaign-empty {
   display: flex;

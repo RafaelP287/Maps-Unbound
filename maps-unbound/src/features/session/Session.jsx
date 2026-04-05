@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import SessionDMView from "./SessionDMView.jsx";
 import SessionLobby from "./SessionLobby.jsx";
 
@@ -7,7 +7,9 @@ function Session() {
   const view = searchParams.get("view");
 
   if (view === "dm") {
-    return <SessionDMView />;
+    const params = new URLSearchParams(searchParams);
+    params.delete("view");
+    return <Navigate to={`/session/dm?${params.toString()}`} replace />;
   }
 
   return <SessionLobby />;
