@@ -1,15 +1,19 @@
 import { Outlet } from "react-router-dom";
+import { useLocation } from 'react-router-dom';
 import Navbar from "../shared/Navbar.jsx";
 import Footer from "../shared/Footer.jsx";
 
 function AppLayout() {
+    const location = useLocation();
+    const isMaps = location.pathname === '/maps';
+
     return (
         <div style={styles.page}>
             <Navbar />
-            <main style={styles.main}>
+            <main style={isMaps ? styles.mainMaps : styles.main}>
                 <Outlet />
             </main>
-            <Footer />
+            {!isMaps && <Footer />}
         </div>
     );
 }
@@ -25,6 +29,13 @@ const styles = {
         flex: 1,
         paddingTop: '60px',
         paddingBottom: '60px',
+    },
+    mainMaps: {
+        flex: 1,
+        paddingTop: '0px',
+        paddingBottom: '0px',
+        height: '100vh',
+        overflow: 'hidden',
     },
 };
 

@@ -51,12 +51,16 @@ Create a account on dddice.com
 
 and once you create get a API key to initiallize the engine
 
-Profile<Developers< Create API Key
+# dddice API Key
 
->>>>>>> Stashed changes
->>>>>>>
->>>>>>
->>>>>
->>>>
->>>
->>
+add a .env to maps-unbound
+
+use both vite and react just incase 
+
+# Vite projects use VITE_ prefix
+
+VITE_DDDICE_API_KEY=yourdddiceAPIkey
+
+# If you use Create React App instead, use this line instead of the one above:
+
+REACT_APP_DDDICE_API_KEY=yourdddiceAPIkey
