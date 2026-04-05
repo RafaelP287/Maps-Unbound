@@ -16,13 +16,15 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext.jsx';
+import SessionBoard from '../session/SessionBoard.jsx';
+import './lobby.css';
 
 function Lobby() {
   // Get campaignId from URL parameters (e.g., /campaign/:campaignId/lobby)
   const { campaignId } = useParams();
   
   // Get authenticated user from AuthContext
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   
   // State for live events feed (player joins/leaves)
   const [events, setEvents] = useState([]);
@@ -41,6 +43,10 @@ function Lobby() {
   
   // Debug log for troubleshooting connection issues (visible in UI)
   const [debugLog, setDebugLog] = useState([]);
+  const [isDM, setIsDM] = useState(false);
+  const [encounterOpen, setEncounterOpen] = useState(false);
+  const [encounterReady, setEncounterReady] = useState(false);
+  const [encounterReadySaving, setEncounterReadySaving] = useState(false);
   
   // Reference to the Socket.io client instance (persists across renders)
   const socketRef = useRef(null);
@@ -70,6 +76,29 @@ function Lobby() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const fetchCampaignRole = async () => {
+      if (!campaignId || !token || !user?._id) return;
+      try {
+        const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+
+        const campaign = await response.json();
+        const dmMember = campaign.members?.find((member) => member.role === 'DM');
+        const dmId = dmMember?.userId?._id?.toString?.() || dmMember?.userId?.toString?.();
+        setIsDM(campaign.createdBy?.toString?.() === user._id?.toString?.() || dmId === user._id?.toString?.());
+        setEncounterReady(Boolean(campaign.encounter?.isReady));
+      } catch {
+        setIsDM(false);
+        setEncounterReady(false);
+      }
+    };
+
+    fetchCampaignRole();
+  }, [campaignId, token, user?._id]);
 
   /**
    * Socket.io Connection Effect
@@ -197,203 +226,162 @@ function Lobby() {
     setMessageInput('');
   };
 
+  const updateEncounterReady = async (nextReady) => {
+    if (!isDM || !campaignId || !token) return;
+    try {
+      setEncounterReadySaving(true);
+      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/encounter-ready`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ isReady: nextReady }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || payload?.message || 'Failed to update encounter readiness');
+      }
+
+      setEncounterReady(nextReady);
+    } catch (err) {
+      addDebugLog(`❌ Encounter readiness update failed: ${err.message}`);
+    } finally {
+      setEncounterReadySaving(false);
+    }
+  };
+
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Campaign Lobby</h1>
-      <p style={styles.campaignId}>Campaign ID: <code>{campaignId}</code></p>
-      <p style={styles.status}>
-        Status: <span style={{ color: connected ? '#00FF00' : '#FF0000' }}>
+    <div className="lobby-page">
+      <section className="lobby-shell">
+      <h1 className="lobby-title">Campaign Lobby</h1>
+      <p className="lobby-campaign-id">Campaign ID: <code>{campaignId}</code></p>
+      <p className="lobby-status">
+        Status: <span className={connected ? 'lobby-status-pill is-connected' : 'lobby-status-pill is-disconnected'}>
           {connected ? '🟢 Connected' : '🔴 Disconnected'}
         </span>
       </p>
+      <p className="lobby-presence">Players connected: {players.length}</p>
+      <div className="lobby-actions">
+        {isDM ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setEncounterOpen(true)}
+              className="lobby-start-encounter-btn"
+            >
+              {encounterOpen ? 'Encounter Editor Open' : 'Open Encounter Editor'}
+            </button>
+            <button
+              type="button"
+              onClick={() => updateEncounterReady(!encounterReady)}
+              className="lobby-start-encounter-btn"
+              disabled={encounterReadySaving}
+            >
+              {encounterReadySaving
+                ? 'Saving...'
+                : encounterReady
+                  ? 'Lock Encounter (Prep Mode)'
+                  : 'Allow Players to Join'}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEncounterOpen(true)}
+            className="lobby-start-encounter-btn"
+            disabled={!encounterReady}
+          >
+            {!encounterReady ? 'Waiting for DM' : encounterOpen ? 'Encounter Open' : 'Join Encounter'}
+          </button>
+        )}
+      </div>
 
       {/* Debug Log Section */}
-      <details style={{ marginBottom: '20px', border: '1px solid #444', padding: '10px', borderRadius: '5px', backgroundColor: '#1a1a1a' }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 'bold', color: '#00FFFF' }}>🔍 Debug Log ({debugLog.length} events)</summary>
-        <div style={{ maxHeight: '200px', overflowY: 'auto', fontSize: '12px', fontFamily: 'monospace', marginTop: '10px', background: '#0a0a0a', padding: '10px', borderRadius: '3px', color: '#00FF00' }}>
+      <details className="lobby-debug">
+        <summary className="lobby-debug-summary">🔍 Debug Log ({debugLog.length} events)</summary>
+        <div className="lobby-debug-body">
           {debugLog.length === 0 ? (
-            <p style={{ color: '#888' }}>No debug logs yet...</p>
+            <p className="lobby-empty">No debug logs yet...</p>
           ) : (
             debugLog.map((log, idx) => (
-              <div key={idx} style={{ padding: '2px 0', borderBottom: '1px solid #333' }}>{log}</div>
+              <div key={idx} className="lobby-debug-line">{log}</div>
             ))
           )}
         </div>
       </details>
 
-      <div style={styles.content}>
-        {/* Chat Section */}
-        <div style={styles.chatSection}>
-          <h2 style={styles.sectionTitle}>Chat</h2>
-          <div style={styles.messagesContainer}>
-            {messages.length === 0 ? (
-              <p style={styles.emptyMessage}>No messages yet. Start the conversation!</p>
-            ) : (
-              messages.map((msg, idx) => (
-                <div key={idx} style={{
-                  ...styles.message,
-                  backgroundColor: msg.userId === user._id ? '#00FFFF20' : '#FFFFFF10'
-                }}>
-                  <strong style={{ color: msg.userId === user._id ? '#00FFFF' : '#00FF00' }}>
-                    {msg.username}:
-                  </strong>
-                  <p style={styles.messageText}>{msg.message}</p>
-                  <small style={styles.timestamp}>{msg.timestamp}</small>
-                </div>
-              ))
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-          <form onSubmit={sendMessage} style={styles.messageForm}>
-            <input
-              type="text"
-              value={messageInput}
-              onChange={(e) => setMessageInput(e.target.value)}
-              placeholder="Type a message..."
-              style={styles.messageInput}
-            />
-            <button type="submit" style={styles.sendBtn}>Send</button>
-          </form>
+      <div className="lobby-content">
+        <div className="lobby-encounter-column">
+          {encounterOpen && (isDM || encounterReady) ? (
+            <SessionBoard isDM={isDM} campaignIdOverride={campaignId} embedded hideEncounterChat />
+          ) : (
+            <div className="lobby-panel lobby-encounter-placeholder">
+              <h2 className="lobby-section-title">Encounter Map</h2>
+              <p className="lobby-empty">
+                {isDM
+                  ? 'Open the encounter editor, then allow players to join when ready.'
+                  : encounterReady
+                    ? 'Join the encounter to open the battle map here.'
+                    : 'The DM is preparing the encounter. Please wait.'}
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Events Section */}
-        <div style={styles.eventsSection}>
-          <h2 style={styles.sectionTitle}>Live Events</h2>
-          <div style={styles.eventsList}>
-            {events.length === 0 ? (
-              <p style={styles.emptyMessage}>Waiting for players to join...</p>
-            ) : (
-              <ul>
-                {events.map((event, index) => (
-                  <li key={`${event}-${index}`} style={styles.event}>{event}</li>
-                ))}
-              </ul>
-            )}
+        <div className="lobby-right-column">
+          {/* Chat Section */}
+          <div className="lobby-panel">
+            <h2 className="lobby-section-title">Lobby Chat</h2>
+            <div className="lobby-messages-container">
+              {messages.length === 0 ? (
+                <p className="lobby-empty">No messages yet. Start the conversation!</p>
+              ) : (
+                messages.map((msg, idx) => (
+                  <div key={idx} className={msg.userId === user._id ? 'lobby-message is-self' : 'lobby-message'}>
+                    <strong className={msg.userId === user._id ? 'lobby-author is-self' : 'lobby-author'}>
+                      {msg.username}:
+                    </strong>
+                    <p className="lobby-message-text">{msg.message}</p>
+                    <small className="lobby-timestamp">{msg.timestamp}</small>
+                  </div>
+                ))
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+            <form onSubmit={sendMessage} className="lobby-message-form">
+              <input
+                type="text"
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                placeholder="Type a message..."
+                className="lobby-message-input"
+              />
+              <button type="submit">Send</button>
+            </form>
+          </div>
+
+          {/* Events Section */}
+          <div className="lobby-panel">
+            <h2 className="lobby-section-title">Live Events</h2>
+            <div className="lobby-events-list">
+              {events.length === 0 ? (
+                <p className="lobby-empty">Waiting for players to join...</p>
+              ) : (
+                <ul className="lobby-events-ul">
+                  {events.map((event, index) => (
+                    <li key={`${event}-${index}`} className="lobby-event">{event}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>
+      </section>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    maxWidth: '1200px',
-    margin: '40px auto',
-    padding: '40px',
-    backgroundColor: '#1a1a1a',
-    borderRadius: '12px',
-    border: '2px solid #00FFFF',
-  },
-  title: {
-    color: '#00FFFF',
-    textAlign: 'center',
-    marginBottom: '10px',
-  },
-  campaignId: {
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: '10px',
-    fontSize: '12px',
-  },
-  status: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: '14px',
-    marginBottom: '30px',
-  },
-  content: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-  },
-  chatSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: '#111',
-    borderRadius: '8px',
-    border: '1px solid #333',
-    padding: '20px',
-  },
-  eventsSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    backgroundColor: '#111',
-    borderRadius: '8px',
-    border: '1px solid #333',
-    padding: '20px',
-  },
-  sectionTitle: {
-    color: '#fff',
-    marginBottom: '15px',
-    borderBottom: '1px solid #333',
-    paddingBottom: '10px',
-  },
-  messagesContainer: {
-    flex: 1,
-    overflowY: 'auto',
-    marginBottom: '15px',
-    minHeight: '300px',
-    maxHeight: '400px',
-    padding: '10px',
-  },
-  message: {
-    padding: '10px',
-    marginBottom: '8px',
-    borderRadius: '4px',
-    borderLeft: '3px solid #00FFFF',
-  },
-  messageText: {
-    margin: '5px 0 0 0',
-    color: '#fff',
-    fontSize: '14px',
-  },
-  timestamp: {
-    color: '#666',
-    fontSize: '11px',
-    display: 'block',
-    marginTop: '5px',
-  },
-  emptyMessage: {
-    color: '#666',
-    textAlign: 'center',
-    padding: '40px 0',
-  },
-  messageForm: {
-    display: 'flex',
-    gap: '8px',
-  },
-  messageInput: {
-    flex: 1,
-    padding: '10px',
-    borderRadius: '4px',
-    border: '1px solid #333',
-    backgroundColor: '#222',
-    color: '#fff',
-    fontSize: '14px',
-  },
-  sendBtn: {
-    padding: '10px 20px',
-    backgroundColor: '#00FFFF',
-    color: '#111',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    fontWeight: 'bold',
-  },
-  eventsList: {
-    flex: 1,
-    overflowY: 'auto',
-    minHeight: '300px',
-    maxHeight: '400px',
-    padding: '10px',
-  },
-  event: {
-    color: '#00FF00',
-    padding: '8px 0',
-    borderBottom: '1px solid #333',
-    fontSize: '12px',
-  }
-};
 
 export default Lobby;

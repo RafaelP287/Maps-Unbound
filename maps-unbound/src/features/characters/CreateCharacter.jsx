@@ -1,11 +1,13 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
 
 const CreateCharacter = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { token } = useAuth();
+  const selectedCharacterId = searchParams.get("characterId") || "";
   const [formData, setFormData] = useState({
     name: "",
     class: "",
@@ -13,7 +15,53 @@ const CreateCharacter = () => {
     level: 1
   });
   const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
+  const [loadingCharacter, setLoadingCharacter] = useState(Boolean(selectedCharacterId));
   const [loading, setLoading] = useState(false);
+
+  const applyCharacterToForm = (character) => {
+    if (!character) {
+      return;
+    }
+    setFormData({
+      name: character.name || "",
+      class: character.class || "",
+      race: character.race || "",
+      level: character.level || 1,
+    });
+  };
+
+  useEffect(() => {
+    const fetchCharacter = async () => {
+      if (!selectedCharacterId || !token) {
+        setLoadingCharacter(false);
+        return;
+      }
+
+      try {
+        setLoadingCharacter(true);
+        const response = await fetch(`http://localhost:5001/api/characters/${selectedCharacterId}`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load character");
+        }
+
+        const data = await response.json();
+        applyCharacterToForm(data);
+      } catch (err) {
+        setError(err.message || "Failed to load character");
+      } finally {
+        setLoadingCharacter(false);
+      }
+    };
+
+    fetchCharacter();
+  }, [token, selectedCharacterId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -26,11 +74,16 @@ const CreateCharacter = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setStatus("");
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5001/api/characters", {
-        method: "POST",
+      const endpoint = selectedCharacterId
+        ? `http://localhost:5001/api/characters/${selectedCharacterId}`
+        : "http://localhost:5001/api/characters";
+
+      const response = await fetch(endpoint, {
+        method: selectedCharacterId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
@@ -44,11 +97,19 @@ const CreateCharacter = () => {
       }
 
       const data = await response.json();
-      console.log("Character created successfully:", data);
+
+      if (selectedCharacterId) {
+        setStatus("Character updated successfully.");
+      } else {
+        setStatus("Character created successfully.");
+        const savedCharacter = data.character;
+        if (savedCharacter) applyCharacterToForm(savedCharacter);
+      }
+
       navigate("/characters");
     } catch (err) {
       console.error("Character creation error:", err);
-      setError(err.message || "Failed to create character. Please try again.");
+      setError(err.message || "Failed to save character. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -56,8 +117,10 @@ const CreateCharacter = () => {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.title}>Create New Character</h1>
+      <h1 style={styles.title}>{selectedCharacterId ? "Edit Character" : "Create Character"}</h1>
+      {loadingCharacter && <p style={styles.loadingText}>Loading character...</p>}
       {error && <div style={styles.error}>{error}</div>}
+      {status && <div style={styles.success}>{status}</div>}
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.field}>
           <label style={styles.label}>Character Name</label>
@@ -138,7 +201,9 @@ const CreateCharacter = () => {
             Cancel
           </button>
           <Button type="submit" disabled={loading}>
-            {loading ? "Creating..." : "Create Character"}
+            {loading
+              ? (selectedCharacterId ? "Saving..." : "Creating...")
+              : (selectedCharacterId ? "Save Updates" : "Create Character")}
           </Button>
         </div>
       </form>
@@ -154,7 +219,7 @@ const styles = {
   },
   title: {
     textAlign: "center",
-    color: "#00FFFF",
+    color: "var(--gold-light)",
     marginBottom: "30px"
   },
   error: {
@@ -164,6 +229,20 @@ const styles = {
     borderRadius: "6px",
     marginBottom: "20px",
     fontSize: "14px"
+  },
+  success: {
+    backgroundColor: "rgba(76, 175, 130, 0.2)",
+    border: "1px solid rgba(76, 175, 130, 0.55)",
+    color: "#d2ffea",
+    padding: "12px",
+    borderRadius: "6px",
+    marginBottom: "20px",
+    fontSize: "14px"
+  },
+  loadingText: {
+    color: "#d4c5a9",
+    marginBottom: "14px",
+    textAlign: "center"
   },
   form: {
     display: "flex",

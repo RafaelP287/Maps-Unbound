@@ -243,6 +243,30 @@ router.put("/:id/access-settings", verifyToken, async (req, res) => {
   }
 });
 
+router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.createdBy?.toString() === req.userId ||
+      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
+    if (!isDM) return res.status(403).json({ message: "Only the DM can change encounter readiness" });
+
+    if (!campaign.encounter) campaign.encounter = {};
+    campaign.encounter.isReady = Boolean(req.body?.isReady);
+    campaign.markModified("encounter");
+    await campaign.save();
+
+    res.json({
+      message: campaign.encounter.isReady ? "Encounter opened to players" : "Encounter locked for DM prep",
+      isReady: campaign.encounter.isReady,
+    });
+  } catch (err) {
+    console.error("Encounter readiness update error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/:id/join-request", verifyToken, async (req, res) => {
   try {
     const { accessCode, characterId } = req.body;

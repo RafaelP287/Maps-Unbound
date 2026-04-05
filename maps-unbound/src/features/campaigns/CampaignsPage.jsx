@@ -10,6 +10,7 @@ function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const currentUserId = user?._id?.toString?.() || user?.id?.toString?.() || "";
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
@@ -20,14 +21,17 @@ function CampaignsPage() {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        // Backend returns [] when empty; keep UI mapping logic stable with array fallback.
-        setCampaigns(data || []);
+        const mine = (data || []).filter((campaign) => {
+          const createdBy = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
+          return createdBy === currentUserId;
+        });
+        setCampaigns(mine);
       } catch (err) {
         console.error("Error fetching campaigns:", err);
       } finally { setLoading(false); }
     };
     fetchCampaigns();
-  }, [isLoggedIn, token]);
+  }, [isLoggedIn, token, currentUserId]);
 
   if (loading || authLoading) {
     return <LoadingPage>Searching the archives...</LoadingPage>;

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
 import { useNavigate } from "react-router-dom";
+import "./partyfinder.css";
 
 function PartyFinder() {
   const { token, user } = useAuth();
@@ -16,7 +17,6 @@ function PartyFinder() {
   const [accessCode, setAccessCode] = useState("");
   const [userCharacters, setUserCharacters] = useState([]);
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
-  const [requestStatuses, setRequestStatuses] = useState({});
   const [blockUserChecked, setBlockUserChecked] = useState({});
 
   // Fetch available campaigns (hosted ones)
@@ -52,7 +52,11 @@ function PartyFinder() {
 
       if (!response.ok) throw new Error("Failed to fetch campaigns");
       const data = await response.json();
-      setMyHostableCampaigns(data);
+      const dmCampaigns = (data || []).filter((campaign) => {
+        const createdById = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
+        return createdById === user?._id?.toString?.();
+      });
+      setMyHostableCampaigns(dmCampaigns);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -89,7 +93,7 @@ function PartyFinder() {
     } else if (mode === "host") {
       fetchMyHostableCampaigns();
     }
-  }, [mode]);
+  }, [mode, user?._id]);
 
   const handleJoinRequest = async (campaignId) => {
     if (!selectedCharacterId) {
@@ -201,40 +205,46 @@ function PartyFinder() {
   };
 
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>Party Finder</h1>
+    <div className="pf-page">
+      <div className="pf-shell">
+      <header className="section-page-header">
+        <div className="section-header-divider" />
+        <div className="section-header-row">
+          <span className="section-header-rune">✦</span>
+          <h1 className="section-page-title">Party Finder</h1>
+          <span className="section-header-rune">✦</span>
+        </div>
+        <div className="section-header-divider" />
+      </header>
 
-      <div style={styles.modeSelector}>
+      <div className="pf-mode-selector">
         <button
           onClick={() => setMode("browse")}
-          style={mode === "browse" ? styles.activeModeBtn : styles.modeBtn}
+          className={mode === "browse" ? "pf-mode-btn is-active" : "pf-mode-btn"}
         >
           Browse Hosting Campaigns
         </button>
         <button
           onClick={() => setMode("host")}
-          style={mode === "host" ? styles.activeModeBtn : styles.modeBtn}
+          className={mode === "host" ? "pf-mode-btn is-active" : "pf-mode-btn"}
         >
           Host Your Campaigns
         </button>
       </div>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div className="pf-alert pf-alert-error">{error}</div>}
       {notification.message && (
-        <div style={{
-          ...styles.notification,
-          backgroundColor: notification.type === 'success' ? '#4CAF50' : '#FF9800'
-        }}>
+        <div className={`pf-alert ${notification.type === "success" ? "pf-alert-success" : "pf-alert-warn"}`}>
           {notification.message}
         </div>
       )}
-      {loading && <p style={styles.loading}>Loading campaigns...</p>}
+      {loading && <p className="pf-loading">Loading campaigns...</p>}
 
       {mode === "browse" && !loading && (
-        <div style={styles.campaignList}>
+        <div className="pf-campaign-list">
           <h2>Currently Hosting Campaigns</h2>
           {campaigns.length === 0 ? (
-            <p style={styles.empty}>No campaigns currently hosting</p>
+            <p className="pf-empty">No campaigns currently hosting</p>
           ) : (
             campaigns.map((campaign) => {
               // Find the current user's join request in this campaign (if any)
@@ -254,24 +264,18 @@ function PartyFinder() {
               );
               
               return (
-                <div key={campaign._id} style={styles.campaignCard}>
+                <div key={campaign._id} className="pf-campaign-card">
                   <h3>{campaign.title}</h3>
                   <p>{campaign.description}</p>
-                  <div style={styles.campaignInfo}>
+                  <div className="pf-campaign-info">
                     <span>Type: {campaign.campaignType}</span>
                     <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
                     <span>DM: {campaign.createdBy?.username || "Unknown"}</span>
                   </div>
                   {/* Display status notification if user has made a join request */}
                   {requestStatus && (
-                    <div style={{
-                      ...styles.campaignInfo,
-                      padding: '10px',
-                      backgroundColor: requestStatus === 'approved' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 152, 0, 0.2)',
-                      borderRadius: '4px',
-                      marginBottom: '10px'
-                    }}>
-                      <span style={{ color: requestStatus === 'approved' ? '#4CAF50' : requestStatus === 'pending' ? '#FF9800' : '#FF6B6B', fontWeight: 'bold' }}>
+                    <div className={`pf-request-status pf-request-status-${requestStatus}`}>
+                      <span>
                         {requestStatus === 'approved' ? '✓ Approved' : requestStatus === 'pending' ? '⏳ Pending' : '❌ Rejected'}
                       </span>
                     </div>
@@ -302,21 +306,21 @@ function PartyFinder() {
       )}
 
       {mode === "host" && !loading && (
-        <div style={styles.campaignList}>
+        <div className="pf-campaign-list">
           <h2>Your Campaigns</h2>
           {myHostableCampaigns.length === 0 ? (
-            <p style={styles.empty}>No campaigns yet. Create one to get started!</p>
+            <p className="pf-empty">No campaigns yet. Create one to get started!</p>
           ) : (
             myHostableCampaigns.map((campaign) => (
-              <div key={campaign._id} style={styles.campaignCard}>
+              <div key={campaign._id} className="pf-campaign-card">
                 <h3>{campaign.title}</h3>
                 <p>{campaign.description}</p>
-                <div style={styles.campaignInfo}>
+                <div className="pf-campaign-info">
                   <span>Type: {campaign.campaignType}</span>
                   <span>Status: {campaign.isHosting ? "🟢 Hosting" : "⚪ Not Hosting"}</span>
                   <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
                 </div>
-                <div style={styles.campaignInfo}>
+                <div className="pf-campaign-info">
                   <span>Min Level: {campaign.minLevel}</span>
                   <span>Visibility: {campaign.isPublic ? "Public" : "Private"}</span>
                   {!campaign.isPublic && campaign.accessCode && (
@@ -324,14 +328,14 @@ function PartyFinder() {
                   )}
                 </div>
                 {campaign.joinRequests && campaign.joinRequests.length > 0 && (
-                  <div style={styles.joinRequestsSection}>
+                  <div className="pf-join-requests">
                     <p><strong>Pending Requests: {campaign.joinRequests.filter(r => r.status === "pending").length}</strong></p>
                     {campaign.joinRequests.filter(r => r.status === "pending").map(req => (
-                      <div key={req._id} style={styles.requestItem}>
-                        <div style={{ flex: 1 }}>
+                      <div key={req._id} className="pf-request-item">
+                        <div>
                           <span><strong>{req.userId?.username || "Unknown User"}</strong> requested to join</span>
-                          <div style={{ marginTop: '8px' }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff', fontSize: '12px' }}>
+                          <div className="pf-request-checkbox-wrap">
+                            <label className="pf-request-checkbox-label">
                               <input
                                 type="checkbox"
                                 checked={blockUserChecked[`${campaign._id}-${req._id}`] || false}
@@ -344,16 +348,16 @@ function PartyFinder() {
                             </label>
                           </div>
                         </div>
-                        <div style={{display: "flex", gap: "10px"}}>
+                        <div className="pf-request-actions">
                           <button
                             onClick={() => approveJoinRequest(campaign._id, req._id)}
-                            style={styles.approveBtn}
+                            className="pf-approve-btn"
                           >
                             Approve
                           </button>
                           <button
                             onClick={() => rejectJoinRequest(campaign._id, req._id)}
-                            style={styles.rejectBtn}
+                            className="pf-reject-btn"
                           >
                             Reject
                           </button>
@@ -364,15 +368,17 @@ function PartyFinder() {
                 )}
                 <button
                   onClick={() => handleToggleHosting(campaign._id, campaign.isHosting)}
-                  style={campaign.isHosting ? styles.stopHostingBtn : styles.startHostingBtn}
+                  className={campaign.isHosting ? "pf-host-toggle-btn is-stop" : "pf-host-toggle-btn is-start"}
                   disabled={loading}
                 >
                   {campaign.isHosting ? "Stop Hosting" : "Start Hosting"}
                 </button>
                 {campaign.isHosting && (
-                  <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)} style={{ marginTop: '10px' }}>
+                  <div className="pf-enter-lobby-wrap">
+                    <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)}>
                     Enter Lobby
-                  </Button>
+                    </Button>
+                  </div>
                 )}
               </div>
             ))
@@ -381,16 +387,16 @@ function PartyFinder() {
       )}
 
       {selectedCampaign && mode === "browse" && (
-        <div style={styles.modal}>
-          <div style={styles.modalContent}>
+        <div className="pf-modal">
+          <div className="pf-modal-content">
             <h3>Request to Join Campaign</h3>
             
-            <label style={styles.label}>
+            <label className="pf-label">
               Select Character:
               <select
                 value={selectedCharacterId}
                 onChange={(e) => setSelectedCharacterId(e.target.value)}
-                style={styles.input}
+                className="pf-input"
               >
                 <option value="">Choose a character...</option>
                 {userCharacters.map(char => (
@@ -403,19 +409,19 @@ function PartyFinder() {
 
             {/* Show access code input for private campaigns */}
             {campaigns.find(c => c._id === selectedCampaign)?.accessCode && (
-              <label style={styles.label}>
+              <label className="pf-label">
                 Access Code:
                 <input
                   type="password"
                   value={accessCode}
                   onChange={(e) => setAccessCode(e.target.value)}
                   placeholder="Enter access code"
-                  style={styles.input}
+                  className="pf-input"
                 />
               </label>
             )}
 
-            <div style={styles.modalButtons}>
+            <div className="pf-modal-buttons">
               <Button
                 onClick={() => handleJoinRequest(selectedCampaign)}
                 disabled={loading || !selectedCharacterId}
@@ -428,7 +434,7 @@ function PartyFinder() {
                   setAccessCode("");
                   setSelectedCharacterId("");
                 }}
-                style={styles.cancelBtn}
+                className="pf-cancel-btn"
               >
                 Cancel
               </button>
@@ -436,199 +442,9 @@ function PartyFinder() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
-
-const styles = {
-  container: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "40px 20px"
-  },
-  title: {
-    color: "#00FFFF",
-    textAlign: "center",
-    marginBottom: "40px"
-  },
-  modeSelector: {
-    display: "flex",
-    gap: "20px",
-    justifyContent: "center",
-    marginBottom: "30px",
-    flexWrap: "wrap"
-  },
-  modeBtn: {
-    padding: "12px 24px",
-    fontSize: "16px",
-    border: "2px solid #333",
-    backgroundColor: "#222",
-    color: "#fff",
-    borderRadius: "6px",
-    cursor: "pointer",
-    transition: "all 0.3s"
-  },
-  activeModeBtn: {
-    padding: "12px 24px",
-    fontSize: "16px",
-    border: "2px solid #00FFFF",
-    backgroundColor: "#00FFFF",
-    color: "#111",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "bold"
-  },
-  campaignList: {
-    display: "grid",
-    gridTemplateColumns: "1fr",
-    gap: "20px"
-  },
-  campaignCard: {
-    background: "#1a1a1a",
-    border: "1px solid #333",
-    borderRadius: "8px",
-    padding: "20px",
-    transition: "border-color 0.3s"
-  },
-  campaignInfo: {
-    display: "flex",
-    gap: "20px",
-    flexWrap: "wrap",
-    margin: "15px 0",
-    color: "#999",
-    fontSize: "14px"
-  },
-  joinRequestsSection: {
-    backgroundColor: "rgba(76, 175, 80, 0.1)",
-    padding: "12px",
-    borderRadius: "6px",
-    margin: "15px 0",
-    border: "1px solid #4CAF50"
-  },
-  requestItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "8px",
-    backgroundColor: "rgba(0,0,0,0.3)",
-    borderRadius: "4px",
-    marginBottom: "8px",
-    color: "#fff"
-  },
-  loading: {
-    textAlign: "center",
-    color: "#666",
-    padding: "40px 20px"
-  },
-  error: {
-    backgroundColor: "#ff4444",
-    color: "#fff",
-    padding: "12px",
-    borderRadius: "6px",
-    marginBottom: "20px",
-    textAlign: "center"
-  },
-  notification: {
-    color: "#fff",
-    padding: "12px",
-    borderRadius: "6px",
-    marginBottom: "20px",
-    textAlign: "center",
-    fontWeight: "bold"
-  },
-  empty: {
-    textAlign: "center",
-    color: "#666",
-    padding: "40px 20px"
-  },
-  startHostingBtn: {
-    padding: "10px 20px",
-    backgroundColor: "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "14px",
-    marginTop: "10px"
-  },
-  stopHostingBtn: {
-    padding: "10px 20px",
-    backgroundColor: "#ff9800",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "14px",
-    marginTop: "10px"
-  },
-  approveBtn: {
-    padding: "6px 12px",
-    backgroundColor: "#4CAF50",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "12px"
-  },
-  rejectBtn: {
-    padding: "6px 12px",
-    backgroundColor: "#f44336",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "12px"
-  },
-  modal: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1000
-  },
-  modalContent: {
-    backgroundColor: "#1a1a1a",
-    border: "2px solid #00FFFF",
-    borderRadius: "8px",
-    padding: "30px",
-    maxWidth: "400px",
-    width: "90%"
-  },
-  label: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-    color: "#fff",
-    marginBottom: "20px",
-    fontWeight: "500"
-  },
-  input: {
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #333",
-    backgroundColor: "#222",
-    color: "#fff",
-    fontSize: "14px"
-  },
-  modalButtons: {
-    display: "flex",
-    gap: "10px",
-    justifyContent: "flex-end"
-  },
-  cancelBtn: {
-    padding: "10px 20px",
-    backgroundColor: "#333",
-    color: "#fff",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "14px"
-  }
-};
 
 export default PartyFinder;

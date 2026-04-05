@@ -1,0 +1,210 @@
+.lobby-page {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 20% 0%, var(--bg-warm) 0%, var(--bg-deep) 62%);
+  padding: 2.2rem 1.2rem 4rem;
+}
+
+.lobby-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.4rem;
+}
+
+.lobby-title,
+.lobby-campaign-id,
+.lobby-status,
+.lobby-presence {
+  text-align: center;
+}
+
+.lobby-campaign-id {
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.lobby-status {
+  margin-bottom: 0.35rem;
+}
+
+.lobby-presence {
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.lobby-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.lobby-start-encounter-btn {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.lobby-status-pill {
+  font-weight: 700;
+}
+
+.lobby-status-pill.is-connected {
+  color: var(--success);
+}
+
+.lobby-status-pill.is-disconnected {
+  color: var(--danger);
+}
+
+.lobby-debug {
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.32);
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 1rem;
+}
+
+.lobby-debug-summary {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  cursor: pointer;
+}
+
+.lobby-debug-body {
+  margin-top: 0.55rem;
+  max-height: 180px;
+  overflow-y: auto;
+  border-radius: 6px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(0, 0, 0, 0.42);
+  padding: 0.5rem;
+}
+
+.lobby-debug-line {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.76rem;
+  color: #c6e7d7;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.1);
+}
+
+.lobby-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 0.9fr);
+  gap: 1rem;
+}
+
+.lobby-encounter-column {
+  min-height: 720px;
+}
+
+.lobby-right-column {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.lobby-encounter-placeholder {
+  min-height: 720px;
+  justify-content: center;
+}
+
+.lobby-panel {
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  background: rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  padding: 0.9rem;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lobby-section-title {
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+  padding-bottom: 0.45rem;
+}
+
+.lobby-messages-container,
+.lobby-events-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 300px;
+  max-height: 420px;
+  padding-right: 0.3rem;
+}
+
+.lobby-message {
+  border: 1px solid rgba(201, 168, 76, 0.24);
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.lobby-message.is-self {
+  background: rgba(201, 168, 76, 0.16);
+}
+
+.lobby-author {
+  color: var(--gold);
+}
+
+.lobby-author.is-self {
+  color: var(--gold-light);
+}
+
+.lobby-message-text {
+  margin: 0.25rem 0 0;
+}
+
+.lobby-timestamp {
+  display: block;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+.lobby-message-form {
+  margin-top: 0.7rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.lobby-message-input {
+  flex: 1;
+}
+
+.lobby-events-ul {
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.lobby-event {
+  color: #c6e7d7;
+  border-bottom: 1px dashed rgba(201, 168, 76, 0.2);
+  padding-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.lobby-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding-top: 2.2rem;
+}
+
+@media (max-width: 860px) {
+  .lobby-content {
+    grid-template-columns: 1fr;
+  }
+
+  .lobby-encounter-column,
+  .lobby-encounter-placeholder {
+    min-height: 520px;
+  }
+}
