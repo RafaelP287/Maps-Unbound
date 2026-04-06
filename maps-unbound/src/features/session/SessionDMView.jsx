@@ -1,3 +1,5 @@
+// Primary DM runtime screen:
+// owns board layout state, combat turn state, and end/pause session flows.
 import SessionTopBar from "./components/SessionTopBar";
 import SessionLeftPanel from "./components/SessionLeftPanel";
 import SessionMapCanvas from "./components/SessionMapCanvas";

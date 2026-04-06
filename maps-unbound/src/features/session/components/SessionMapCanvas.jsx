@@ -1,3 +1,7 @@
+// Map canvas area:
+// - map selection
+// - combat setup/teardown
+// - compact turn strip + round/advance controls while in combat
 import { useRef, useState } from "react";
 import EncounterOverlay from "./EncounterOverlay";
 

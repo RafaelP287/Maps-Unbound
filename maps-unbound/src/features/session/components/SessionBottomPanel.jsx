@@ -1,3 +1,4 @@
+// Bottom workspace for chat, notes, and quick tools.
 function SessionBottomPanel({ isCollapsed, onToggle }) {
     const chatMessages = [];
 

@@ -1,3 +1,4 @@
+// Right sidebar event feed (placeholder for rolls/abilities stream).
 function SessionRightPanel({ isCollapsed, onToggle }) {
     return (
         <aside

@@ -1,3 +1,5 @@
+// Session lobby:
+// lets the DM rename the active session record before entering DM view.
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 import useCampaign from "../campaigns/use-campaign";

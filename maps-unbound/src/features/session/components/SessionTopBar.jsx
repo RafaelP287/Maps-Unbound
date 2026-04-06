@@ -1,3 +1,4 @@
+// Top command bar for DM view (campaign/session labels, players, pause/end actions).
 function SessionTopBar({
     campaignName = "Campaign Name",
     sessionName = "Session Name",

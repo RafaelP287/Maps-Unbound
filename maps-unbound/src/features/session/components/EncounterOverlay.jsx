@@ -1,3 +1,4 @@
+// Reusable combat setup modal used by the map canvas.
 function EncounterOverlay({
     isOpen,
     draftParticipants,

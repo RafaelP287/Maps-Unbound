@@ -1,3 +1,5 @@
+// Legacy turn record list component.
+// Kept for reuse if right-panel turn view is reintroduced.
 function TurnRecord({ turns = [], round = 0, onAdvanceTurn }) {
     const displayRound = turns.length > 0 ? round + 1 : "-";
 

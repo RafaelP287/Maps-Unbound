@@ -1,3 +1,4 @@
+// Left sidebar: sheets/stat blocks browser and detail panel for selected entity.
 import { useMemo, useState } from "react";
 
 function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) {
