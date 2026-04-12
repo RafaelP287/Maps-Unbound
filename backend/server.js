@@ -40,6 +40,32 @@ const io = new Server(server, {
   },
 });
 
+  const enrichEncounterTokens = async (encounter) => {
+    if (!Array.isArray(encounter?.tokens)) return;
+    try {
+      const Character = mongoose.model('Character');
+      for (let token of encounter.tokens) {
+        if (token.characterId) {
+          const character = await Character.findById(token.characterId);
+          if (character) {
+            token.characterStats = {
+              abilityScores: character.abilityScores,
+              inspiration: character.inspiration,
+              armorClass: character.armorClass,
+              attackBonus: character.attackBonus,
+              proficiencyBonus: character.proficiencyBonus,
+              spellcasting: character.spellcasting,
+              skills: character.skills,
+              savingThrows: character.savingThrows,
+            };
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error enriching encounter tokens:', error);
+    }
+  };
+
 // Middleware
 app.use(cors());         // Enable CORS for all routes
 app.use(express.json({ limit: "15mb" })); // Parse JSON request bodies
@@ -202,6 +228,7 @@ io.on('connection', (socket) => {
         movementRemaining,
         actionAvailable: token.actionAvailable ?? true,
         bonusActionAvailable: token.bonusActionAvailable ?? true,
+        characterStats: token.characterStats || null,
       };
     });
 
@@ -248,7 +275,8 @@ io.on('connection', (socket) => {
     updatedAt: encounter?.updatedAt,
   });
 
-  const emitEncounterState = (campaignId, encounter) => {
+  const emitEncounterState = async (campaignId, encounter) => {
+    await enrichEncounterTokens(encounter);
     const room = `campaign:${campaignId}`;
     io.to(room).emit('encounter:state', {
       campaignId,

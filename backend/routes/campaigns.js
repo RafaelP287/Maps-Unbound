@@ -250,9 +250,11 @@ router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
 
     const isDM = campaign.createdBy?.toString() === req.userId ||
       campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
+    // IMPORTANT: readiness can only be toggled by DM/creator.
     if (!isDM) return res.status(403).json({ message: "Only the DM can change encounter readiness" });
 
     if (!campaign.encounter) campaign.encounter = {};
+    // IMPORTANT: readiness state used by socket layer to allow/deny player entry.
     campaign.encounter.isReady = Boolean(req.body?.isReady);
     campaign.markModified("encounter");
     await campaign.save();
@@ -292,7 +294,8 @@ router.post("/:id/join-request", verifyToken, async (req, res) => {
       campaign.joinRequests = campaign.joinRequests.filter((r) => r._id.toString() !== existingRequest._id.toString());
     }
 
-    if (campaign.members.length >= campaign.maxPlayers) {
+    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+    if (playerCount >= campaign.maxPlayers) {
       return res.status(400).json({ message: "Campaign is full" });
     }
 

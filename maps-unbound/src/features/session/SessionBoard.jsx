@@ -75,6 +75,7 @@ function SessionBoard({ isDM = false, campaignIdOverride = "", embedded = false,
 
   const playerControlledToken = useMemo(() => {
     if (!userId) return null;
+    // IMPORTANT: in lobby embedded mode, quick controls target the user's owned token.
     return encounter.tokens.find((token) => {
       const ownerId = token.ownerUserId?.toString?.() || token.ownerUserId;
       return ownerId === userId;
@@ -290,6 +291,7 @@ function SessionBoard({ isDM = false, campaignIdOverride = "", embedded = false,
               </div>
               <div style={styles.boardLegend}>
                 <span style={styles.legendItem}><span style={{ ...styles.legendDot, background: "#c9a84c" }} />Player</span>
+                {/* IMPORTANT: NPC removed from legend per latest UX request. */}
                 <span style={styles.legendItem}><span style={{ ...styles.legendDot, background: "#b13d30" }} />Enemy</span>
               </div>
             </div>
@@ -325,6 +327,7 @@ function SessionBoard({ isDM = false, campaignIdOverride = "", embedded = false,
             </div>
 
             {!isDM && embedded && (
+              // IMPORTANT: player controls moved directly under the grid for lobby flow.
               <div style={styles.playerControlsUnderGrid}>
                 <h3 style={styles.panelTitle}>Your Character Controls</h3>
                 {playerControlledToken ? (

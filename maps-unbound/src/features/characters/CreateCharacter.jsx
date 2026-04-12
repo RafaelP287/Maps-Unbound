@@ -3,6 +3,53 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Button from "../../shared/Button.jsx";
 
+// Leveling utility (client-side version)
+const getStartingAbilityScores = (race) => {
+  const raceAbilityMods = {
+    Human: { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 0 },
+    Elf: { STR: 0, DEX: 2, CON: 0, INT: 0, WIS: 0, CHA: 0 },
+    Dwarf: { STR: 0, DEX: 0, CON: 2, INT: 0, WIS: 0, CHA: 0 },
+    Halfling: { STR: 0, DEX: 2, CON: 0, INT: 0, WIS: 0, CHA: 0 },
+    Dragonborn: { STR: 2, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 1 },
+    Gnome: { STR: 0, DEX: 0, CON: 0, INT: 2, WIS: 0, CHA: 0 },
+    'Half-Elf': { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 2 },
+    'Half-Orc': { STR: 2, DEX: 0, CON: 1, INT: 0, WIS: 0, CHA: 0 },
+    Tiefling: { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 2 },
+  };
+
+  const baseScores = { STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8 };
+  const mods = raceAbilityMods[race] || {};
+
+  return {
+    STR: Math.min(20, Math.max(1, baseScores.STR + (mods.STR || 0))),
+    DEX: Math.min(20, Math.max(1, baseScores.DEX + (mods.DEX || 0))),
+    CON: Math.min(20, Math.max(1, baseScores.CON + (mods.CON || 0))),
+    INT: Math.min(20, Math.max(1, baseScores.INT + (mods.INT || 0))),
+    WIS: Math.min(20, Math.max(1, baseScores.WIS + (mods.WIS || 0))),
+    CHA: Math.min(20, Math.max(1, baseScores.CHA + (mods.CHA || 0))),
+  };
+};
+
+const getClassSpells = (charClass, level) => {
+  const spellData = {
+    Wizard: ['Magic Missile', 'Mage Armor', 'Identify', ...(level >= 5 ? ['Fireball'] : [])],
+    Cleric: ['Cure Wounds', 'Bless', 'Guiding Bolt', ...(level >= 3 ? ['Lesser Restoration'] : [])],
+    Warlock: ['Eldritch Blast', 'Hex', ...(level >= 3 ? ['Darkness'] : [])],
+    Sorcerer: ['Fire Bolt', 'Mage Armor', ...(level >= 5 ? ['Fireball'] : [])],
+    Bard: ['Vicious Mockery', 'Healing Word', 'Tasha\'s Hideous Laughter', ...(level >= 3 ? ['Suggestion'] : [])],
+    Druid: ['Druidcraft', 'Goodberry', 'Thunderwave', ...(level >= 5 ? ['Call Lightning'] : [])],
+    Ranger: ['Hunter\'s Mark', 'Goodberry', ...(level >= 5 ? ['Pass Without Trace'] : [])],
+    Paladin: [...(level >= 2 ? ['Bless', 'Cure Wounds'] : []), ...(level >= 5 ? ['Lesser Restoration'] : [])],
+  };
+  return spellData[charClass] || [];
+};
+
+const getProficiencyBonus = (level) => {
+  const profTable = { 1: 2, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 3, 8: 3, 9: 4, 10: 4,
+    11: 4, 12: 4, 13: 5, 14: 5, 15: 5, 16: 5, 17: 6, 18: 6, 19: 6, 20: 6 };
+  return profTable[Math.min(level, 20)] || 2;
+};
+
 const CreateCharacter = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -12,8 +59,23 @@ const CreateCharacter = () => {
     name: "",
     class: "",
     race: "",
-    level: 1
+    level: 1,
+    abilityScores: {
+      strength: 15,
+      dexterity: 14,
+      constitution: 13,
+      intelligence: 12,
+      wisdom: 10,
+      charisma: 8,
+    },
+    inspiration: 0,
+    personalityTraits: "",
+    ideals: "",
+    bonds: "",
+    flaws: "",
   });
+  const [showPreview, setShowPreview] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [loadingCharacter, setLoadingCharacter] = useState(Boolean(selectedCharacterId));
@@ -28,6 +90,19 @@ const CreateCharacter = () => {
       class: character.class || "",
       race: character.race || "",
       level: character.level || 1,
+      abilityScores: character.abilityScores || {
+        strength: 15,
+        dexterity: 14,
+        constitution: 13,
+        intelligence: 12,
+        wisdom: 10,
+        charisma: 8,
+      },
+      inspiration: character.inspiration || 0,
+      personalityTraits: character.personalityTraits || "",
+      ideals: character.ideals || "",
+      bonds: character.bonds || "",
+      flaws: character.flaws || "",
     });
   };
 
@@ -69,6 +144,27 @@ const CreateCharacter = () => {
       ...prev,
       [name]: value
     }));
+    setShowPreview(false);
+  };
+
+  const generatePreview = () => {
+    if (!formData.class || !formData.race) {
+      setError("Please select both class and race");
+      return;
+    }
+
+    const abilityScores = getStartingAbilityScores(formData.race);
+    const profBonus = getProficiencyBonus(formData.level);
+    const dexMod = Math.floor((abilityScores.DEX - 10) / 2);
+    const spells = getClassSpells(formData.class, formData.level);
+    
+    setPreview({
+      abilityScores,
+      proficiencyBonus: profBonus,
+      ac: 10 + dexMod,
+      spells,
+    });
+    setShowPreview(true);
   };
 
   const handleSubmit = async (e) => {
@@ -82,13 +178,28 @@ const CreateCharacter = () => {
         ? `http://localhost:5001/api/characters/${selectedCharacterId}`
         : "http://localhost:5001/api/characters";
 
+      // Prepare full character data with auto-generated stats
+      const abilityScores = getStartingAbilityScores(formData.race);
+      const profBonus = getProficiencyBonus(formData.level);
+      const dexMod = Math.floor((abilityScores.DEX - 10) / 2);
+      const charData = {
+        ...formData,
+        abilityScores,
+        proficiencyBonus: profBonus,
+        armorClass: 10 + dexMod,
+        spellcasting: {
+          canCastSpells: ['Wizard', 'Cleric', 'Warlock', 'Sorcerer', 'Bard', 'Druid', 'Ranger', 'Paladin'].includes(formData.class),
+          spellsKnown: getClassSpells(formData.class, formData.level),
+        },
+      };
+
       const response = await fetch(endpoint, {
         method: selectedCharacterId ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(charData)
       });
 
       if (!response.ok) {
@@ -196,6 +307,115 @@ const CreateCharacter = () => {
           />
         </div>
 
+        <div style={styles.field}>
+          <label style={styles.label}>Inspiration Points</label>
+          <input
+            type="number"
+            name="inspiration"
+            value={formData.inspiration}
+            onChange={handleChange}
+            style={styles.input}
+            min="0"
+            max="10"
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Personality Traits</label>
+          <textarea
+            name="personalityTraits"
+            value={formData.personalityTraits}
+            onChange={handleChange}
+            style={{...styles.input, minHeight: "80px"}}
+            placeholder="Describe your character's personality traits..."
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Ideals</label>
+          <textarea
+            name="ideals"
+            value={formData.ideals}
+            onChange={handleChange}
+            style={{...styles.input, minHeight: "80px"}}
+            placeholder="What ideals does your character hold dear?"
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Bonds</label>
+          <textarea
+            name="bonds"
+            value={formData.bonds}
+            onChange={handleChange}
+            style={{...styles.input, minHeight: "80px"}}
+            placeholder="Describe your character's bonds..."
+          />
+        </div>
+
+        <div style={styles.field}>
+          <label style={styles.label}>Flaws</label>
+          <textarea
+            name="flaws"
+            value={formData.flaws}
+            onChange={handleChange}
+            style={{...styles.input, minHeight: "80px"}}
+            placeholder="What flaws or weaknesses does your character have?"
+          />
+        </div>
+
+        {!selectedCharacterId && (
+          <button type="button" onClick={generatePreview} style={styles.previewBtn}>
+            Preview Auto-Generated Stats
+          </button>
+        )}
+
+        {showPreview && preview && (
+          <div style={styles.previewPanel}>
+            <h3 style={styles.previewTitle}>Character Preview</h3>
+            <div style={styles.abilityGrid}>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>STR</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.STR}</span>
+              </div>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>DEX</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.DEX}</span>
+              </div>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>CON</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.CON}</span>
+              </div>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>INT</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.INT}</span>
+              </div>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>WIS</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.WIS}</span>
+              </div>
+              <div style={styles.abilityBox}>
+                <span style={styles.abilityLabel}>CHA</span>
+                <span style={styles.abilityScore}>{preview.abilityScores.CHA}</span>
+              </div>
+            </div>
+            <div style={styles.previewStats}>
+              <div>AC: <strong>{preview.ac}</strong></div>
+              <div>Proficiency Bonus: <strong>+{preview.proficiencyBonus}</strong></div>
+            </div>
+            {preview.spells.length > 0 && (
+              <div style={styles.spellsPreview}>
+                <strong>Spells Known:</strong>
+                <ul style={styles.spellsList}>
+                  {preview.spells.map((spell) => (
+                    <li key={spell}>{spell}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={styles.buttons}>
           <button type="button" onClick={() => navigate("/characters")} style={styles.cancelBtn}>
             Cancel
@@ -266,6 +486,76 @@ const styles = {
     border: "1px solid #333",
     backgroundColor: "#222",
     color: "#fff"
+  },
+  previewBtn: {
+    padding: "12px",
+    fontSize: "14px",
+    borderRadius: "6px",
+    border: "1px solid rgba(201, 168, 76, 0.5)",
+    backgroundColor: "rgba(201, 168, 76, 0.1)",
+    color: "var(--gold-light)",
+    cursor: "pointer",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+  },
+  previewPanel: {
+    padding: "20px",
+    borderRadius: "12px",
+    border: "1px solid rgba(201, 168, 76, 0.3)",
+    backgroundColor: "rgba(201, 168, 76, 0.05)",
+    marginTop: "10px",
+  },
+  previewTitle: {
+    color: "var(--gold-light)",
+    marginTop: 0,
+    marginBottom: "15px",
+    fontSize: "16px",
+  },
+  abilityGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "10px",
+    marginBottom: "15px",
+  },
+  abilityBox: {
+    padding: "12px",
+    borderRadius: "8px",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    border: "1px solid rgba(201, 168, 76, 0.2)",
+    textAlign: "center",
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  abilityLabel: {
+    fontSize: "12px",
+    color: "var(--text-muted)",
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  abilityScore: {
+    fontSize: "18px",
+    color: "var(--gold-light)",
+    fontWeight: "700",
+  },
+  previewStats: {
+    display: "flex",
+    gap: "20px",
+    padding: "12px 0",
+    borderTop: "1px solid rgba(201, 168, 76, 0.2)",
+    borderBottom: "1px solid rgba(201, 168, 76, 0.2)",
+    color: "#fff",
+    marginBottom: "15px",
+  },
+  spellsPreview: {
+    marginTop: "15px",
+  },
+  spellsList: {
+    listStyle: "none",
+    padding: "10px 0",
+    margin: 0,
+    color: "#d4c5a9",
+    fontSize: "14px",
   },
   buttons: {
     display: "flex",

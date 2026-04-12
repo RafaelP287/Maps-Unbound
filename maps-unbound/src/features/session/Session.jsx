@@ -1,8 +1,8 @@
-import SessionBoard from "./SessionBoard.jsx";
+import EncounterAssistantBoard from "./EncounterAssistantBoard.jsx";
 
 function Session() {
     return (
-        <SessionBoard />
+        <EncounterAssistantBoard />
     )
 }
 

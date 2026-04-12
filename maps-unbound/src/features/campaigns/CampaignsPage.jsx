@@ -23,6 +23,7 @@ function CampaignsPage() {
         const data = await res.json();
         const mine = (data || []).filter((campaign) => {
           const createdBy = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
+          // IMPORTANT: only show campaigns created by the current user in this tab.
           return createdBy === currentUserId;
         });
         setCampaigns(mine);

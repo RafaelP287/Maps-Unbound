@@ -16,7 +16,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext.jsx';
-import SessionBoard from '../session/SessionBoard.jsx';
+import EncounterAssistantBoard from '../session/EncounterAssistantBoard.jsx';
+import CharacterSheet from '../characters/CharacterSheet.jsx';
 import './lobby.css';
 
 function Lobby() {
@@ -47,6 +48,7 @@ function Lobby() {
   const [encounterOpen, setEncounterOpen] = useState(false);
   const [encounterReady, setEncounterReady] = useState(false);
   const [encounterReadySaving, setEncounterReadySaving] = useState(false);
+  const [playerCharacterId, setPlayerCharacterId] = useState(null);
   
   // Reference to the Socket.io client instance (persists across renders)
   const socketRef = useRef(null);
@@ -91,6 +93,20 @@ function Lobby() {
         const dmId = dmMember?.userId?._id?.toString?.() || dmMember?.userId?.toString?.();
         setIsDM(campaign.createdBy?.toString?.() === user._id?.toString?.() || dmId === user._id?.toString?.());
         setEncounterReady(Boolean(campaign.encounter?.isReady));
+
+        // Fetch player's first character
+        if (campaign.createdBy?.toString?.() !== user._id?.toString?.() && dmId !== user._id?.toString?.()) {
+          const charResponse = await fetch(`http://localhost:5001/api/characters?userId=${user._id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (charResponse.ok) {
+            const characters = await charResponse.json();
+            if (Array.isArray(characters) && characters.length > 0) {
+              const characterId = characters[0]._id;
+              setPlayerCharacterId(characterId);
+            }
+          }
+        }
       } catch {
         setIsDM(false);
         setEncounterReady(false);
@@ -230,6 +246,7 @@ function Lobby() {
     if (!isDM || !campaignId || !token) return;
     try {
       setEncounterReadySaving(true);
+      // IMPORTANT: DM toggles whether players are allowed to join encounter map.
       const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/encounter-ready`, {
         method: 'PUT',
         headers: {
@@ -245,6 +262,12 @@ function Lobby() {
       }
 
       setEncounterReady(nextReady);
+      // Auto-open the encounter board for DM when starting, close when ending
+      if (nextReady) {
+        setEncounterOpen(true);
+      } else {
+        setEncounterOpen(false);
+      }
     } catch (err) {
       addDebugLog(`❌ Encounter readiness update failed: ${err.message}`);
     } finally {
@@ -265,36 +288,30 @@ function Lobby() {
       <p className="lobby-presence">Players connected: {players.length}</p>
       <div className="lobby-actions">
         {isDM ? (
+          <button
+            type="button"
+            onClick={() => updateEncounterReady(!encounterReady)}
+            className="lobby-start-encounter-btn"
+            disabled={encounterReadySaving}
+          >
+            {encounterReadySaving
+              ? 'Saving...'
+              : encounterReady
+                ? '⏸ End Encounter'
+                : '▶ Start Encounter'}
+          </button>
+        ) : (
           <>
             <button
               type="button"
               onClick={() => setEncounterOpen(true)}
               className="lobby-start-encounter-btn"
+              // IMPORTANT: players are gated until DM marks encounter as ready.
+              disabled={!encounterReady}
             >
-              {encounterOpen ? 'Encounter Editor Open' : 'Open Encounter Editor'}
-            </button>
-            <button
-              type="button"
-              onClick={() => updateEncounterReady(!encounterReady)}
-              className="lobby-start-encounter-btn"
-              disabled={encounterReadySaving}
-            >
-              {encounterReadySaving
-                ? 'Saving...'
-                : encounterReady
-                  ? 'Lock Encounter (Prep Mode)'
-                  : 'Allow Players to Join'}
+              {!encounterReady ? 'Waiting for DM' : encounterOpen ? 'Encounter Open' : 'Join Encounter'}
             </button>
           </>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setEncounterOpen(true)}
-            className="lobby-start-encounter-btn"
-            disabled={!encounterReady}
-          >
-            {!encounterReady ? 'Waiting for DM' : encounterOpen ? 'Encounter Open' : 'Join Encounter'}
-          </button>
         )}
       </div>
 
@@ -314,20 +331,26 @@ function Lobby() {
 
       <div className="lobby-content">
         <div className="lobby-encounter-column">
-          {encounterOpen && (isDM || encounterReady) ? (
-            <SessionBoard isDM={isDM} campaignIdOverride={campaignId} embedded hideEncounterChat />
-          ) : (
-            <div className="lobby-panel lobby-encounter-placeholder">
-              <h2 className="lobby-section-title">Encounter Map</h2>
-              <p className="lobby-empty">
-                {isDM
-                  ? 'Open the encounter editor, then allow players to join when ready.'
-                  : encounterReady
-                    ? 'Join the encounter to open the battle map here.'
-                    : 'The DM is preparing the encounter. Please wait.'}
-              </p>
-            </div>
-          )}
+          <div className="lobby-panel lobby-map-panel">
+            <h2 className="lobby-section-title">Map</h2>
+            {encounterOpen && (isDM || encounterReady) ? (
+              <EncounterAssistantBoard isDM={isDM} campaignIdOverride={campaignId} embedded hideEncounterChat />
+            ) : (
+              <div className="lobby-encounter-placeholder">
+                <p className="lobby-empty">
+                  {isDM
+                    ? 'Click "Start Encounter" to begin the battle map.'
+                    : encounterReady
+                      ? 'Join the encounter to open the battle map here.'
+                      : 'The DM is preparing the encounter. Please wait.'}
+                </p>
+              </div>
+            )}
+
+            {!isDM && playerCharacterId && (
+              <CharacterSheet characterId={playerCharacterId} embedded />
+            )}
+          </div>
         </div>
 
         <div className="lobby-right-column">
@@ -379,6 +402,7 @@ function Lobby() {
           </div>
         </div>
       </div>
+
       </section>
     </div>
   );

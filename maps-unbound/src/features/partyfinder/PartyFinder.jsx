@@ -54,6 +54,7 @@ function PartyFinder() {
       const data = await response.json();
       const dmCampaigns = (data || []).filter((campaign) => {
         const createdById = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
+        // IMPORTANT: "Your Campaigns" host tab should only show user-owned campaigns.
         return createdById === user?._id?.toString?.();
       });
       setMyHostableCampaigns(dmCampaigns);

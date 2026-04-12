@@ -47,6 +47,29 @@
   letter-spacing: 0.12em;
 }
 
+.lobby-view-character-btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--accent-gold) 0%, var(--accent-warm) 100%);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.lobby-view-character-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(215, 180, 124, 0.3);
+}
+
+.lobby-view-character-btn:active {
+  transform: translateY(0);
+}
+
 .lobby-status-pill {
   font-weight: 700;
 }
@@ -196,6 +219,92 @@
   color: var(--text-muted);
   font-style: italic;
   padding-top: 2.2rem;
+}
+
+.lobby-character-card {
+  margin-bottom: 1rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.lobby-char-meta {
+  margin: 0.5rem 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.lobby-char-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.8rem;
+  margin: 1rem 0;
+  padding: 0.8rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+.lobby-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem;
+  background: rgba(201, 168, 76, 0.08);
+  border-radius: 4px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+}
+
+.lobby-stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.lobby-stat-value {
+  font-size: 1.2rem;
+  color: var(--gold-light);
+  font-weight: 700;
+  margin-top: 0.3rem;
+}
+
+.lobby-char-meta-section {
+  padding: 0.8rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  font-size: 0.9rem;
+  color: var(--text-base);
+  margin: 0.8rem 0;
+}
+
+.lobby-char-meta-section div {
+  margin: 0.4rem 0;
+}
+
+.lobby-char-text-section {
+  margin: 0.8rem 0;
+  padding: 0.6rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid var(--gold);
+  border-radius: 2px;
+}
+
+.lobby-char-text-section strong {
+  color: var(--gold-light);
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.lobby-char-text-section p {
+  margin: 0;
+  color: var(--text-base);
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 @media (max-width: 860px) {

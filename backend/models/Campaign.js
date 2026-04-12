@@ -52,6 +52,8 @@ const encounterTokenSchema = new mongoose.Schema({
   role: { type: String, trim: true, maxlength: 80, default: "Unit" },
   hp: { type: Number, min: 0, max: 9999, default: 10 },
   maxHp: { type: Number, min: 1, max: 9999, default: 10 },
+  initiativeBonus: { type: Number, min: -20, max: 20, default: 0 },
+  lastInitiativeRoll: { type: Number, min: 0, max: 20, default: 0 },
   position: {
     x: { type: Number, min: 1, max: 30, default: 1 },
     y: { type: Number, min: 1, max: 30, default: 1 },
@@ -61,9 +63,12 @@ const encounterTokenSchema = new mongoose.Schema({
   ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   initiative: { type: Number, min: -99, max: 999, default: 0 },
   movementSpeed: { type: Number, min: 0, max: 120, default: 30 },
+    characterId: { type: mongoose.Schema.Types.ObjectId, ref: "Character", default: null },
   movementRemaining: { type: Number, min: 0, max: 120, default: 30 },
   actionAvailable: { type: Boolean, default: true },
   bonusActionAvailable: { type: Boolean, default: true },
+  reactionAvailable: { type: Boolean, default: true },
+  objectInteractionAvailable: { type: Boolean, default: true },
 }, { _id: false });
 
 const encounterStateSchema = new mongoose.Schema({

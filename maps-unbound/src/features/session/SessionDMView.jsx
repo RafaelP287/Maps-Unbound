@@ -1,7 +1,7 @@
-import SessionBoard from "./SessionBoard.jsx";
+import EncounterAssistantBoard from "./EncounterAssistantBoard.jsx";
 
 function SessionDMView() {
-    return <SessionBoard isDM />;
+    return <EncounterAssistantBoard isDM />;
 }
 
 export default SessionDMView;
