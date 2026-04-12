@@ -31,20 +31,20 @@ const NOTIF_LIFETIME = 6000;
 const MAX_NOTIFS = 6;
 
 function App() {
-    const dddiceRef          = useRef(null);
-    const roomSlugRef        = useRef(null);
-    const isInitializingRef  = useRef(false);
-    const canvasRef          = useRef(null);
-    const seenRollsRef       = useRef(new Set());
+    const dddiceRef         = useRef(null);
+    const roomSlugRef       = useRef(null);
+    const isInitializingRef = useRef(false);
+    const canvasRef         = useRef(null);
+    const seenRollsRef      = useRef(new Set());
     // Stores the mode ('normal'|'advantage'|'disadvantage') of the roll
     // currently in-flight so roll:finished can use it.
-    const nextRollModeRef    = useRef('normal');
+    const nextRollModeRef   = useRef('normal');
     // Track when tab was hidden so we know if the device likely slept
-    const hiddenAtRef        = useRef(null);
+    const hiddenAtRef       = useRef(null);
 
-    const [isDiceReady, setIsDiceReady]   = useState(false);
-    const [diceError,   setDiceError]     = useState(null);
-    const [rollNotifs,  setRollNotifs]    = useState([]);
+    const [isDiceReady, setIsDiceReady] = useState(false);
+    const [diceError,   setDiceError]   = useState(null);
+    const [rollNotifs,  setRollNotifs]  = useState([]);
 
     // ── Helpers ────────────────────────────────────────────────────────────
     const deleteRoom = useCallback(async (slug) => {
@@ -182,37 +182,32 @@ function App() {
         setDiceError(null);
         setIsDiceReady(false);
 
-          {/* Profile route */}
-          <Route path="profile" element={<Profile />} />
-          
-          {/* Map routes */}
-          <Route 
-            path="maps" 
-            element={
-              <Maps 
-                initializeDice={initializeDice}
-                rollDice={rollDice}
-                isDiceReady={isDiceReady}
-              />
-            } 
-          />
+        try {
+            // Create a fresh dddice room if we don't already have one
+            if (!roomSlugRef.current) {
+                const res = await fetch("https://dddice.com/api/1.0/room", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${DDDICE_API_KEY}`,
+                    },
+                });
+                if (!res.ok) throw new Error(`Failed to create dddice room (${res.status})`);
+                const data = await res.json();
+                roomSlugRef.current = data?.data?.slug;
+                if (!roomSlugRef.current) throw new Error("No room slug returned from dddice");
+            }
 
-          {/* Session routes */}
-          <Route path="session">
-            <Route index element={<Session />} />
-            <Route path="dm" element={<SessionDMView />} />
-          </Route>
-
-          {/* Character Routes */}
-          <Route path="characters" element={<Characters />} />
-          <Route path="create-character" element={<CreateCharacter />} />
-
-          {/* Campaign routes */}
-          <Route path="campaigns">
-            <Route index element={<Campaigns />} />
-            <Route path="new" element={<CreateCampaign />} />
-            <Route path=":id" element={<ViewCampaign />} />
-          </Route>
+            await startRenderer(canvasElement);
+            setIsDiceReady(true);
+        } catch (err) {
+            console.error("[dddice] initializeDice failed", err);
+            setDiceError(err?.message || "Failed to initialize dice");
+            setIsDiceReady(false);
+        } finally {
+            isInitializingRef.current = false;
+        }
+    }, [startRenderer]);
 
     const retryDice = useCallback(async (canvasElement) => {
         await cleanupDice();
@@ -272,7 +267,7 @@ function App() {
 
         document.addEventListener("visibilitychange", onVisibility);
         return () => document.removeEventListener("visibilitychange", onVisibility);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cleanupDice]);
 
     // ── Roll ───────────────────────────────────────────────────────────────
@@ -323,6 +318,10 @@ function App() {
                             />
                         }
                     />
+                    <Route path="session">
+                        <Route index element={<Session />} />
+                        <Route path="dm" element={<SessionDMView />} />
+                    </Route>
                     <Route path="characters" element={<Characters />} />
                     <Route path="create-character" element={<CreateCharacter />} />
                     <Route path="campaigns">
