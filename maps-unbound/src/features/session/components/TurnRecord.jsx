@@ -1,60 +1,40 @@
-// Legacy turn record list component.
-// Kept for reuse if right-panel turn view is reintroduced.
+// Map-overlay turn record used by the DM canvas.
 function TurnRecord({ turns = [], round = 0, onAdvanceTurn }) {
     const displayRound = turns.length > 0 ? round + 1 : "-";
 
+    if (turns.length === 0) {
+        return null;
+    }
+
     return (
-        <>
-            <div className="session-dm__panel-header">
-                <div>
-                    <p className="session-dm__panel-title">Turn Record</p>
-                    <p className="session-dm__panel-subtitle">Round {displayRound}</p>
+        <aside className="session-dm__map-turns-wrap" aria-label="Turn order overlay">
+            <div className="session-dm__map-turns">
+                <div className="session-dm__map-turns-list">
+                    {turns.map((turn) => (
+                        <div
+                            key={`${turn.order}-${turn.name}`}
+                            className={[
+                                "session-dm__map-turn",
+                                turn.isActive ? "is-active" : "",
+                            ].filter(Boolean).join(" ")}
+                        >
+                            <span className="session-dm__map-turn-name">{turn.name}</span>
+                        </div>
+                    ))}
                 </div>
-                <button className="session-dm__ghost" type="button" onClick={onAdvanceTurn} disabled={turns.length === 0}>
+            </div>
+            <div className="session-dm__map-turn-controls">
+                <span className="session-dm__map-round">Round {displayRound}</span>
+                <button
+                    type="button"
+                    className="session-dm__ghost session-dm__ghost--small"
+                    onClick={onAdvanceTurn}
+                    disabled={!onAdvanceTurn}
+                >
                     Advance
                 </button>
             </div>
-            <div className="session-dm__turns" aria-label="Turn order">
-                {turns.map((turn) => (
-                    <div
-                        key={`${turn.order}-${turn.name}`}
-                        className={[
-                            "session-dm__turn",
-                            turn.isActive ? "is-active" : "",
-                            turn.isNext ? "is-next" : "",
-                        ].filter(Boolean).join(" ")}
-                    >
-                        <div className="session-dm__turn-main">
-                            <span className="session-dm__turn-order">{turn.order}</span>
-                            <div className="session-dm__turn-meta">
-                                <span className="session-dm__turn-name">{turn.name}</span>
-                                {turn.kind === "Player" && (
-                                    <span className="session-dm__turn-detail">
-                                        {turn.className} · L{turn.level}
-                                    </span>
-                                )}
-                                {turn.kind === "NPC" && (
-                                    <span className="session-dm__turn-detail">
-                                        {turn.className} · L{turn.level}
-                                    </span>
-                                )}
-                                {turn.kind === "Enemy" && (
-                                    <span className="session-dm__turn-detail">
-                                        {turn.creatureType} · {turn.cr}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        <div className="session-dm__turn-stats">
-                            <span className="session-dm__turn-hp">{turn.hp}</span>
-                            <span className={`session-dm__turn-flag is-${turn.kind.toLowerCase()}`}>
-                                {turn.kind}
-                            </span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </>
+        </aside>
     );
 }
 

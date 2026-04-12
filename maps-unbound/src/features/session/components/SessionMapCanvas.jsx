@@ -4,6 +4,7 @@
 // - compact turn strip + round/advance controls while in combat
 import { useRef, useState } from "react";
 import EncounterOverlay from "./EncounterOverlay";
+import TurnRecord from "./TurnRecord";
 
 const MAP_OPTIONS = Object.entries(
     import.meta.glob("../map_placeholder/*.{jpg,jpeg,png,webp}", { eager: true, import: "default" })
@@ -183,8 +184,6 @@ function SessionMapCanvas({
         setDraftParticipants((prev) => prev.filter((item) => item.id !== id));
     };
 
-    const displayRound = turns.length > 0 ? round + 1 : "-";
-
     return (
         <main className={["session-dm__map", isCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
             {selectedMap && (
@@ -213,35 +212,8 @@ function SessionMapCanvas({
                     </div>
                 </div>
             )}
-            {isCombatState && turns.length > 0 && (
-                <aside className="session-dm__map-turns-wrap" aria-label="Turn order overlay">
-                    <div className="session-dm__map-turns">
-                        <div className="session-dm__map-turns-list">
-                            {turns.map((turn) => (
-                                <div
-                                    key={`${turn.order}-${turn.name}`}
-                                    className={[
-                                        "session-dm__map-turn",
-                                        turn.isActive ? "is-active" : "",
-                                    ].filter(Boolean).join(" ")}
-                                >
-                                    <span className="session-dm__map-turn-name">{turn.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="session-dm__map-turn-controls">
-                        <span className="session-dm__map-round">Round {displayRound}</span>
-                        <button
-                            type="button"
-                            className="session-dm__ghost session-dm__ghost--small"
-                            onClick={onAdvanceTurn}
-                            disabled={!onAdvanceTurn}
-                        >
-                            Advance
-                        </button>
-                    </div>
-                </aside>
+            {isCombatState && (
+                <TurnRecord turns={turns} round={round} onAdvanceTurn={onAdvanceTurn} />
             )}
             <button
                 type="button"
