@@ -1,4 +1,4 @@
-// Right sidebar event feed (placeholder for rolls/abilities stream).
+// Right sidebar event feed.
 function SessionRightPanel({ isCollapsed, onToggle }) {
     return (
         <aside
@@ -35,8 +35,12 @@ function SessionRightPanel({ isCollapsed, onToggle }) {
                     <div className="session-dm__events-list" aria-label="Event feed">
                         <div className="session-dm__event">
                             <span className="session-dm__event-time">--:--</span>
-                            <p>Event feed coming soon for rolls, saves, and ability usage.</p>
+                            <p>Will be implemented later.</p>
                         </div>
+                    </div>
+                    <div className="session-dm__events-input">
+                        <input type="text" placeholder="Add event note..." />
+                        <button type="button" className="session-dm__ghost">Add</button>
                     </div>
                 </>
             )}

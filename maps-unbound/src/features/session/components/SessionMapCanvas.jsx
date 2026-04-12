@@ -193,13 +193,6 @@ function SessionMapCanvas({
                     alt={`${selectedMap.name} map`}
                 />
             )}
-            <button
-                type="button"
-                className="session-dm__map-btn session-dm__map-btn--map"
-                onClick={() => setIsMapPickerOpen(true)}
-            >
-                Map
-            </button>
             {!selectedMap && (
                 <div className="session-dm__map-overlay">
                     <div>
@@ -215,26 +208,38 @@ function SessionMapCanvas({
             {isCombatState && (
                 <TurnRecord turns={turns} round={round} onAdvanceTurn={onAdvanceTurn} />
             )}
-            <button
-                type="button"
-                className="session-dm__map-btn session-dm__map-btn--combat"
-                onClick={() => {
-                    if (isCombatState) {
-                        setIsCombatState(false);
-                        if (onTurnsChange) {
-                            onTurnsChange([]);
+            <div className="session-dm__map-controls" aria-label="Map quick tools">
+                <button
+                    type="button"
+                    className="session-dm__map-btn"
+                    onClick={() => setIsMapPickerOpen(true)}
+                >
+                    Maps
+                </button>
+                <button
+                    type="button"
+                    className="session-dm__map-btn"
+                    onClick={() => {
+                        if (isCombatState) {
+                            setIsCombatState(false);
+                            if (onTurnsChange) {
+                                onTurnsChange([]);
+                            }
+                            if (onCombatStateChange) {
+                                onCombatStateChange(false);
+                            }
+                            return;
                         }
-                        if (onCombatStateChange) {
-                            onCombatStateChange(false);
-                        }
-                        return;
-                    }
-                    openCombatSetup();
-                }}
-                aria-pressed={isCombatState}
-            >
-                {isCombatState ? "End Combat" : "Combat"}
-            </button>
+                        openCombatSetup();
+                    }}
+                    aria-pressed={isCombatState}
+                >
+                    Combat
+                </button>
+                <button type="button" className="session-dm__map-btn">Roll Dice</button>
+                <button type="button" className="session-dm__map-btn">Ping</button>
+                <button type="button" className="session-dm__map-btn">Hitbox</button>
+            </div>
             <EncounterOverlay
                 isOpen={isCombatSetupOpen}
                 draftParticipants={draftParticipants}

@@ -5,16 +5,17 @@ import SessionLeftPanel from "./components/SessionLeftPanel";
 import SessionMapCanvas from "./components/SessionMapCanvas";
 import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
+import useCampaignSessions from "../campaigns/use-campaign-sessions";
 import LoadingPage from "../../shared/Loading.jsx";
 import "./session.css";
 
 function SessionDMView() {
     const navigate = useNavigate();
-    const { token } = useAuth();
+    const { user, token } = useAuth();
     const [isLeftCollapsed, setIsLeftCollapsed] = useState(false);
     const [isRightCollapsed, setIsRightCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
@@ -26,13 +27,78 @@ function SessionDMView() {
     const [sceneName, setSceneName] = useState("");
     const [turns, setTurns] = useState([]);
     const [combatRound, setCombatRound] = useState(0);
+    const [notesDraft, setNotesDraft] = useState("");
+    const [notesSaving, setNotesSaving] = useState(false);
+    const [notesError, setNotesError] = useState("");
+    const [notesStatus, setNotesStatus] = useState("");
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
     const { campaign, loading } = useCampaign(campaignId);
+    const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId);
+
+    const orderedSessions = useMemo(() => {
+        return [...sessions].sort((a, b) => {
+            const aNumber = Number.isFinite(a?.sessionNumber) ? a.sessionNumber : Number.POSITIVE_INFINITY;
+            const bNumber = Number.isFinite(b?.sessionNumber) ? b.sessionNumber : Number.POSITIVE_INFINITY;
+            if (aNumber !== bNumber) {
+                return aNumber - bNumber;
+            }
+            return new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime();
+        });
+    }, [sessions]);
+
+    const currentSession = useMemo(() => {
+        if (!sessionId) {
+            return null;
+        }
+        return orderedSessions.find((session) => session?._id === sessionId) || null;
+    }, [orderedSessions, sessionId]);
+
+    const previousSessionNotes = useMemo(() => {
+        if (!sessionId) {
+            return [];
+        }
+
+        const currentIndex = orderedSessions.findIndex((session) => session?._id === sessionId);
+        const priorSessions = currentIndex >= 0
+            ? orderedSessions.slice(0, currentIndex)
+            : orderedSessions.filter((session) => session?._id !== sessionId);
+
+        return priorSessions
+            .flatMap((session) =>
+                (Array.isArray(session?.notes) ? session.notes : []).map((note, noteIndex) => ({
+                    id: `${session._id || "session"}-${note.createdAt || noteIndex}`,
+                    sessionId: session._id || "",
+                    sessionNumber: session.sessionNumber,
+                    sessionTitle: session.title || `Session ${session.sessionNumber || "?"}`,
+                    content: note.content || "",
+                    createdAt: note.createdAt || session.createdAt,
+                    authorRole: note.authorRole || "DM",
+                }))
+            )
+            .filter((note) => note.content)
+            .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }, [orderedSessions, sessionId]);
+    const currentSessionNotes = useMemo(() => {
+        if (!currentSession || !Array.isArray(currentSession.notes)) {
+            return [];
+        }
+        return currentSession.notes
+            .map((note, noteIndex) => ({
+                id: `${currentSession._id || "session"}-current-${note.createdAt || noteIndex}`,
+                sessionTitle: currentSession.title || `Session ${currentSession.sessionNumber || "?"}`,
+                content: note.content || "",
+                createdAt: note.createdAt || currentSession.createdAt,
+                authorRole: note.authorRole || "DM",
+            }))
+            .filter((note) => note.content)
+            .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    }, [currentSession]);
 
     const campaignName = loading ? "Loading..." : campaign?.title || "";
+    const sessionName = currentSession?.title || sessionNameParam || "";
     const players = (campaign?.members || [])
         .filter((member) => member.role === "Player")
         .map((member) => {
@@ -152,6 +218,47 @@ function SessionDMView() {
         }
     };
 
+    const handleSaveSessionNote = async () => {
+        const content = notesDraft.trim();
+        if (!content) {
+            setNotesError("Write a note before saving.");
+            setNotesStatus("");
+            return;
+        }
+        if (!sessionId || !token) {
+            setNotesError("Missing session context. Open a session from campaign view and try again.");
+            setNotesStatus("");
+            return;
+        }
+
+        setNotesSaving(true);
+        setNotesError("");
+        setNotesStatus("");
+        try {
+            const res = await fetch(`/api/sessions/${sessionId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    sessionNoteContent: content,
+                }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data.error || "Failed to save note");
+            }
+            setNotesDraft("");
+            setNotesStatus("Session note saved.");
+            await refetchSessions();
+        } catch (err) {
+            setNotesError(err.message || "Failed to save note.");
+        } finally {
+            setNotesSaving(false);
+        }
+    };
+
     if (loading) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
     }
@@ -162,7 +269,7 @@ function SessionDMView() {
                 campaignName={campaignName}
                 players={players}
                 sceneName={sceneName}
-                sessionName={sessionNameParam || ""}
+                sessionName={sessionName}
                 isCombatState={isCombatState}
                 onPauseSession={() => setIsSessionPaused(true)}
                 onEndSession={() => setIsEndSessionConfirmOpen(true)}
@@ -189,6 +296,24 @@ function SessionDMView() {
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}
                 onToggle={() => setIsBottomCollapsed((prev) => !prev)}
+                notesDraft={notesDraft}
+                onNotesDraftChange={(value) => {
+                    setNotesDraft(value);
+                    if (notesError) {
+                        setNotesError("");
+                    }
+                    if (notesStatus) {
+                        setNotesStatus("");
+                    }
+                }}
+                onSaveNotes={handleSaveSessionNote}
+                notesSaving={notesSaving}
+                notesError={notesError}
+                notesStatus={notesStatus}
+                currentNotes={currentSessionNotes}
+                previousNotes={previousSessionNotes}
+                previousNotesLoading={sessionsLoading}
+                canSaveNotes={Boolean(sessionId && token && user)}
             />
             {isSessionPaused && (
                 <div className="session-dm__pause-overlay" role="dialog" aria-modal="true" aria-label="Session paused">

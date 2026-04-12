@@ -168,9 +168,28 @@ router.put("/:id", verifyToken, async (req, res) => {
       updates.summary = req.body.summary?.trim?.() || "";
     }
 
+    let noteToAppend = null;
+    if (Object.prototype.hasOwnProperty.call(req.body, "sessionNoteContent")) {
+      const content = req.body.sessionNoteContent?.trim?.() || "";
+      if (!content) {
+        return res.status(400).json({ error: "sessionNoteContent is required" });
+      }
+      noteToAppend = {
+        authorId: req.user.userId,
+        authorRole: "DM",
+        content,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    }
+
+    const updatePayload = noteToAppend
+      ? { ...updates, $push: { notes: noteToAppend } }
+      : updates;
+
     const updatedSession = await Session.findByIdAndUpdate(
       req.params.id,
-      updates,
+      updatePayload,
       { new: true, runValidators: true }
     );
 
