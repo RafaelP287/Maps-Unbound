@@ -19,3 +19,27 @@ In addition, you must use the Dungeons and Dragons 5e 2014 api (recommended run 
 #### Environment Variables
 - Create an `backend/.env` file using `backend/env.example` as a template.
 - Create an `maps-unbound/.env` file using `maps-unbound/env.example` as a template.
+
+- For JWT_SECRET use a generated string from:
+`node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+
+## Running the dice
+
+Create a account on dddice.com
+
+and once you create get a API key to initiallize the engine
+
+# dddice API Key
+
+add a .env to maps-unbound
+
+use both vite and react just incase 
+
+# Vite projects use VITE_ prefix
+
+VITE_DDDICE_API_KEY=yourdddiceAPIkey
+
+# If you use Create React App instead, use this line instead of the one above:
+
+REACT_APP_DDDICE_API_KEY=yourdddiceAPIkey
+
