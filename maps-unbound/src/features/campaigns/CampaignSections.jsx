@@ -12,12 +12,18 @@ const formatQuestUpdated = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
 };
 
-function CampaignSections({ campaign, dm, players, isDM = false, user = null, onStartEditing = null }) {
+function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null }) {
   const currentQuest = campaign.currentQuest;
   const npcs = campaign.npcs || [];
+  const enemies = campaign.enemies || [];
   const loot = campaign.loot || [];
   const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
   const questUpdated = formatQuestUpdated(currentQuest?.updatedAt);
+  const sortedSessions = [...sessions].sort((a, b) => {
+    const aTime = a?.startedAt ? new Date(a.startedAt).getTime() : 0;
+    const bTime = b?.startedAt ? new Date(b.startedAt).getTime() : 0;
+    return bTime - aTime;
+  });
 
   return (
     <div className="campaign-sections-stack">
@@ -142,6 +148,37 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null, on
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
+          <span className="campaign-details-heading">Enemies</span>
+          <span className="campaign-details-icon">✦</span>
+        </div>
+        {enemies.length > 0 ? (
+          <div className="campaign-resource-list">
+            {enemies.map((enemy, idx) => (
+              <article className="campaign-resource-item" key={`enemy-${idx}`}>
+                <div className="campaign-resource-title-row">
+                  <h3 className="campaign-resource-title">{enemy.name}</h3>
+                  {enemy.role && <span className="campaign-resource-meta">{enemy.role}</span>}
+                </div>
+                {enemy.notes && <p className="campaign-resource-notes">{enemy.notes}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <span className="campaign-section-empty">No enemies tracked yet.</span>
+        )}
+        <div className="campaign-section-actions">
+          <span className="campaign-resource-count">{enemies.length} tracked enemies</span>
+          {isDM && (
+            <button className="btn-ghost" onClick={onStartEditing} type="button">
+              Manage Enemies
+            </button>
+          )}
+        </div>
+      </section>
+
+      <section className="campaign-section-panel">
+        <div className="campaign-details-header">
+          <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Loot</span>
           <span className="campaign-details-icon">✦</span>
         </div>
@@ -227,18 +264,37 @@ function CampaignSections({ campaign, dm, players, isDM = false, user = null, on
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
-          <span className="campaign-details-heading">Session Timeline</span>
+          <span className="campaign-details-heading">Sessions</span>
           <span className="campaign-details-icon">✦</span>
         </div>
         <p className="campaign-section-subtext">
-          Session notes, recaps, and major story beats over time.
+          A record of all sessions held for this campaign.
         </p>
-        <div className="campaign-timeline-item">
-          {/* Timeline entries will become repeatable cards (session date, recap, key outcomes). */}
-          <span className="campaign-section-empty">No sessions logged yet.</span>
-        </div>
+        {sortedSessions.length > 0 ? (
+          <div className="campaign-resource-list">
+            {sortedSessions.map((session) => (
+              <article className="campaign-resource-item" key={session._id}>
+                <div className="campaign-resource-title-row">
+                  <h3 className="campaign-resource-title">{session.title || "Untitled Session"}</h3>
+                  <span className="campaign-resource-meta">{session.status || "Planned"}</span>
+                </div>
+                <p className="campaign-resource-notes">
+                  {session.startedAt
+                    ? `Started ${new Date(session.startedAt).toLocaleString()}`
+                    : "Start time not recorded"}
+                  {session.endedAt ? ` • Ended ${new Date(session.endedAt).toLocaleString()}` : ""}
+                </p>
+                {session.summary && <p className="campaign-resource-notes">{session.summary}</p>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="campaign-timeline-item">
+            <span className="campaign-section-empty">No sessions logged yet.</span>
+          </div>
+        )}
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">0 timeline entries</span>
+          <span className="campaign-resource-count">{sortedSessions.length} timeline entries</span>
           <div className="campaign-inline-actions">
             {isDM ? (
               <button className="btn-ghost" onClick={onStartEditing} type="button">

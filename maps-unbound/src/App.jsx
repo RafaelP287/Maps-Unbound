@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { ThreeDDice } from "dddice-js";
 import AppLayout from "./layout/AppLayout.jsx";
+import SessionLayout from "./layout/SessionLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 import Maps from "./features/maps/Maps.jsx";
@@ -304,6 +305,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="session" element={<SessionLayout />}>
+          <Route index element={<Session />} />
+          <Route path="dm" element={<SessionDMView />} />
+        </Route>
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
           <Route index element={<Home />} />
@@ -328,6 +333,7 @@ function App() {
               />
             } 
           />
+          {/* Session Route */}
           <Route path="session">
               <Route index element={<Session />} />
               <Route path="dm" element={<SessionDMView />} />

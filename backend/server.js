@@ -1,6 +1,8 @@
 import express, { urlencoded, json } from "express";
 import cors from "cors";
 import connectDB from "./config/db.js";
+import sessionRoutes from './routes/sessions.js';
+import encounterRoutes from './routes/encounters.js';
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -38,7 +40,9 @@ app.use('/api/register', registerRoutes);
 app.use('/api/login', loginRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
-app.use('/api/parties', partyRoutes);
+app.use('/api/parties', partyRoutes);app.use('/api/sessions', sessionRoutes);
+app.use('/api/encounters', encounterRoutes);
+
 app.use('/api/assets', assetRoutes);
 app.use('/api/dnd', dndProxy);
 
@@ -54,4 +58,6 @@ app.use((req, res, next) => {
 
 connectDB();
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
