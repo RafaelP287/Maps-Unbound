@@ -30,15 +30,29 @@ function CampaignsPage() {
     if (!isLoggedIn) { setLoading(false); return; }
     const fetchCampaigns = async () => {
       try {
-        // Fetch only campaigns the current user can access.
         const res = await fetch("http://localhost:5001/api/campaigns", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
+        
         const data = await res.json();
-        // Backend returns [] when empty; keep UI mapping logic stable with array fallback.
-        setCampaigns(data || []);
+        
+        // Log the data to see what the backend is actually sending
+        console.log("Fetched campaigns data:", data); 
+
+        // Ensure we only set an array to state
+        if (Array.isArray(data)) {
+          setCampaigns(data);
+        } else if (data && Array.isArray(data.campaigns)) {
+          // Fallback just in case your backend wraps it like { campaigns: [...] }
+          setCampaigns(data.campaigns);
+        } else {
+          console.warn("Expected an array of campaigns, but got:", data);
+          setCampaigns([]); 
+        }
+
       } catch (err) {
         console.error("Error fetching campaigns:", err);
+        setCampaigns([]); // Reset to empty array on network error
       } finally { setLoading(false); }
     };
     fetchCampaigns();
