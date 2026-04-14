@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
-  // Destructured logout (if your auth context provides it) to handle expired tokens
+  // Destructured logout to handle expired tokens
   const { token, logout } = useAuth();
   const [playerSearch, setPlayerSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -35,7 +35,7 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        // TODO 3 Fixed: Handle invalid or expired token failure
+        // Handle invalid or expired token failure
         if (res.status === 401 || res.status === 403) {
           showToast("Session expired. Please log in again.");
           if (logout) logout(); // Log the user out automatically
@@ -82,7 +82,7 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
           autoComplete="off"
         />
         
-        {/* TODO 2 Fixed: Contextual localized Toast Notification */}
+        {/* Contextual localized Toast Notification */}
         {toastMessage && (
             <div style={localToastStyle}>
                 {toastMessage}
