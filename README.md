@@ -38,3 +38,8 @@ VITE_DDDICE_API_KEY=
 REACT_APP_DDDICE_API_KEY=
 ```
 Note: You have to create an account on dddice.com, and once you get the API key, you can input that api key as an .env variable, and utilize the engine.
+1. Sign into dddice.com
+2. Click on your profile on the top right
+3. Go to the Developers tab
+4. Click on Create API key
+5. Copy and paste that key as VITE_DDDICE_API_KEY and REACT_APP_DDDICE_API_KEY.
