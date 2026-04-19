@@ -19,7 +19,6 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
   const loot = campaign.loot || [];
   const members = campaign.members || [];
   const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
-  const questUpdated = formatQuestUpdated(currentQuest?.updatedAt);
   const sortedSessions = [...sessions].sort((a, b) => {
     const aTime = a?.startedAt ? new Date(a.startedAt).getTime() : 0;
     const bTime = b?.startedAt ? new Date(b.startedAt).getTime() : 0;
@@ -31,7 +30,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
       <section className="campaign-section-panel campaign-quest-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
-          <span className="campaign-details-heading">Current Quest Tracker</span>
+          <span className="campaign-details-heading">Main Quest</span>
           <span className="campaign-details-icon">✦</span>
         </div>
         {hasQuest ? (
@@ -45,20 +44,22 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
             <p className="campaign-quest-objective-text">
               {currentQuest.objective || "No objective details added yet."}
             </p>
-            {questUpdated && (
-              <p className="campaign-helper-text">Updated {questUpdated}</p>
-            )}
           </div>
         ) : (
           <div className="campaign-quest-empty">
-            <p className="campaign-section-empty">No active quest selected yet.</p>
+            <p className="campaign-section-empty">No main quest selected yet.</p>
             {isDM && (
               <button className="btn-edit" onClick={() => onStartEditing?.("quest")} type="button">
-                Set Current Quest
+                Set Main Quest
               </button>
             )}
           </div>
         )}
+        <div className="campaign-section-actions campaign-quest-actions">
+          <Link to={`/campaigns/${campaign._id}/journal`} className="campaign-btn-link btn-primary">
+            Open Campaign Journal
+          </Link>
+        </div>
       </section>
 
       {/* Important campaign metadata shown at top for quick scanning. */}

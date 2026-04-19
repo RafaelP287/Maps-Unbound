@@ -28,7 +28,7 @@ function CampaignPlayerView({ campaign, user }) {
           <CampaignSections campaign={campaign} dm={dm} players={players} sessions={sessions} user={user} />
 
           {/* Footer */}
-          <div className="campaign-footer">
+          <div className="campaign-footer campaign-footer-split">
             <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
           </div>
         </div>

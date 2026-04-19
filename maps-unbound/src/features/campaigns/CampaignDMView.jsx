@@ -690,7 +690,7 @@ function CampaignDMView({ campaign, refetch }) {
           </div>
 
           {/* Footer */}
-          <div className="campaign-footer">
+          <div className="campaign-footer campaign-footer-split">
             <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
           </div>
         </div>
