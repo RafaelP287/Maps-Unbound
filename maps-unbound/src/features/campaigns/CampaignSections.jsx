@@ -17,6 +17,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
   const npcs = campaign.npcs || [];
   const enemies = campaign.enemies || [];
   const loot = campaign.loot || [];
+  const members = campaign.members || [];
   const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
   const questUpdated = formatQuestUpdated(currentQuest?.updatedAt);
   const sortedSessions = [...sessions].sort((a, b) => {
@@ -52,7 +53,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           <div className="campaign-quest-empty">
             <p className="campaign-section-empty">No active quest selected yet.</p>
             {isDM && (
-              <button className="btn-edit" onClick={onStartEditing} type="button">
+              <button className="btn-edit" onClick={() => onStartEditing?.("quest")} type="button">
                 Set Current Quest
               </button>
             )}
@@ -92,12 +93,17 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           </div>
           <div className="campaign-detail-divider" />
           <div className="campaign-detail-row">
-            <span className="campaign-detail-key">Party Size</span>
+            <span className="campaign-detail-key">Campaign Members</span>
+            <span className="campaign-detail-val">{members.length}</span>
+          </div>
+          <div className="campaign-detail-divider" />
+          <div className="campaign-detail-row">
+            <span className="campaign-detail-key">Player Slots Filled</span>
             <span className="campaign-detail-val">{players.length}/{campaign.maxPlayers || 5}</span>
           </div>
           <div className="campaign-detail-divider" />
           <div className="campaign-detail-row">
-            <span className="campaign-detail-key">Adventurers</span>
+            <span className="campaign-detail-key">Player Roster</span>
             <span className="campaign-detail-val">
               {players.length > 0 ? players.map((p) => (
                 <span key={p.userId._id}>
@@ -107,7 +113,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
                   )}
                 </span>
               )).reduce((acc, el, i) => i === 0 ? [el] : [...acc, " · ", el], []) : (
-                <em style={{ color: "#7a6e5e" }}>No players yet</em>
+                <em style={{ color: "#7a6e5e" }}>No players have joined yet</em>
               )}
             </span>
           </div>
@@ -138,7 +144,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{npcs.length} tracked NPCs</span>
           {isDM && (
-            <button className="btn-ghost" onClick={onStartEditing} type="button">
+            <button className="btn-ghost" onClick={() => onStartEditing?.("npcs")} type="button">
               Manage NPCs
             </button>
           )}
@@ -169,7 +175,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{enemies.length} tracked enemies</span>
           {isDM && (
-            <button className="btn-ghost" onClick={onStartEditing} type="button">
+            <button className="btn-ghost" onClick={() => onStartEditing?.("enemies")} type="button">
               Manage Enemies
             </button>
           )}
@@ -201,14 +207,13 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{loot.length} loot entries</span>
           {isDM && (
-            <button className="btn-ghost" onClick={onStartEditing} type="button">
+            <button className="btn-ghost" onClick={() => onStartEditing?.("loot")} type="button">
               Manage Loot
             </button>
           )}
         </div>
       </section>
 
-      {/* Placeholder scaffolds below are intentionally simple so each section can evolve into richer card collections. */}
       <section className="campaign-section-panel">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
@@ -219,14 +224,13 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           Character sheets and party roster for this campaign.
         </p>
         <div className="campaign-section-placeholder">
-          {/* Character-to-campaign linking is not modeled yet; this marks the eventual slot. */}
-          <span className="campaign-section-empty">No character sheets linked yet.</span>
+          <span className="campaign-section-empty">Campaign-linked characters are not implemented yet.</span>
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">0 linked sheets</span>
+          <span className="campaign-resource-count">Planned feature</span>
           <div className="campaign-inline-actions">
             <Link to="/characters" className="btn-ghost campaign-btn-link">
-              {isDM ? "Manage Characters" : "View Characters"}
+              {isDM ? "Browse Characters" : "View Characters"}
             </Link>
             <Link to="/create-character" className="btn-primary campaign-btn-link">
               Create Character
@@ -245,17 +249,16 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           Campaign maps, encounter layouts, and location handouts.
         </p>
         <div className="campaign-map-placeholder">
-          {/* Future map cards (thumbnail/title/scene tags) should render in this region. */}
-          <span className="campaign-section-empty">No campaign maps linked yet.</span>
+          <span className="campaign-section-empty">Campaign-linked maps are not implemented yet.</span>
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">0 linked maps</span>
+          <span className="campaign-resource-count">Planned feature</span>
           <div className="campaign-inline-actions">
             <Link to="/maps" className="btn-ghost campaign-btn-link">
-              {isDM ? "Manage Maps" : "View Maps"}
+              {isDM ? "Browse Maps" : "View Maps"}
             </Link>
             <Link to="/maps" className="btn-primary campaign-btn-link">
-              {isDM ? "Prep Encounter Map" : "Open Map Board"}
+              {isDM ? "Open Map Board" : "Open Maps"}
             </Link>
           </div>
         </div>
@@ -294,16 +297,16 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           </div>
         )}
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">{sortedSessions.length} timeline entries</span>
+          <span className="campaign-resource-count">{sortedSessions.length} session records</span>
           <div className="campaign-inline-actions">
             {isDM ? (
-              <button className="btn-ghost" onClick={onStartEditing} type="button">
-                Edit Campaign Notes
+              <button className="btn-ghost" onClick={() => onStartEditing?.("sessions")} type="button">
+                Manage Session Records
               </button>
             ) : (
-              <Link to="/campaigns" className="btn-ghost campaign-btn-link">View Campaigns</Link>
+              <Link to="/campaigns" className="btn-ghost campaign-btn-link">Back to Campaigns</Link>
             )}
-            <span className="campaign-helper-text">Session timeline cards are coming soon.</span>
+            <span className="campaign-helper-text">Newest sessions appear first.</span>
           </div>
         </div>
       </section>

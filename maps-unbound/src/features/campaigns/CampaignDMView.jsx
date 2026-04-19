@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -14,6 +14,7 @@ function CampaignDMView({ campaign, refetch }) {
   const navigate = useNavigate();
   const id = campaign._id;
   const editFocusRef = useRef(null);
+  const editSectionRefs = useRef({});
 
   // Derived campaign data
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -61,6 +62,7 @@ function CampaignDMView({ campaign, refetch }) {
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [editSection, setEditSection] = useState("general");
   const [startingSession, setStartingSession] = useState(false);
   const [pendingSessionDeleteIds, setPendingSessionDeleteIds] = useState([]);
   const [showSessionDeleteConfirmOnSave, setShowSessionDeleteConfirmOnSave] = useState(false);
@@ -77,6 +79,19 @@ function CampaignDMView({ campaign, refetch }) {
   const pendingSessionNames = sessions
     .filter((session) => pendingSessionDeleteIds.includes(session._id))
     .map((session) => session.title || "Untitled Session");
+
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const targetNode = editSectionRefs.current[editSection] || editFocusRef.current;
+    if (!targetNode) return;
+
+    const frame = requestAnimationFrame(() => {
+      targetNode.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [editSection, isEditing]);
 
   const executeSave = async ({ applySessionDeletes = false } = {}) => {
     setSaving(true); setSaveError(null);
@@ -158,6 +173,7 @@ function CampaignDMView({ campaign, refetch }) {
       await refetch();
       setPendingSessionDeleteIds([]);
       setShowSessionDeleteConfirmOnSave(false);
+      setEditSection("general");
       setIsEditing(false);
     } catch (err) { setSaveError(err.message || "Failed to save changes."); }
     finally { setSaving(false); }
@@ -209,14 +225,13 @@ function CampaignDMView({ campaign, refetch }) {
     setSaveError(null);
     setPendingSessionDeleteIds([]);
     setShowSessionDeleteConfirmOnSave(false);
+    setEditSection("general");
     setIsEditing(false);
   };
 
-  const startEditing = () => {
+  const startEditing = (section = "general") => {
+    setEditSection(section);
     setIsEditing(true);
-    requestAnimationFrame(() => {
-      editFocusRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   };
 
   const handleDelete = async () => {
@@ -304,7 +319,10 @@ function CampaignDMView({ campaign, refetch }) {
         <div className="campaign-card-panel">
           {/* Image editor */}
           {isEditing && (
-            <div className="campaign-field-group">
+            <div
+              className="campaign-field-group"
+              ref={(node) => { editSectionRefs.current.general = node; }}
+            >
               <span className="campaign-field-label">Campaign Artwork</span>
               <ImageDrop
                 imagePreview={editImage || null}
@@ -364,7 +382,10 @@ function CampaignDMView({ campaign, refetch }) {
           )}
 
           {isEditing && (
-            <section className="campaign-section-panel campaign-quest-panel">
+            <section
+              className="campaign-section-panel campaign-quest-panel"
+              ref={(node) => { editSectionRefs.current.quest = node; }}
+            >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Current Quest Tracker</span>
@@ -405,7 +426,10 @@ function CampaignDMView({ campaign, refetch }) {
           )}
 
           {isEditing && (
-            <section className="campaign-section-panel">
+            <section
+              className="campaign-section-panel"
+              ref={(node) => { editSectionRefs.current.sessions = node; }}
+            >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Session Records</span>
@@ -445,7 +469,10 @@ function CampaignDMView({ campaign, refetch }) {
           )}
 
           {isEditing && (
-            <section className="campaign-section-panel">
+            <section
+              className="campaign-section-panel"
+              ref={(node) => { editSectionRefs.current.enemies = node; }}
+            >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Enemy Tracker</span>
@@ -496,7 +523,10 @@ function CampaignDMView({ campaign, refetch }) {
           )}
 
           {isEditing && (
-            <section className="campaign-section-panel">
+            <section
+              className="campaign-section-panel"
+              ref={(node) => { editSectionRefs.current.npcs = node; }}
+            >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">NPC Tracker</span>
@@ -547,7 +577,10 @@ function CampaignDMView({ campaign, refetch }) {
           )}
 
           {isEditing && (
-            <section className="campaign-section-panel">
+            <section
+              className="campaign-section-panel"
+              ref={(node) => { editSectionRefs.current.loot = node; }}
+            >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Loot Tracker</span>

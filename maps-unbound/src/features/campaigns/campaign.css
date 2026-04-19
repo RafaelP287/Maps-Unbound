@@ -461,6 +461,7 @@ textarea.campaign-quest-objective {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  margin-top: 0.8rem;
 }
 
 .campaign-resource-item {
@@ -530,6 +531,7 @@ textarea.campaign-quest-objective {
   padding: 0.95rem;
   background: rgba(201, 168, 76, 0.04);
 }
+
 
 .campaign-section-actions {
   display: flex;
