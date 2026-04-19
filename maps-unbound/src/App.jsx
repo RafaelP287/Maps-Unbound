@@ -14,7 +14,7 @@ import SessionDMView from "./features/session/SessionDMView.jsx";
 import Campaigns from "./features/campaigns/CampaignsPage.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
-import CampaignJournalView from "./features/campaigns/CampaignJournalView.jsx";
+import CampaignJournalPage from "./features/campaignjournal/CampaignJournalPage.jsx";
 
 import Characters from "./features/characters/Characters.jsx";
 import CreateCharacter from "./features/characters/CreateCharacter.jsx";
@@ -112,7 +112,7 @@ function App() {
             <Route index element={<Campaigns />} />
             <Route path="new" element={<CreateCampaign />} />
             <Route path=":id" element={<ViewCampaign />} />
-            <Route path=":id/journal" element={<CampaignJournalView />} />
+            <Route path=":id/journal" element={<CampaignJournalPage />} />
           </Route>
 
           {/* Party Finder route */}
