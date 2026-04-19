@@ -120,27 +120,33 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">NPCs</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        {npcs.length > 0 ? (
-          <div className="campaign-resource-list">
-            {npcs.map((npc, idx) => (
-              <article className="campaign-resource-item" key={`npc-${idx}`}>
-                <div className="campaign-resource-title-row">
-                  <h3 className="campaign-resource-title">{npc.name}</h3>
-                  {npc.role && <span className="campaign-resource-meta">{npc.role}</span>}
+        <div className="campaign-section-body">
+          {npcs.length > 0 ? (
+            <div className="campaign-card-frame">
+              <div className="campaign-card-scroll">
+                <div className="campaign-resource-list">
+                  {npcs.map((npc, idx) => (
+                    <article className="campaign-resource-item" key={`npc-${idx}`}>
+                      <div className="campaign-resource-title-row">
+                        <h3 className="campaign-resource-title">{npc.name}</h3>
+                        {npc.role && <span className="campaign-resource-meta">{npc.role}</span>}
+                      </div>
+                      {npc.notes && <p className="campaign-resource-notes">{npc.notes}</p>}
+                    </article>
+                  ))}
                 </div>
-                {npc.notes && <p className="campaign-resource-notes">{npc.notes}</p>}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <span className="campaign-section-empty">No NPCs tracked yet.</span>
-        )}
+              </div>
+            </div>
+          ) : (
+            <span className="campaign-section-empty">No NPCs tracked yet.</span>
+          )}
+        </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{npcs.length} tracked NPCs</span>
           {isDM && (
@@ -151,27 +157,33 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Enemies</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        {enemies.length > 0 ? (
-          <div className="campaign-resource-list">
-            {enemies.map((enemy, idx) => (
-              <article className="campaign-resource-item" key={`enemy-${idx}`}>
-                <div className="campaign-resource-title-row">
-                  <h3 className="campaign-resource-title">{enemy.name}</h3>
-                  {enemy.role && <span className="campaign-resource-meta">{enemy.role}</span>}
+        <div className="campaign-section-body">
+          {enemies.length > 0 ? (
+            <div className="campaign-card-frame">
+              <div className="campaign-card-scroll">
+                <div className="campaign-resource-list">
+                  {enemies.map((enemy, idx) => (
+                    <article className="campaign-resource-item" key={`enemy-${idx}`}>
+                      <div className="campaign-resource-title-row">
+                        <h3 className="campaign-resource-title">{enemy.name}</h3>
+                        {enemy.role && <span className="campaign-resource-meta">{enemy.role}</span>}
+                      </div>
+                      {enemy.notes && <p className="campaign-resource-notes">{enemy.notes}</p>}
+                    </article>
+                  ))}
                 </div>
-                {enemy.notes && <p className="campaign-resource-notes">{enemy.notes}</p>}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <span className="campaign-section-empty">No enemies tracked yet.</span>
-        )}
+              </div>
+            </div>
+          ) : (
+            <span className="campaign-section-empty">No enemies tracked yet.</span>
+          )}
+        </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{enemies.length} tracked enemies</span>
           {isDM && (
@@ -182,28 +194,34 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Loot</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        {loot.length > 0 ? (
-          <div className="campaign-resource-list">
-            {loot.map((item, idx) => (
-              <article className="campaign-resource-item" key={`loot-${idx}`}>
-                <div className="campaign-resource-title-row">
-                  <h3 className="campaign-resource-title">{item.name}</h3>
-                  <span className="campaign-resource-meta">x{item.quantity || 1}</span>
+        <div className="campaign-section-body">
+          {loot.length > 0 ? (
+            <div className="campaign-card-frame">
+              <div className="campaign-card-scroll">
+                <div className="campaign-resource-list">
+                  {loot.map((item, idx) => (
+                    <article className="campaign-resource-item" key={`loot-${idx}`}>
+                      <div className="campaign-resource-title-row">
+                        <h3 className="campaign-resource-title">{item.name}</h3>
+                        <span className="campaign-resource-meta">x{item.quantity || 1}</span>
+                      </div>
+                      {item.holder && <p className="campaign-resource-holder">Held by: {item.holder}</p>}
+                      {item.notes && <p className="campaign-resource-notes">{item.notes}</p>}
+                    </article>
+                  ))}
                 </div>
-                {item.holder && <p className="campaign-resource-holder">Held by: {item.holder}</p>}
-                {item.notes && <p className="campaign-resource-notes">{item.notes}</p>}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <span className="campaign-section-empty">No loot tracked yet.</span>
-        )}
+              </div>
+            </div>
+          ) : (
+            <span className="campaign-section-empty">No loot tracked yet.</span>
+          )}
+        </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{loot.length} loot entries</span>
           {isDM && (
@@ -214,20 +232,25 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Characters</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        <p className="campaign-section-subtext">
-          Character sheets and party roster for this campaign.
-        </p>
-        <div className="campaign-section-placeholder">
-          <span className="campaign-section-empty">Campaign-linked characters are not implemented yet.</span>
+        <div className="campaign-section-body">
+          <p className="campaign-section-subtext">
+            Character sheets and party roster for this campaign.
+          </p>
+          <div className="campaign-card-frame">
+            <div className="campaign-card-scroll">
+              <div className="campaign-section-placeholder">
+                <span className="campaign-section-empty">Campaign-linked characters are not implemented yet.</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">Planned feature</span>
           <div className="campaign-inline-actions">
             <Link to="/characters" className="btn-ghost campaign-btn-link">
               {isDM ? "Browse Characters" : "View Characters"}
@@ -239,20 +262,25 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Maps</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        <p className="campaign-section-subtext">
-          Campaign maps, encounter layouts, and location handouts.
-        </p>
-        <div className="campaign-map-placeholder">
-          <span className="campaign-section-empty">Campaign-linked maps are not implemented yet.</span>
+        <div className="campaign-section-body">
+          <p className="campaign-section-subtext">
+            Campaign maps, encounter layouts, and location handouts.
+          </p>
+          <div className="campaign-card-frame">
+            <div className="campaign-card-scroll">
+              <div className="campaign-map-placeholder">
+                <span className="campaign-section-empty">Campaign-linked maps are not implemented yet.</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">Planned feature</span>
           <div className="campaign-inline-actions">
             <Link to="/maps" className="btn-ghost campaign-btn-link">
               {isDM ? "Browse Maps" : "View Maps"}
@@ -264,38 +292,43 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
         </div>
       </section>
 
-      <section className="campaign-section-panel">
+      <section className="campaign-section-panel campaign-section-panel-bounded">
         <div className="campaign-details-header">
           <span className="campaign-details-icon">✦</span>
           <span className="campaign-details-heading">Sessions</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        <p className="campaign-section-subtext">
-          A record of all sessions held for this campaign.
-        </p>
-        {sortedSessions.length > 0 ? (
-          <div className="campaign-resource-list">
-            {sortedSessions.map((session) => (
-              <article className="campaign-resource-item" key={session._id}>
-                <div className="campaign-resource-title-row">
-                  <h3 className="campaign-resource-title">{session.title || "Untitled Session"}</h3>
-                  <span className="campaign-resource-meta">{session.status || "Planned"}</span>
-                </div>
-                <p className="campaign-resource-notes">
-                  {session.startedAt
-                    ? `Started ${new Date(session.startedAt).toLocaleString()}`
-                    : "Start time not recorded"}
-                  {session.endedAt ? ` • Ended ${new Date(session.endedAt).toLocaleString()}` : ""}
-                </p>
-                {session.summary && <p className="campaign-resource-notes">{session.summary}</p>}
-              </article>
-            ))}
+        <div className="campaign-section-body">
+          <p className="campaign-section-subtext">
+            A record of all sessions held for this campaign.
+          </p>
+          {sortedSessions.length > 0 ? (
+            <div className="campaign-card-frame">
+              <div className="campaign-card-scroll">
+                <div className="campaign-resource-list">
+                  {sortedSessions.map((session) => (
+                    <article className="campaign-resource-item" key={session._id}>
+                      <div className="campaign-resource-title-row">
+                        <h3 className="campaign-resource-title">{session.title || "Untitled Session"}</h3>
+                        <span className="campaign-resource-meta">{session.status || "Planned"}</span>
+                      </div>
+                  <p className="campaign-resource-notes">
+                    {session.startedAt
+                      ? `Started ${new Date(session.startedAt).toLocaleString()}`
+                      : "Start time not recorded"}
+                    {session.endedAt ? ` • Ended ${new Date(session.endedAt).toLocaleString()}` : ""}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
-        ) : (
-          <div className="campaign-timeline-item">
-            <span className="campaign-section-empty">No sessions logged yet.</span>
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="campaign-timeline-item">
+              <span className="campaign-section-empty">No sessions logged yet.</span>
+            </div>
+          )}
+        </div>
         <div className="campaign-section-actions">
           <span className="campaign-resource-count">{sortedSessions.length} session records</span>
           <div className="campaign-inline-actions">

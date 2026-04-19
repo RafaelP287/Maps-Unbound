@@ -381,6 +381,49 @@
   padding: 1.25rem 1.5rem;
 }
 
+.campaign-section-panel-bounded {
+  display: flex;
+  flex-direction: column;
+  min-height: 20.5rem;
+}
+
+.campaign-section-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.campaign-card-frame {
+  position: relative;
+  margin-top: 0.8rem;
+}
+
+.campaign-card-frame::before,
+.campaign-card-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.campaign-card-frame::before {
+  top: 0;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.45), transparent);
+}
+
+.campaign-card-frame::after {
+  bottom: 0;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.45), transparent);
+}
+
+.campaign-card-scroll {
+  max-height: 11.5rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
 .campaign-quest-panel {
   border-color: rgba(201, 168, 76, 0.4);
   background:
@@ -461,7 +504,6 @@ textarea.campaign-quest-objective {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
-  margin-top: 0.8rem;
 }
 
 .campaign-resource-item {
@@ -525,11 +567,31 @@ textarea.campaign-quest-objective {
 .campaign-section-placeholder,
 .campaign-map-placeholder,
 .campaign-timeline-item {
-  margin-top: 0.8rem;
   border: 1px dashed rgba(201, 168, 76, 0.25);
   border-radius: 8px;
   padding: 0.95rem;
   background: rgba(201, 168, 76, 0.04);
+}
+
+.campaign-card-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 999px;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.5);
+  background-clip: padding-box;
 }
 
 
