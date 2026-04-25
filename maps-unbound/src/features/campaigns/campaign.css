@@ -461,6 +461,7 @@
 .campaign-card-frame {
   position: relative;
   margin-top: 0.8rem;
+  min-height: 11.5rem;
 }
 
 .campaign-card-frame::before,
@@ -485,7 +486,7 @@
 }
 
 .campaign-card-scroll {
-  max-height: 11.5rem;
+  height: 11.5rem;
   overflow-y: auto;
   padding-right: 0.35rem;
 }
@@ -605,6 +606,21 @@ textarea.campaign-quest-objective {
   padding: 0.75rem 0.9rem;
 }
 
+.campaign-resource-item-button {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  padding: 0.75rem 0.9rem;
+}
+
 .campaign-resource-title-row {
   display: flex;
   align-items: center;
@@ -624,6 +640,32 @@ textarea.campaign-quest-objective {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
+}
+
+.campaign-session-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.campaign-session-detail-title {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.campaign-session-summary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.campaign-session-detail-summary {
+  margin-top: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
 }
 
 .campaign-resource-holder,

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 const formatStartDate = (value) => {
@@ -12,18 +13,34 @@ const formatQuestUpdated = (value) => {
   return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
 };
 
+const getPrimarySessionDate = (session) =>
+  session?.startedAt || session?.scheduledFor || session?.createdAt || null;
+
+const formatSessionWindow = (session) => {
+  const startedLabel = session.startedAt
+    ? `Started ${new Date(session.startedAt).toLocaleString()}`
+    : "Start time not recorded";
+  const endedLabel = session.endedAt
+    ? `Ended ${new Date(session.endedAt).toLocaleString()}`
+    : "";
+
+  return endedLabel ? `${startedLabel} • ${endedLabel}` : startedLabel;
+};
+
 function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null }) {
   const currentQuest = campaign.currentQuest;
   const npcs = campaign.npcs || [];
   const enemies = campaign.enemies || [];
   const loot = campaign.loot || [];
   const members = campaign.members || [];
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
   const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
   const sortedSessions = [...sessions].sort((a, b) => {
-    const aTime = a?.startedAt ? new Date(a.startedAt).getTime() : 0;
-    const bTime = b?.startedAt ? new Date(b.startedAt).getTime() : 0;
+    const aTime = getPrimarySessionDate(a) ? new Date(getPrimarySessionDate(a)).getTime() : 0;
+    const bTime = getPrimarySessionDate(b) ? new Date(getPrimarySessionDate(b)).getTime() : 0;
     return bTime - aTime;
   });
+  const selectedSession = sortedSessions.find((session) => session._id === selectedSessionId) || null;
 
   return (
     <div className="campaign-sections-stack">
@@ -306,23 +323,43 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           {sortedSessions.length > 0 ? (
             <div className="campaign-card-frame">
               <div className="campaign-card-scroll">
-                <div className="campaign-resource-list">
-                  {sortedSessions.map((session) => (
-                    <article className="campaign-resource-item" key={session._id}>
+                {selectedSession ? (
+                  <article className="campaign-resource-item campaign-session-detail">
+                    <h3 className="campaign-resource-title campaign-session-detail-title">
+                      {selectedSession.title || "Untitled Session"}
+                    </h3>
+                    <div className="campaign-session-summary-scroll">
+                      <p className="campaign-resource-notes campaign-session-detail-summary">
+                        {selectedSession.summary || "No session summary has been recorded yet."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => setSelectedSessionId(null)}
+                    >
+                      Back to Session List
+                    </button>
+                  </article>
+                ) : (
+                  <div className="campaign-resource-list">
+                    {sortedSessions.map((session) => (
+                      <button
+                        type="button"
+                        className="campaign-resource-item campaign-resource-item-button"
+                        key={session._id}
+                        onClick={() => setSelectedSessionId(session._id)}
+                      >
                       <div className="campaign-resource-title-row">
                         <h3 className="campaign-resource-title">{session.title || "Untitled Session"}</h3>
                         <span className="campaign-resource-meta">{session.status || "Planned"}</span>
                       </div>
-                  <p className="campaign-resource-notes">
-                    {session.startedAt
-                      ? `Started ${new Date(session.startedAt).toLocaleString()}`
-                      : "Start time not recorded"}
-                    {session.endedAt ? ` • Ended ${new Date(session.endedAt).toLocaleString()}` : ""}
-                  </p>
-                </article>
-              ))}
-            </div>
-          </div>
+                        <p className="campaign-resource-notes">{formatSessionWindow(session)}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="campaign-timeline-item">

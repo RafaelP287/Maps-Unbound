@@ -34,19 +34,27 @@ function CampaignJournalPage() {
   const [encountersBySession, setEncountersBySession] = useState({});
   const [encountersLoading, setEncountersLoading] = useState(false);
   const [encountersError, setEncountersError] = useState("");
+  const [encountersResolved, setEncountersResolved] = useState(false);
   const [expandedSessionIds, setExpandedSessionIds] = useState({});
 
   useEffect(() => {
+    if (sessionsLoading) {
+      setEncountersResolved(false);
+      return;
+    }
+
     if (!token || !Array.isArray(sessions) || sessions.length === 0) {
       setEncountersBySession({});
       setEncountersLoading(false);
       setEncountersError("");
+      setEncountersResolved(true);
       return;
     }
 
     let cancelled = false;
 
     const fetchEncounters = async () => {
+      setEncountersResolved(false);
       setEncountersLoading(true);
       setEncountersError("");
       try {
@@ -75,6 +83,7 @@ function CampaignJournalPage() {
       } finally {
         if (!cancelled) {
           setEncountersLoading(false);
+          setEncountersResolved(true);
         }
       }
     };
@@ -84,7 +93,7 @@ function CampaignJournalPage() {
     return () => {
       cancelled = true;
     };
-  }, [sessions, token]);
+  }, [sessions, sessionsLoading, token]);
 
   const timelineItems = useMemo(() => {
     const sessionItems = (sessions || []).map((session) => ({
@@ -126,7 +135,7 @@ function CampaignJournalPage() {
     });
   }, [encountersBySession, sessions]);
 
-  if (loading || authLoading) {
+  if (loading || authLoading || sessionsLoading || !encountersResolved) {
     return <LoadingPage>Opening the campaign journal...</LoadingPage>;
   }
 

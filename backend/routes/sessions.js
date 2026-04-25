@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import Session from "../models/Session.js";
 import Campaign from "../models/Campaign.js";
+import Encounter from "../models/Encounter.js";
 
 const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
@@ -268,6 +269,7 @@ router.delete("/:id", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Only the DM can delete this session" });
     }
 
+    await Encounter.deleteMany({ sessionId: session._id });
     await Session.findByIdAndDelete(req.params.id);
     campaign.sessionIds = (campaign.sessionIds || []).filter(
       (id) => id.toString() !== req.params.id

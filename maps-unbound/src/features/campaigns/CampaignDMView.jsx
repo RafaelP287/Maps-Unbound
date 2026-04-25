@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import placeholderImage from "./images/DnD.jpg";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
@@ -72,7 +73,7 @@ function CampaignDMView({ campaign, refetch }) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
-  const { sessions, refetch: refetchSessions } = useCampaignSessions(campaign._id);
+  const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaign._id);
 
   const backgroundImage = campaign.image || placeholderImage;
   const activeBg = isEditing && editImage ? editImage : backgroundImage;
@@ -92,6 +93,10 @@ function CampaignDMView({ campaign, refetch }) {
 
     return () => cancelAnimationFrame(frame);
   }, [editSection, isEditing]);
+
+  if (sessionsLoading) {
+    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
+  }
 
   const executeSave = async ({ applySessionDeletes = false } = {}) => {
     setSaving(true); setSaveError(null);

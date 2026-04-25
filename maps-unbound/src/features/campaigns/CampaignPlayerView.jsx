@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import placeholderImage from "./images/DnD.jpg";
+import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
@@ -11,7 +12,11 @@ function CampaignPlayerView({ campaign, user }) {
   // Player-facing roster excludes the DM for party-size displays.
   const players = campaign.members.filter((m) => m.role === "Player");
   const backgroundImage = campaign.image || placeholderImage;
-  const { sessions } = useCampaignSessions(campaign._id);
+  const { sessions, loading: sessionsLoading } = useCampaignSessions(campaign._id);
+
+  if (sessionsLoading) {
+    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
+  }
 
   return (
     <div className="campaign-page">

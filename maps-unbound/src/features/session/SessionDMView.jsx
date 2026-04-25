@@ -259,7 +259,7 @@ function SessionDMView() {
         }
     };
 
-    if (loading) {
+    if (loading || sessionsLoading) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
     }
 
