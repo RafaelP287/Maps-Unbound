@@ -2,14 +2,18 @@ import React from "react";
 
 const CharacterCard = ({ character, currentUser }) => {
   const isOwner = character.owner === currentUser;
+  
+  const bgImage = character.class.index 
+    ? `/images/classes/character/${character.class.index}.png`
+    : "/images/classes/character/default.jpg";
 
   return (
-    <div style={{ ...cardStyle, backgroundImage: `url(${character.image})` }}>
+    <div style={{ ...cardStyle, backgroundImage: `url(${bgImage})` }}>
       {isOwner && <span style={ownerBadgeStyle}>Your Character</span>}
       <div style={overlayStyle}>
         <h3 style={titleStyle}>{character.name}</h3>
-        <p style={classLevelStyle}>{character.class} - Level {character.level}</p>
-        <p style={raceStyle}>{character.race}</p>
+        <p style={classLevelStyle}>{character.class.name} - Level {character.level}</p>
+        <p style={raceStyle}>{character.race.name}</p>
       </div>
     </div>
   );
@@ -47,7 +51,7 @@ const ownerBadgeStyle = {
   position: "absolute",
   top: "10px",
   right: "10px",
-  backgroundColor: "rgba(0, 255, 255, 0.8)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
   color: "#000",
   padding: "4px 8px",
   borderRadius: "4px",

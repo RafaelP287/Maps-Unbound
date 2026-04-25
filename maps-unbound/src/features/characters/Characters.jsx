@@ -1,16 +1,17 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-
-import Gate from "../../shared/Gate.jsx";
 import CharacterCard from "./CharacterCard";
 import Button from "../../shared/Button.jsx";
-import dwarfImage from "./images/Dwarf-fighter.jpg";
-import elfImage from "./images/Elf-wizard.png";
+import Gate from "../../shared/Gate.jsx";
+
+
+const AUTH_STORAGE_KEY = "maps-unbound-auth";
+const apiServer = import.meta.env.VITE_API_SERVER;
 
 const Characters = () => {
+  // Authentication
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
-
   if (!isLoggedIn) {
     return (
       <Gate>
@@ -19,37 +20,78 @@ const Characters = () => {
     );
   }
 
-  const [characters] = useState([
-    {
-      name: "Krorgulir Wyvernbeard",
-      class: "Fighter",
-      level: 5,
-      race: "Dwarf",
-      image: dwarfImage,
-      owner: "Bob"
-    },
-    {
-      name: "Arel Vasatra",
-      class: "Ranger",
-      level: 4,
-      race: "Elf",
-      image: elfImage,
-      owner: "Bob"
-    }
-  ]);
+  const navigate = useNavigate();
+  const [characters, setCharacters] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
+  useEffect(() => {
+    // Fetches Characters
+    const fetchCharacters = async () => {
+      try {
+        const response = await fetch(
+          `${apiServer}/api/users/${user.username}/characters`,
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch characters");
+        }
+
+        const data = await response.json();
+        console.log("API DATA:", data);
+        setCharacters(data.characters);
+      } catch (err) {
+        console.error("Error fetching characters:", err);
+        setError("Could not load your characters.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCharacters();
+  }, [navigate]);
+
+  // Handle Loading and Error states
+  if (isLoading) {
+    return (
+      <div style={{ color: "white", textAlign: "center", marginTop: "50px" }}>
+        Loading your heroes...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ color: "#ff6b6b", textAlign: "center", marginTop: "50px" }}>
+        {error}
+      </div>
+    );
+  }
+
+  // Page
   return (
     <>
       <div style={styles.header}>
         <h1>My Characters</h1>
         <Link to="/create-character">
-          <Button>Create New Character</Button>
+          <button style={primaryBtnStyle}>+ Create New Character</button>
         </Link>
       </div>
+
       <div style={styles.list}>
-        {characters.map((character, index) => (
-          <CharacterCard key={index} character={character} currentUser="Bob" />
-        ))}
+        {characters.length === 0 ? (
+          <p style={{ color: "#aaa" }}>
+            You haven't created any characters yet.
+          </p>
+        ) : (
+          characters.map((character) => (
+            <CharacterCard
+              key={character._id || character.characterId}
+              character={character}
+              user={user?.username}
+            />
+          ))
+        )}
       </div>
     </>
   );
@@ -60,15 +102,31 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    padding: "16px"
+    padding: "16px",
   },
   list: {
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
     gap: "16px",
-    padding: "16px"
-  }
+    padding: "16px",
+  },
+};
+
+const primaryBtnStyle = {
+  fontFamily: "'Cinzel', serif",
+  fontSize: "0.85rem",
+  fontWeight: "600",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase",
+  color: "var(--bg-deep)",
+  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
+  border: "none",
+  borderRadius: "6px",
+  padding: "0.7rem 1.8rem",
+  cursor: "pointer",
+  boxShadow: `0 2px 16px rgba(201,168,76,0.25)`,
+  transition: "opacity 0.2s, transform 0.15s",
 };
 
 export default Characters;

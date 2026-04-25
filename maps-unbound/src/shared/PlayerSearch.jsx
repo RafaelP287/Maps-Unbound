@@ -2,15 +2,31 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
-  const { token } = useAuth();
+  // Destructured logout to handle expired tokens
+  const { token, logout } = useAuth();
   const [playerSearch, setPlayerSearch] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  
+  // Localized toast state
+  const [toastMessage, setToastMessage] = useState("");
+  
   const searchTimeout = useRef(null);
 
+  // Helper to show a temporary toast near the search bar
+  const showToast = (message) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(""), 4000);
+  };
+
   useEffect(() => {
-    if (playerSearch.trim().length < 2) { setSearchResults([]); return; }
+    if (playerSearch.trim().length < 2) { 
+        setSearchResults([]); 
+        return; 
+    }
+    
     clearTimeout(searchTimeout.current);
+    
     searchTimeout.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
@@ -18,15 +34,34 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
           `/api/campaigns/users/search?username=${encodeURIComponent(playerSearch)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        const data = await res.json();
-        if (res.ok) {
-          const addedIds = players.map((p) => p.userId);
-          setSearchResults(data.filter((u) => !addedIds.includes(u._id)));
+
+        // Handle invalid or expired token failure
+        if (res.status === 401 || res.status === 403) {
+          showToast("Session expired. Please log in again.");
+          if (logout) logout(); // Log the user out automatically
+          return;
         }
-      } catch { /* silently fail */ } finally { setSearchLoading(false); }
+
+        if (!res.ok) {
+           throw new Error("Failed to search the archives.");
+        }
+
+        const data = await res.json();
+        
+        // Filter out players that are already in the party
+        const addedIds = players.map((p) => p.userId);
+        setSearchResults(data.filter((u) => !addedIds.includes(u._id)));
+        
+      } catch (err) {
+        // Handle general network errors
+        showToast(err.message || "An error occurred while searching.");
+      } finally { 
+        setSearchLoading(false); 
+      }
     }, 300);
+    
     return () => clearTimeout(searchTimeout.current);
-  }, [playerSearch, players, token]);
+  }, [playerSearch, players, token, logout]);
 
   const handleAdd = (u) => {
     onAddPlayer({ userId: u._id, username: u.username });
@@ -46,7 +81,16 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
           style={inputStyle}
           autoComplete="off"
         />
+        
+        {/* Contextual localized Toast Notification */}
+        {toastMessage && (
+            <div style={localToastStyle}>
+                {toastMessage}
+            </div>
+        )}
+
         {searchLoading && <p style={searchHintStyle}>Searching the guild rolls…</p>}
+        
         {!searchLoading && searchResults.length > 0 && (
           <ul style={dropdownStyle}>
             {searchResults.map((u) => (
@@ -57,7 +101,8 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
             ))}
           </ul>
         )}
-        {!searchLoading && playerSearch.trim().length >= 2 && searchResults.length === 0 && (
+        
+        {!searchLoading && playerSearch.trim().length >= 2 && searchResults.length === 0 && !toastMessage && (
           <p style={searchHintStyle}>No adventurers found by that name.</p>
         )}
       </div>
@@ -68,7 +113,12 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
             <li key={p.userId} style={partyTagStyle}>
               <span style={partyAvatarStyle}>{p.username[0].toUpperCase()}</span>
               <span>{p.username}</span>
-              <button type="button" onClick={() => onRemovePlayer(p.userId)} style={removeTagBtnStyle} aria-label={`Remove ${p.username}`}>✕</button>
+              <button 
+                type="button" 
+                onClick={() => onRemovePlayer(p.userId)} 
+                style={removeTagBtnStyle} 
+                aria-label={`Remove ${p.username}`}
+              >✕</button>
             </li>
           ))}
         </ul>
@@ -104,6 +154,22 @@ const inputStyle = {
 };
 
 const searchWrapStyle = { position: "relative" };
+
+// New style for the localized toast
+const localToastStyle = {
+  position: "absolute",
+  top: "-35px",
+  right: "0",
+  background: "rgba(180, 40, 40, 0.9)", // Subtle red error bg
+  color: "#fff",
+  padding: "4px 10px",
+  borderRadius: "4px",
+  fontSize: "0.8rem",
+  fontFamily: "sans-serif",
+  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+  zIndex: 30,
+  animation: "fadeIn 0.2s ease-in-out"
+};
 
 const dropdownStyle = {
   listStyle: "none",

@@ -400,6 +400,34 @@ textarea::placeholder {
   border-color: rgba(201, 168, 76, 0.5);
 }
 
+.campaign-card:hover .card-overlay {
+  background: linear-gradient(to top, rgba(8, 6, 3, 0.97) 0%, rgba(8, 6, 3, 0.6) 55%, transparent 100%);
+}
+
+/* 5e Compendium — stack list above article on narrow screens */
+@media (max-width: 800px) {
+  .ruleset-split {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ruleset-split aside {
+    max-height: min(40vh, 360px);
+  }
+}
+
+/* Compendium result rows: strip OS / browser focus rings (often a white rounded rect on macOS) */
+.ruleset-split button.ruleset-list-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ruleset-split button.ruleset-list-btn:focus,
+.ruleset-split button.ruleset-list-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 /* ════════════════════════════════════════════
    KEYFRAMES
 ════════════════════════════════════════════ */

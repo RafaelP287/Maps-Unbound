@@ -1,14 +1,11 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
-
-import authRoutes from './routes/auth.js';
-import campaignRoutes from './routes/campaigns.js';
+import express, { urlencoded, json } from "express";
+import cors from "cors";
+import connectDB from "./config/db.js";
 import sessionRoutes from './routes/sessions.js';
 import encounterRoutes from './routes/encounters.js';
 
-dotenv.config({ path: '../.env' });
+const app = express();
+const PORT = process.env.PORT || 5001;
 
 if (!process.env.MONGO_URI) {
   console.error('MONGO_URI is not defined in .env');
@@ -20,28 +17,46 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-const app = express();
-const PORT = process.env.PORT || 5001;
-
-// Middleware
+// Middleware to parse JSON bodies (The data sent by frontend)
+app.use(urlencoded({ extended: false }));
+app.use(json({ limit: "15mb" }));
 app.use(cors());
-app.use(express.json({ limit: "15mb" }));
 
-// MongoDB Connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB connected'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err));
+// --- Import route files ---
+import characterRoutes from './routes/characters.js';
+import userRoutes from './routes/users.js';
+import registerRoutes from './routes/register.js';
+import loginRoutes from './routes/login.js';
+import authRoutes from './routes/auth.js';
+import campaignRoutes from './routes/campaigns.js';
+import partyRoutes from './routes/partyRoutes.js';
+import assetRoutes from './routes/assets.js';
+import dndProxy from './routes/dndProxy.js';
 
-// Routes
+// ---  Mount the routes ---
+app.use('/api/characters', characterRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/register', registerRoutes);
+app.use('/api/login', loginRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
-app.use('/api/sessions', sessionRoutes);
+app.use('/api/parties', partyRoutes);app.use('/api/sessions', sessionRoutes);
 app.use('/api/encounters', encounterRoutes);
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Maps Unbound API' });
+app.use('/api/assets', assetRoutes);
+app.use('/api/dnd', dndProxy);
+
+// Debugging Middleware (Add this to see what is happening)
+app.use((req, res, next) => {
+  console.log("---------------------");
+  console.log("Incoming Request Method:", req.method);
+  console.log("Incoming URL:", req.url); // <--- Added this line
+  console.log("Incoming Headers:", req.headers["content-type"]);
+  console.log("Incoming Body:", req.body);
+  next();
 });
+
+connectDB();
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
