@@ -139,6 +139,7 @@ io.on('connection', (socket) => {
       const characterName = member.characterId?.name;
       const className = member.characterId?.class || 'Adventurer';
       const level = member.characterId?.level || 1;
+      const initiativeRoll = Math.floor(Math.random() * 20) + 1;
 
       return {
         tokenId: `player-${memberId || index + 1}`,
@@ -147,6 +148,7 @@ io.on('connection', (socket) => {
         role: className,
         hp: 10 + level * 2,
         maxHp: 10 + level * 2,
+        distanceFeet: 0,
         position: {
           x: (index % 6) + 1,
           y: clamp(4 - Math.floor(index / 6), 1, 4),
@@ -154,46 +156,105 @@ io.on('connection', (socket) => {
         status: 'Ready',
         color: '#c9a84c',
         ownerUserId: memberId || null,
-        initiative: 0,
+        initiative: initiativeRoll,
+        lastInitiativeRoll: initiativeRoll,
         movementSpeed: 30,
         movementRemaining: 30,
         actionAvailable: true,
-        bonusActionAvailable: true,
+        bonusActionAvailable: false,
+        reactionAvailable: true,
+        objectInteractionAvailable: true,
       };
     });
 
-    const fallbackTokens = [
-      {
-        tokenId: 'enemy-1',
-        name: 'Raid Leader',
-        type: 'Enemy',
-        role: 'Enemy',
-        hp: 20,
-        maxHp: 20,
-        position: { x: 5, y: 2 },
-        status: 'Watching',
-        color: '#b13d30',
-        ownerUserId: null,
-        initiative: 0,
-        movementSpeed: 30,
-        movementRemaining: 30,
-        actionAvailable: true,
-        bonusActionAvailable: true,
-      },
-    ];
+    const tokens = generatedPlayerTokens;
 
-    const tokens = generatedPlayerTokens.length > 0 ? [...generatedPlayerTokens, ...fallbackTokens] : fallbackTokens;
+    if (tokens.length > 0) {
+      tokens.forEach((token) => {
+        if ((token.initiative ?? 0) > 0 || (token.lastInitiativeRoll ?? 0) > 0) return;
+        const roll = Math.floor(Math.random() * 20) + 1;
+        token.lastInitiativeRoll = roll;
+        token.initiative = roll + (token.initiativeBonus ?? 0);
+      });
+    }
 
     return {
       isReady: false,
       grid: { cols: 6, rows: 4 },
       tokens,
-      initiativeOrder: tokens.map((t) => t.tokenId),
-      activeTokenId: tokens[0]?.tokenId || '',
+      initiativeOrder: tokens
+        .slice()
+        .sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0))
+        .map((t) => t.tokenId),
+      activeTokenId: tokens
+        .slice()
+        .sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0))[0]?.tokenId || '',
       round: 1,
       log: ['Encounter initialized.'],
       updatedAt: new Date(),
     };
+  };
+
+  const defaultEnemyTemplates = [
+    {
+      name: 'Raid Leader',
+      role: 'Enemy',
+      hp: 20,
+      maxHp: 20,
+      distanceFeet: 30,
+      position: { x: 5, y: 2 },
+      color: '#b13d30',
+    },
+    {
+      name: 'Raid Stalker',
+      role: 'Enemy',
+      hp: 16,
+      maxHp: 16,
+      distanceFeet: 40,
+      position: { x: 4, y: 3 },
+      color: '#8f3b55',
+    },
+    {
+      name: 'Raid Brute',
+      role: 'Enemy',
+      hp: 24,
+      maxHp: 24,
+      distanceFeet: 50,
+      position: { x: 3, y: 3 },
+      color: '#7d2c2c',
+    },
+  ];
+
+  const resetEncounterTokens = (encounter) => {
+    const tokens = Array.isArray(encounter?.tokens) ? encounter.tokens : [];
+
+    encounter.round = 1;
+    encounter.initiativeOrder = [];
+    encounter.activeTokenId = '';
+
+    tokens.forEach((token) => {
+      const hp = Number.isFinite(token.maxHp) ? token.maxHp : Number(token.hp) || 0;
+      const movementSpeed = Number.isFinite(token.movementSpeed) ? token.movementSpeed : 30;
+      const initiativeRoll = Math.floor(Math.random() * 20) + 1;
+
+      token.hp = hp;
+      token.status = token.type === 'Player' ? 'Ready' : 'Watching';
+      token.movementRemaining = movementSpeed;
+      token.actionAvailable = true;
+      token.bonusActionAvailable = false;
+      token.reactionAvailable = true;
+      token.objectInteractionAvailable = true;
+      token.lastInitiativeRoll = initiativeRoll;
+      token.initiative = initiativeRoll + (token.initiativeBonus ?? 0);
+      token.distanceFeet = token.type === 'Player' ? 0 : (Number.isFinite(token.distanceFeet) ? token.distanceFeet : 30);
+    });
+
+    encounter.initiativeOrder = tokens
+      .slice()
+      .sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0))
+      .map((token) => token.tokenId);
+
+    encounter.activeTokenId = encounter.initiativeOrder[0] || '';
   };
 
   const ensureEncounterState = async (campaign) => {
@@ -214,11 +275,15 @@ io.on('connection', (socket) => {
     campaign.encounter.tokens = (campaign.encounter.tokens || []).map((token) => {
       const movementSpeed = Number.isFinite(token.movementSpeed) ? token.movementSpeed : 30;
       const movementRemaining = Number.isFinite(token.movementRemaining) ? token.movementRemaining : movementSpeed;
+      const distanceFeet = Number.isFinite(token.distanceFeet)
+        ? token.distanceFeet
+        : (token.type === 'Player' ? 0 : 30);
       if (
         token.movementSpeed === undefined ||
         token.movementRemaining === undefined ||
         token.actionAvailable === undefined ||
-        token.bonusActionAvailable === undefined
+        token.bonusActionAvailable === undefined ||
+        token.distanceFeet === undefined
       ) {
         touched = true;
       }
@@ -227,10 +292,24 @@ io.on('connection', (socket) => {
         movementSpeed,
         movementRemaining,
         actionAvailable: token.actionAvailable ?? true,
-        bonusActionAvailable: token.bonusActionAvailable ?? true,
+        bonusActionAvailable: token.bonusActionAvailable ?? false,
+        distanceFeet,
         characterStats: token.characterStats || null,
       };
     });
+
+    const hasAutoInitiative = campaign.encounter.tokens.some((token) => (token.initiative ?? 0) > 0 || (token.lastInitiativeRoll ?? 0) > 0);
+    if (!hasAutoInitiative && campaign.encounter.tokens.length > 0) {
+      campaign.encounter.tokens = campaign.encounter.tokens.map((token) => {
+        const roll = Math.floor(Math.random() * 20) + 1;
+        return {
+          ...token,
+          initiative: roll + (token.initiativeBonus ?? 0),
+          lastInitiativeRoll: roll,
+        };
+      });
+      touched = true;
+    }
 
     if (touched) {
       campaign.markModified('encounter');
@@ -262,10 +341,14 @@ io.on('connection', (socket) => {
         color: token.color,
         ownerUserId: token.ownerUserId?.toString?.() || token.ownerUserId || null,
         initiative: token.initiative ?? 0,
+        lastInitiativeRoll: token.lastInitiativeRoll ?? 0,
         movementSpeed: token.movementSpeed ?? 30,
         movementRemaining: token.movementRemaining ?? token.movementSpeed ?? 30,
         actionAvailable: token.actionAvailable ?? true,
-        bonusActionAvailable: token.bonusActionAvailable ?? true,
+        bonusActionAvailable: token.bonusActionAvailable ?? false,
+        reactionAvailable: token.reactionAvailable ?? true,
+        objectInteractionAvailable: token.objectInteractionAvailable ?? true,
+        distanceFeet: token.distanceFeet ?? 30,
       }))
       : [],
     initiativeOrder: Array.isArray(encounter?.initiativeOrder) ? encounter.initiativeOrder : [],
@@ -284,10 +367,67 @@ io.on('connection', (socket) => {
     });
   };
 
-  const pushEncounterLog = (encounter, message) => {
+  const broadcastEncounterChat = (campaignId, message) => {
+    const room = `campaign:${campaignId}`;
+    io.to(room).emit('chat-message', {
+      campaignId,
+      userId: 'system',
+      username: 'Encounter',
+      message,
+      timestamp: new Date().toISOString(),
+      system: true,
+    });
+  };
+
+  const shouldBroadcastEncounterLog = (message) => /\b(took|healed|damage|knocked out)\b/i.test(String(message));
+
+  const pushEncounterLog = (campaignId, encounter, message, { broadcastToChat = false } = {}) => {
     const next = Array.isArray(encounter.log) ? encounter.log : [];
     encounter.log = [message, ...next].slice(0, 30);
     encounter.updatedAt = new Date();
+    if (broadcastToChat || shouldBroadcastEncounterLog(message)) {
+      broadcastEncounterChat(campaignId, message);
+    }
+  };
+
+  const getTokenOwnerId = (token) => token?.ownerUserId?.toString?.() || token?.ownerUserId || null;
+
+  const getControlledToken = (encounter, userId) => {
+    if (!Array.isArray(encounter?.tokens) || !userId) return null;
+    return encounter.tokens.find((token) => getTokenOwnerId(token) === userId) || null;
+  };
+
+  const getActiveToken = (encounter) => {
+    if (!Array.isArray(encounter?.tokens)) return null;
+    return encounter.tokens.find((token) => token.tokenId === encounter.activeTokenId) || null;
+  };
+
+  const canActOnTurn = (campaign, encounter, userId) => {
+    const activeToken = getActiveToken(encounter);
+    if (!activeToken) return false;
+
+    const ownerId = getTokenOwnerId(activeToken);
+    if (ownerId) {
+      return ownerId === userId;
+    }
+
+    return isDMForCampaign(campaign, userId);
+  };
+
+  const getStrengthModifier = (token) => {
+    const strength = Number(token?.characterStats?.abilityScores?.strength ?? 10);
+    if (!Number.isFinite(strength)) return 0;
+    return Math.floor((strength - 10) / 2);
+  };
+
+  const getTokenDistance = (token) => {
+    if (!token) return 9999;
+    return Number.isFinite(token.distanceFeet) ? token.distanceFeet : 30;
+  };
+
+  const setTokenDistance = (token, distanceFeet) => {
+    if (!token) return;
+    token.distanceFeet = clamp(Number(distanceFeet) || 0, 0, 9999);
   };
 
   const sortInitiative = (encounter) => {
@@ -384,6 +524,156 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('encounter:approach-target', async ({ campaignId, userId, targetTokenId, feet = 5 }) => {
+    try {
+      const campaign = await getCampaignForUser(campaignId, userId);
+      if (!campaign) return;
+
+      const encounter = await ensureEncounterState(campaign);
+      if (!isDMForCampaign(campaign, userId) && !encounter.isReady) {
+        socket.emit('encounter:error', { message: 'Encounter is not open yet. Please wait for the DM.' });
+        return;
+      }
+
+      if (!canActOnTurn(campaign, encounter, userId)) {
+        socket.emit('encounter:error', { message: 'You can only move on your turn.' });
+        return;
+      }
+
+      const actor = getControlledToken(encounter, userId);
+      const target = encounter.tokens.find((token) => token.tokenId === targetTokenId);
+      if (!actor || !target || actor.tokenId === target.tokenId) return;
+
+      const requestedFeet = clamp(Number(feet) || 5, 5, 30);
+      const availableMovement = Number.isFinite(actor.movementRemaining) ? actor.movementRemaining : 30;
+      if (availableMovement <= 0) {
+        socket.emit('encounter:error', { message: `${actor.name} has no movement remaining.` });
+        return;
+      }
+
+      const spentFeet = Math.min(requestedFeet, availableMovement);
+      actor.movementRemaining = Math.max(0, availableMovement - spentFeet);
+      target.distanceFeet = Math.max(0, getTokenDistance(target) - spentFeet);
+
+      pushEncounterLog(
+        campaignId,
+        encounter,
+        `${actor.name} moved ${spentFeet} ft closer to ${target.name}. ${target.name} is now ${target.distanceFeet} ft away.`
+      );
+
+      campaign.markModified('encounter');
+      await campaign.save();
+      emitEncounterState(campaignId, encounter);
+    } catch (error) {
+      console.error('Encounter approach target error:', error);
+      socket.emit('encounter:error', { message: 'Failed to approach target' });
+    }
+  });
+
+  socket.on('encounter:use-action', async ({ campaignId, userId, actionType, targetTokenId }) => {
+    try {
+      const campaign = await getCampaignForUser(campaignId, userId);
+      if (!campaign) return;
+
+      const encounter = await ensureEncounterState(campaign);
+      if (!isDMForCampaign(campaign, userId) && !encounter.isReady) {
+        socket.emit('encounter:error', { message: 'Encounter is not open yet. Please wait for the DM.' });
+        return;
+      }
+
+      if (!canActOnTurn(campaign, encounter, userId)) {
+        socket.emit('encounter:error', { message: 'You can only use actions on your turn.' });
+        return;
+      }
+
+      const actor = getControlledToken(encounter, userId);
+      if (!actor) return;
+
+      if (!actor.actionAvailable) {
+        socket.emit('encounter:error', { message: `${actor.name} has already used their action.` });
+        return;
+      }
+
+      const normalizedAction = String(actionType || '').toLowerCase();
+      actor.actionAvailable = false;
+
+      if (normalizedAction === 'dash') {
+        actor.movementRemaining = actor.movementSpeed ?? 30;
+        pushEncounterLog(campaignId, encounter, `${actor.name} dashed and refreshed their movement.`);
+      } else if (normalizedAction === 'hide') {
+        actor.status = 'Hidden';
+        pushEncounterLog(campaignId, encounter, `${actor.name} took the Hide action.`);
+      } else if (normalizedAction === 'help') {
+        pushEncounterLog(campaignId, encounter, `${actor.name} used Help.`);
+      } else if (normalizedAction === 'disengage') {
+        pushEncounterLog(campaignId, encounter, `${actor.name} disengaged from combat.`);
+      } else {
+        pushEncounterLog(campaignId, encounter, `${actor.name} used an action.`);
+      }
+
+      campaign.markModified('encounter');
+      await campaign.save();
+      emitEncounterState(campaignId, encounter);
+    } catch (error) {
+      console.error('Encounter use action error:', error);
+      socket.emit('encounter:error', { message: 'Failed to use action' });
+    }
+  });
+
+  socket.on('encounter:unarmed-attack', async ({ campaignId, userId, targetTokenId, resourceType = 'action' }) => {
+    try {
+      const campaign = await getCampaignForUser(campaignId, userId);
+      if (!campaign) return;
+
+      const encounter = await ensureEncounterState(campaign);
+      if (!isDMForCampaign(campaign, userId) && !encounter.isReady) {
+        socket.emit('encounter:error', { message: 'Encounter is not open yet. Please wait for the DM.' });
+        return;
+      }
+
+      if (!canActOnTurn(campaign, encounter, userId)) {
+        socket.emit('encounter:error', { message: 'You can only attack on your turn.' });
+        return;
+      }
+
+      const attacker = getControlledToken(encounter, userId);
+      const target = encounter.tokens.find((token) => token.tokenId === targetTokenId);
+      if (!attacker || !target || attacker.tokenId === target.tokenId) return;
+
+      if (getTokenDistance(target) > 5) {
+        socket.emit('encounter:error', { message: `${target.name} is too far away for an unarmed attack.` });
+        return;
+      }
+
+      const strengthModifier = getStrengthModifier(attacker);
+      const damage = Math.max(0, 1 + strengthModifier);
+      const nextHp = Math.max(0, (Number.isFinite(target.hp) ? target.hp : 0) - damage);
+      target.hp = nextHp;
+      if (nextHp === 0) {
+        target.status = 'Defeated';
+      }
+
+      if (String(resourceType).toLowerCase() === 'reaction') {
+        attacker.reactionAvailable = false;
+      } else {
+        attacker.actionAvailable = false;
+      }
+
+      const attackLabel = String(resourceType).toLowerCase() === 'reaction' ? 'opportunity attack' : 'unarmed attack';
+      pushEncounterLog(campaignId, encounter, `${target.name} has taken ${damage} damage from ${attacker.name}'s ${attackLabel}.`, { broadcastToChat: true });
+      if (nextHp === 0) {
+        pushEncounterLog(campaignId, encounter, `${target.name} was knocked out.`, { broadcastToChat: true });
+      }
+
+      campaign.markModified('encounter');
+      await campaign.save();
+      emitEncounterState(campaignId, encounter);
+    } catch (error) {
+      console.error('Encounter unarmed attack error:', error);
+      socket.emit('encounter:error', { message: 'Failed to resolve attack' });
+    }
+  });
+
   socket.on('encounter:load', async ({ campaignId, userId }) => {
     try {
       const campaign = await getCampaignForUser(campaignId, userId);
@@ -393,6 +683,9 @@ io.on('connection', (socket) => {
       }
 
       const encounter = await ensureEncounterState(campaign);
+      sortInitiative(encounter);
+      campaign.markModified('encounter');
+      await campaign.save();
       if (!isDMForCampaign(campaign, userId) && !encounter.isReady) {
         socket.emit('encounter:error', { message: 'Encounter is not open yet. Please wait for the DM.' });
         return;
@@ -439,12 +732,15 @@ io.on('connection', (socket) => {
         movementSpeed: clamp(Number(token?.movementSpeed) || 30, 0, 120),
         movementRemaining: clamp(Number(token?.movementSpeed) || 30, 0, 120),
         actionAvailable: true,
-        bonusActionAvailable: true,
+        bonusActionAvailable: false,
+        reactionAvailable: true,
+        objectInteractionAvailable: true,
+        distanceFeet: token?.type === 'Player' ? 0 : 30,
       };
 
       encounter.tokens.push(nextToken);
       sortInitiative(encounter);
-      pushEncounterLog(encounter, `${nextToken.name} was placed on the board.`);
+      pushEncounterLog(campaignId, encounter, `${nextToken.name} was placed on the board.`);
 
       campaign.markModified('encounter');
       await campaign.save();
@@ -473,7 +769,7 @@ io.on('connection', (socket) => {
       }
 
       if (removed) {
-        pushEncounterLog(encounter, `${removed.name} was removed from the board.`);
+        pushEncounterLog(campaignId, encounter, `${removed.name} was removed from the board.`);
       }
 
       campaign.markModified('encounter');
@@ -518,7 +814,7 @@ io.on('connection', (socket) => {
 
       token.position = { x: nextX, y: nextY };
       token.movementRemaining = Math.max(0, (token.movementRemaining ?? 30) - feetCost);
-      pushEncounterLog(encounter, `${token.name} moved to (${nextX}, ${nextY}) spending ${feetCost} ft.`);
+      pushEncounterLog(campaignId, encounter, `${token.name} moved to (${nextX}, ${nextY}) spending ${feetCost} ft.`);
 
       campaign.markModified('encounter');
       await campaign.save();
@@ -549,6 +845,9 @@ io.on('connection', (socket) => {
         return;
       }
 
+      const previousHp = token.hp;
+      const previousStatus = token.status;
+
       if (typeof updates?.status === 'string') token.status = updates.status.slice(0, 200);
       if (updates?.hp !== undefined) token.hp = clamp(Number(updates.hp) || 0, 0, 9999);
       if (updates?.maxHp !== undefined) token.maxHp = clamp(Number(updates.maxHp) || 1, 1, 9999);
@@ -566,7 +865,17 @@ io.on('connection', (socket) => {
         }
       }
 
-      pushEncounterLog(encounter, `${token.name} was updated.`);
+      let logMessage = `${token.name} was updated.`;
+      if (updates?.hp !== undefined && token.hp !== previousHp) {
+        const hpDelta = token.hp - previousHp;
+        logMessage = hpDelta < 0
+          ? `${token.name} took ${Math.abs(hpDelta)} damage.`
+          : `${token.name} healed ${hpDelta} HP.`;
+      } else if (updates?.status !== undefined && token.status !== previousStatus) {
+        logMessage = `${token.name} status changed to ${token.status}.`;
+      }
+
+      pushEncounterLog(campaignId, encounter, logMessage);
       campaign.markModified('encounter');
       await campaign.save();
       emitEncounterState(campaignId, encounter);
@@ -591,7 +900,7 @@ io.on('connection', (socket) => {
 
       token.initiative = clamp(Number(initiative) || 0, -99, 999);
       sortInitiative(encounter);
-      pushEncounterLog(encounter, `${token.name} initiative set to ${token.initiative}.`);
+      pushEncounterLog(campaignId, encounter, `${token.name} initiative set to ${token.initiative}.`);
 
       campaign.markModified('encounter');
       await campaign.save();
@@ -602,42 +911,100 @@ io.on('connection', (socket) => {
     }
   });
 
+  const advanceEncounterTurn = async ({ campaignId, userId, allowPlayerAdvance = false }) => {
+    const campaign = await getCampaignForUser(campaignId, userId);
+    if (!campaign) return null;
+
+    const encounter = await ensureEncounterState(campaign);
+    const order = encounter.initiativeOrder || [];
+    if (order.length === 0) {
+      encounter.activeTokenId = '';
+      campaign.markModified('encounter');
+      await campaign.save();
+      return { campaign, encounter };
+    }
+
+    const activeToken = getActiveToken(encounter);
+    const activeOwnerId = getTokenOwnerId(activeToken);
+    const canAdvance = allowPlayerAdvance
+      ? (activeOwnerId ? activeOwnerId === userId : isDMForCampaign(campaign, userId))
+      : isDMForCampaign(campaign, userId);
+
+    if (!canAdvance) {
+      return null;
+    }
+
+    const currentIndex = order.indexOf(encounter.activeTokenId);
+    const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % order.length;
+    if (currentIndex >= 0 && nextIndex === 0) {
+      encounter.round = (encounter.round || 1) + 1;
+    }
+
+    encounter.activeTokenId = order[nextIndex];
+    const nextActive = encounter.tokens.find((token) => token.tokenId === encounter.activeTokenId);
+    if (nextActive) {
+      const speed = Number.isFinite(nextActive.movementSpeed) ? nextActive.movementSpeed : 30;
+      nextActive.movementRemaining = speed;
+      nextActive.actionAvailable = true;
+      nextActive.bonusActionAvailable = false;
+      nextActive.reactionAvailable = true;
+      pushEncounterLog(campaignId, encounter, `Round ${encounter.round}: ${nextActive.name}'s turn.`);
+    }
+
+    campaign.markModified('encounter');
+    await campaign.save();
+    return { campaign, encounter };
+  };
+
   socket.on('encounter:next-turn', async ({ campaignId, userId }) => {
     try {
-      const campaign = await getCampaignForUser(campaignId, userId);
-      if (!campaign) return;
-      if (!isDMForCampaign(campaign, userId)) {
+      const result = await advanceEncounterTurn({ campaignId, userId, allowPlayerAdvance: false });
+      if (!result) {
         socket.emit('encounter:error', { message: 'Only the DM can advance turns' });
         return;
       }
 
-      const encounter = await ensureEncounterState(campaign);
-      const order = encounter.initiativeOrder || [];
-      if (order.length === 0) {
-        encounter.activeTokenId = '';
-      } else {
-        const currentIndex = order.indexOf(encounter.activeTokenId);
-        const nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % order.length;
-        if (currentIndex >= 0 && nextIndex === 0) {
-          encounter.round = (encounter.round || 1) + 1;
-        }
-        encounter.activeTokenId = order[nextIndex];
-        const active = encounter.tokens.find((token) => token.tokenId === encounter.activeTokenId);
-        if (active) {
-          const speed = Number.isFinite(active.movementSpeed) ? active.movementSpeed : 30;
-          active.movementRemaining = speed;
-          active.actionAvailable = true;
-          active.bonusActionAvailable = true;
-          pushEncounterLog(encounter, `Round ${encounter.round}: ${active.name}'s turn.`);
-        }
+      emitEncounterState(campaignId, result.encounter);
+    } catch (error) {
+      console.error('Encounter next turn error:', error);
+      socket.emit('encounter:error', { message: 'Failed to advance turn' });
+    }
+  });
+
+  socket.on('encounter:end-turn', async ({ campaignId, userId }) => {
+    try {
+      const result = await advanceEncounterTurn({ campaignId, userId, allowPlayerAdvance: true });
+      if (!result) {
+        socket.emit('encounter:error', { message: 'You can only end your own turn.' });
+        return;
       }
+
+      emitEncounterState(campaignId, result.encounter);
+    } catch (error) {
+      console.error('Encounter end turn error:', error);
+      socket.emit('encounter:error', { message: 'Failed to end turn' });
+    }
+  });
+
+  socket.on('encounter:reset', async ({ campaignId, userId }) => {
+    try {
+      const campaign = await getCampaignForUser(campaignId, userId);
+      if (!campaign) return;
+      if (!isDMForCampaign(campaign, userId)) {
+        socket.emit('encounter:error', { message: 'Only the DM can reset the encounter' });
+        return;
+      }
+
+      const encounter = await ensureEncounterState(campaign);
+      resetEncounterTokens(encounter);
+      pushEncounterLog(campaignId, encounter, 'Encounter reset. Initiative was rerolled and all tokens were restored.');
 
       campaign.markModified('encounter');
       await campaign.save();
       emitEncounterState(campaignId, encounter);
     } catch (error) {
-      console.error('Encounter next turn error:', error);
-      socket.emit('encounter:error', { message: 'Failed to advance turn' });
+      console.error('Encounter reset error:', error);
+      socket.emit('encounter:error', { message: 'Failed to reset encounter' });
     }
   });
 
@@ -652,7 +1019,7 @@ io.on('connection', (socket) => {
 
       const encounter = await ensureEncounterState(campaign);
       encounter.isReady = Boolean(isReady);
-      pushEncounterLog(encounter, encounter.isReady ? 'DM opened the encounter to players.' : 'DM locked the encounter for prep.');
+      pushEncounterLog(campaignId, encounter, encounter.isReady ? 'DM opened the encounter to players.' : 'DM locked the encounter for prep.');
 
       campaign.markModified('encounter');
       await campaign.save();
@@ -660,6 +1027,74 @@ io.on('connection', (socket) => {
     } catch (error) {
       console.error('Encounter readiness error:', error);
       socket.emit('encounter:error', { message: 'Failed to update encounter readiness' });
+    }
+  });
+
+  socket.on('encounter:add-default-enemies', async ({ campaignId, userId }) => {
+    try {
+      const campaign = await getCampaignForUser(campaignId, userId);
+      if (!campaign) return;
+      if (!isDMForCampaign(campaign, userId)) {
+        socket.emit('encounter:error', { message: 'Only the DM can add default enemies' });
+        return;
+      }
+
+      const encounter = await ensureEncounterState(campaign);
+      if (encounter.isReady) {
+        socket.emit('encounter:error', { message: 'Default enemies can only be added before the encounter starts.' });
+        return;
+      }
+
+      const existingEnemyNames = new Set((encounter.tokens || [])
+        .filter((token) => token.type === 'Enemy')
+        .map((token) => token.name));
+
+      const newTokens = defaultEnemyTemplates
+        .filter((template) => !existingEnemyNames.has(template.name))
+        .map((template, index) => ({
+          tokenId: `enemy-${Date.now()}-${index}-${Math.floor(Math.random() * 10000)}`,
+          name: template.name,
+          type: 'Enemy',
+          role: template.role,
+          hp: template.hp,
+          maxHp: template.maxHp,
+          distanceFeet: template.distanceFeet,
+          position: template.position,
+          status: 'Watching',
+          color: template.color,
+          ownerUserId: null,
+          initiative: (() => {
+            const roll = Math.floor(Math.random() * 20) + 1;
+            return roll;
+          })(),
+          lastInitiativeRoll: 0,
+          movementSpeed: 30,
+          movementRemaining: 30,
+          actionAvailable: true,
+          bonusActionAvailable: false,
+          reactionAvailable: true,
+          objectInteractionAvailable: true,
+        }));
+
+      if (newTokens.length === 0) {
+        socket.emit('encounter:error', { message: 'Default enemies are already added.' });
+        return;
+      }
+
+      newTokens.forEach((token) => {
+        token.lastInitiativeRoll = token.initiative;
+      });
+
+      encounter.tokens.push(...newTokens);
+      sortInitiative(encounter);
+      pushEncounterLog(campaignId, encounter, `${newTokens.length} default enemy token${newTokens.length === 1 ? '' : 's'} added.`);
+
+      campaign.markModified('encounter');
+      await campaign.save();
+      emitEncounterState(campaignId, encounter);
+    } catch (error) {
+      console.error('Encounter add default enemies error:', error);
+      socket.emit('encounter:error', { message: 'Failed to add default enemies' });
     }
   });
 });

@@ -4,50 +4,9 @@ import { io } from "socket.io-client";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 const fallbackEncounter = {
-  tokens: [
-    {
-      tokenId: "demo-player-1",
-      name: "Demo Player",
-      type: "Player",
-      role: "Fighter",
-      hp: 20,
-      maxHp: 20,
-      status: "Ready",
-      color: "#c9a84c",
-      ownerUserId: null,
-      initiative: 12,
-      initiativeBonus: 2,
-      lastInitiativeRoll: 10,
-      movementSpeed: 30,
-      movementRemaining: 30,
-      actionAvailable: true,
-      bonusActionAvailable: true,
-      reactionAvailable: true,
-      objectInteractionAvailable: true,
-    },
-    {
-      tokenId: "demo-enemy-1",
-      name: "Demo Enemy",
-      type: "Enemy",
-      role: "Enemy",
-      hp: 18,
-      maxHp: 18,
-      status: "Watching",
-      color: "#b13d30",
-      ownerUserId: null,
-      initiative: 8,
-      initiativeBonus: 1,
-      lastInitiativeRoll: 7,
-      movementSpeed: 30,
-      movementRemaining: 30,
-      actionAvailable: true,
-      bonusActionAvailable: true,
-      reactionAvailable: true,
-      objectInteractionAvailable: true,
-    },
-  ],
-  initiativeOrder: ["demo-player-1", "demo-enemy-1"],
-  activeTokenId: "demo-player-1",
+  tokens: [],
+  initiativeOrder: [],
+  activeTokenId: "",
   round: 1,
   log: ["Demo encounter loaded (no campaign connected)."],
 };
@@ -58,6 +17,7 @@ const defaultDraft = {
   status: "",
   movementSpeed: 30,
   movementRemaining: 30,
+  distanceFeet: 0,
   initiative: 0,
   initiativeBonus: 0,
 };
@@ -140,6 +100,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
   const [rollingError, setRollingError] = useState("");
   const [showLevelUpModal, setShowLevelUpModal] = useState(false);
   const [levelUpData, setLevelUpData] = useState(null);
+  const [playerActionSection, setPlayerActionSection] = useState("action");
   const chatEndRef = useRef(null);
 
   const isDevBuild = Boolean(import.meta.env.DEV);
@@ -163,6 +124,8 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
     [encounter.tokens, encounter.activeTokenId]
   );
 
+  const activeTurnOwnerId = activeTurn?.ownerUserId?.toString?.() || activeTurn?.ownerUserId || "";
+
   useEffect(() => {
     if (selectedToken) {
       setTokenDraft({
@@ -171,11 +134,16 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
         status: selectedToken.status || "",
         movementSpeed: selectedToken.movementSpeed ?? 30,
         movementRemaining: selectedToken.movementRemaining ?? selectedToken.movementSpeed ?? 30,
+        distanceFeet: selectedToken.distanceFeet ?? 0,
         initiative: selectedToken.initiative ?? 0,
         initiativeBonus: selectedToken.initiativeBonus ?? 0,
       });
     }
   }, [selectedToken]);
+
+  useEffect(() => {
+    setPlayerActionSection("action");
+  }, [playerControlledToken?.tokenId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -266,6 +234,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
         status: tokenDraft.status,
         movementSpeed: Number(tokenDraft.movementSpeed),
         movementRemaining: Number(tokenDraft.movementRemaining),
+        distanceFeet: Number(tokenDraft.distanceFeet ?? selectedToken.distanceFeet ?? 0),
         ...(effectiveIsDM ? { initiativeBonus: Number(tokenDraft.initiativeBonus) } : null),
       },
     });
@@ -288,23 +257,56 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
     });
   };
 
-  const spendMovement = (token, feetSpent = 5) => {
-    if (!token) return;
-    const next = Math.max(0, (token.movementRemaining ?? 30) - feetSpent);
-    setEconomyField(token, "movementRemaining", next);
+  const getStrengthModifier = (token) => Math.floor(((Number(token?.characterStats?.abilityScores?.strength) || 10) - 10) / 2);
+
+  const selectedTargetDistance = selectedToken && selectedToken.tokenId !== playerControlledToken?.tokenId
+    ? (selectedToken.distanceFeet ?? 30)
+    : null;
+
+  const canUseUnarmedAttack = Boolean(
+    playerControlledToken &&
+    selectedToken &&
+    selectedToken.tokenId !== playerControlledToken.tokenId &&
+    (selectedTargetDistance ?? 9999) <= 5 &&
+    playerControlledToken.actionAvailable
+  );
+
+  const canUseOpportunityAttack = Boolean(
+    playerControlledToken &&
+    selectedToken &&
+    selectedToken.tokenId !== playerControlledToken.tokenId &&
+    (selectedTargetDistance ?? 9999) <= 5 &&
+    playerControlledToken.reactionAvailable
+  );
+
+  const canUseTurnActions = Boolean(
+    activeTurn && (
+      (!activeTurnOwnerId && effectiveIsDM) ||
+      activeTurnOwnerId === userId
+    )
+  );
+
+  const spendMovement = (feetSpent = 5) => {
+    if (!canUseTurnActions || !playerControlledToken || !selectedToken || selectedToken.tokenId === playerControlledToken.tokenId) return;
+    emitEncounterEvent("encounter:approach-target", {
+      targetTokenId: selectedToken.tokenId,
+      feet: feetSpent,
+    });
   };
 
-  const restoreTurnEconomy = (token) => {
-    if (!token) return;
-    emitEncounterEvent("encounter:update-token", {
-      tokenId: token.tokenId,
-      updates: {
-        movementRemaining: token.movementSpeed ?? 30,
-        actionAvailable: true,
-        bonusActionAvailable: true,
-        reactionAvailable: true,
-        objectInteractionAvailable: true,
-      },
+  const useAction = (actionType) => {
+    if (!canUseTurnActions || !playerControlledToken) return;
+    emitEncounterEvent("encounter:use-action", {
+      actionType,
+      targetTokenId: selectedToken?.tokenId,
+    });
+  };
+
+  const useUnarmedAttack = (resourceType = "action") => {
+    if (!canUseTurnActions || !playerControlledToken || !selectedToken || selectedToken.tokenId === playerControlledToken.tokenId) return;
+    emitEncounterEvent("encounter:unarmed-attack", {
+      targetTokenId: selectedToken.tokenId,
+      resourceType,
     });
   };
 
@@ -333,12 +335,13 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
     setNewToken((prev) => ({ ...prev, name: "" }));
   };
 
-  const endTurn = () => {
-    emitEncounterEvent("encounter:end-turn");
+  const addDefaultEnemies = () => {
+    emitEncounterEvent("encounter:add-default-enemies");
   };
 
-  const rollInitiativeForAll = () => {
-    emitEncounterEvent("encounter:roll-initiative");
+  const endTurn = () => {
+    if (!canControlTurn) return;
+    emitEncounterEvent("encounter:end-turn");
   };
 
   const resetEncounter = () => {
@@ -396,7 +399,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
     }
   };
 
-  const canControlTurn = Boolean(effectiveIsDM || (activeTurn?.ownerUserId && (activeTurn.ownerUserId?.toString?.() || activeTurn.ownerUserId) === userId));
+  const canControlTurn = Boolean(activeTurn && (effectiveIsDM || activeTurnOwnerId === userId));
 
   return (
     <div style={{ ...styles.pageShell, ...(embedded ? styles.pageShellEmbedded : null) }}>
@@ -425,10 +428,9 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
             <div style={styles.panelHeaderSplit}>
               <div>
                 <h2 style={styles.sectionTitle}>Turn Tracker</h2>
-                <p style={styles.sectionText}>Auto initiative ordering, quick end-turn flow, and per-turn economy tracking.</p>
+                <p style={styles.sectionText}>Auto initiative ordering, quick end-turn flow, and distance-based engagement.</p>
               </div>
               <div style={styles.controlRow}>
-                {effectiveIsDM && <button type="button" style={styles.secondaryButton} onClick={rollInitiativeForAll}>Roll Initiative</button>}
                 <button type="button" style={styles.secondaryButton} onClick={endTurn} disabled={!canControlTurn}>End Turn</button>
               </div>
             </div>
@@ -446,6 +448,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
                         <strong>{token.name}</strong>
                         <span style={styles.initiativeMeta}> {token.initiative ?? 0} (d20 {token.lastInitiativeRoll ?? 0}{(token.initiativeBonus ?? 0) ? ` ${token.initiativeBonus > 0 ? "+" : "-"} ${Math.abs(token.initiativeBonus)}` : ""})</span>
                       </span>
+                      {isActive && <span style={styles.activeTurnBadge}>Current Turn</span>}
                     </button>
                   </li>
                 );
@@ -470,6 +473,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
                       ...(isActive ? styles.participantCardActive : null),
                     }}
                   >
+                    {isActive && <span style={styles.participantActiveBadge}>Current Turn</span>}
                     <div style={styles.participantTopRow}>
                       <span style={{ ...styles.participantDot, background: participant.color || "#c9a84c" }} />
                       <div>
@@ -479,7 +483,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
                     </div>
                     <div style={styles.participantMetaRow}>
                       <span>{participant.hp}/{participant.maxHp} HP</span>
-                      <span>{participant.movementRemaining ?? 30}/{participant.movementSpeed ?? 30} ft</span>
+                      <span>{participant.distanceFeet ?? 30} ft away</span>
                     </div>
                     <div style={styles.turnEconomyChips}>
                       <span style={{ ...styles.economyChip, ...(participant.actionAvailable ? styles.chipReady : styles.chipUsed) }}>Action</span>
@@ -518,6 +522,9 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
                     <label style={styles.fieldLabel}>Move Left
                       <input style={styles.fieldInput} type="number" value={tokenDraft.movementRemaining} onChange={(e) => setTokenDraft((prev) => ({ ...prev, movementRemaining: e.target.value }))} />
                     </label>
+                    <label style={styles.fieldLabel}>Distance Ft
+                      <input style={styles.fieldInput} type="number" value={tokenDraft.distanceFeet ?? selectedToken.distanceFeet ?? 0} onChange={(e) => setTokenDraft((prev) => ({ ...prev, distanceFeet: e.target.value }))} />
+                    </label>
                     {effectiveIsDM && (
                       <label style={styles.fieldLabel}>Init Bonus
                         <input style={styles.fieldInput} type="number" value={tokenDraft.initiativeBonus} onChange={(e) => setTokenDraft((prev) => ({ ...prev, initiativeBonus: e.target.value }))} />
@@ -536,8 +543,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
                     <button type="button" style={styles.secondaryButton} disabled={!selectedToken.bonusActionAvailable} onClick={() => setEconomyField(selectedToken, "bonusActionAvailable", false)}>Use Bonus</button>
                     <button type="button" style={styles.secondaryButton} disabled={!selectedToken.reactionAvailable} onClick={() => setEconomyField(selectedToken, "reactionAvailable", false)}>Use Reaction</button>
                     <button type="button" style={styles.secondaryButton} disabled={!selectedToken.objectInteractionAvailable} onClick={() => setEconomyField(selectedToken, "objectInteractionAvailable", false)}>Use Object</button>
-                    <button type="button" style={styles.secondaryButton} onClick={() => spendMovement(selectedToken, 5)}>Spend 5 ft</button>
-                    <button type="button" style={styles.secondaryButton} onClick={() => restoreTurnEconomy(selectedToken)}>Reset Turn</button>
+                    <button type="button" style={styles.secondaryButton} onClick={() => spendMovement(5)}>Approach 5 ft</button>
                     {effectiveIsDM && <button type="button" style={styles.secondaryButton} onClick={removeSelectedToken}>Remove</button>}
                   </div>
                 </>
@@ -590,183 +596,136 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <h3 style={styles.panelTitle}>Your Turn Actions</h3>
               <p style={styles.panelBody}>{playerControlledToken.name} — {playerControlledToken.role}</p>
               
-              {/* Character Stats Display */}
-              {playerControlledToken.characterStats && (
-                <div style={styles.characterStatsBar}>
-                  <div style={styles.statLine}>
-                    <span style={styles.statLabel}>AC:</span>
-                    <span style={styles.statValue}>{playerControlledToken.characterStats.armorClass || 10}</span>
+              {/* Turn Sections */}
+              <div style={styles.turnSectionTabs}>
+                {[
+                  {
+                    key: "action",
+                    label: "Action",
+                    meta: playerControlledToken.actionAvailable ? "Ready" : "Used",
+                  },
+                  {
+                    key: "bonus",
+                    label: "Bonus Action",
+                    meta: playerControlledToken.bonusActionAvailable ? "Ready" : "Unavailable",
+                  },
+                  {
+                    key: "reaction",
+                    label: "Reaction",
+                    meta: playerControlledToken.reactionAvailable ? "Ready" : "Used",
+                  },
+                  {
+                    key: "movement",
+                    label: "Movement",
+                    meta: `${playerControlledToken.movementRemaining ?? 30} ft`,
+                  },
+                ].map((section) => (
+                  <button
+                    key={section.key}
+                    type="button"
+                    style={playerActionSection === section.key ? styles.turnSectionTabActive : styles.turnSectionTab}
+                    onClick={() => setPlayerActionSection(section.key)}
+                  >
+                    <span style={styles.turnSectionTabLabel}>{section.label}</span>
+                    <span style={styles.turnSectionTabMeta}>{section.meta}</span>
+                  </button>
+                ))}
+              </div>
+
+              {playerActionSection === "action" && (
+                <div style={styles.actionGrid}>
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !canUseUnarmedAttack ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !canUseUnarmedAttack}
+                    onClick={() => useUnarmedAttack("action")}
+                    title="Unarmed attack for 1 + Strength modifier damage if the selected target is within 5 feet"
+                  >
+                    <div style={styles.actionButtonLabel}>🖐️ Unarmed Attack</div>
+                    <div style={styles.actionButtonCost}>1 Action</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !playerControlledToken.actionAvailable}
+                    onClick={() => useAction("dash")}
+                    title="Dash to refresh your movement for this turn"
+                  >
+                    <div style={styles.actionButtonLabel}>🏃 Dash</div>
+                    <div style={styles.actionButtonCost}>1 Action</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !playerControlledToken.actionAvailable}
+                    onClick={() => useAction("disengage")}
+                    title="Disengage from enemies"
+                  >
+                    <div style={styles.actionButtonLabel}>💨 Disengage</div>
+                    <div style={styles.actionButtonCost}>1 Action</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !playerControlledToken.actionAvailable}
+                    onClick={() => useAction("hide")}
+                    title="Hide"
+                  >
+                    <div style={styles.actionButtonLabel}>🫥 Hide</div>
+                    <div style={styles.actionButtonCost}>1 Action</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !playerControlledToken.actionAvailable}
+                    onClick={() => useAction("help")}
+                    title="Help"
+                  >
+                    <div style={styles.actionButtonLabel}>🤝 Help</div>
+                    <div style={styles.actionButtonCost}>1 Action</div>
+                  </button>
+                </div>
+              )}
+
+              {playerActionSection === "bonus" && (
+                <div style={styles.actionGrid}>
+                  <div style={styles.actionHintBox}>Bonus actions stay locked unless a class feature grants one.</div>
+                </div>
+              )}
+
+              {playerActionSection === "reaction" && (
+                <div style={styles.actionGrid}>
+                  <button
+                    type="button"
+                    style={{ ...styles.actionButton, ...(!canUseTurnActions || !canUseOpportunityAttack ? styles.actionButtonDisabled : {}) }}
+                    disabled={!canUseTurnActions || !canUseOpportunityAttack}
+                    onClick={() => useUnarmedAttack("reaction")}
+                    title="Opportunity attack with an unarmed strike"
+                  >
+                    <div style={styles.actionButtonLabel}>⚡ Opportunity Attack</div>
+                    <div style={styles.actionButtonCost}>1 Reaction</div>
+                  </button>
+                </div>
+              )}
+
+              {playerActionSection === "movement" && (
+                <div style={styles.movementPanel}>
+                  <div style={styles.movementSummary}>
+                    <span style={styles.economyLabel}>Selected Target Distance:</span>
+                    <span style={{ ...styles.economyValue, color: playerControlledToken.movementRemaining > 0 ? '#4cb582' : '#888' }}>
+                      {selectedTargetDistance ?? '--'} ft
+                    </span>
                   </div>
-                  <div style={styles.statLine}>
-                    <span style={styles.statLabel}>Attack:</span>
-                    <span style={styles.statValue}>+{playerControlledToken.characterStats.attackBonus || 0}</span>
-                  </div>
-                  <div style={styles.statLine}>
-                    <span style={styles.statLabel}>Prof:</span>
-                    <span style={styles.statValue}>+{playerControlledToken.characterStats.proficiencyBonus || 2}</span>
+                  <p style={styles.movementHint}>Pick a nearby target, then spend movement to close the gap in 5-foot steps.</p>
+                  <div style={styles.controlRow}>
+                    <button type="button" style={styles.secondaryButton} onClick={() => spendMovement(5)} disabled={!canUseTurnActions || !selectedTargetDistance || selectedTargetDistance <= 0}>Approach 5 ft</button>
                   </div>
                 </div>
               )}
-              
-              {/* Available Spells */}
-              {playerControlledToken.characterStats?.spellcasting?.canCastSpells && (
-                <div style={styles.spellsPanelInline}>
-                  <strong style={styles.spellsTitle}>Known Spells:</strong>
-                  <div style={styles.spellsListInline}>
-                    {playerControlledToken.characterStats.spellcasting.spellsKnown && playerControlledToken.characterStats.spellcasting.spellsKnown.length > 0 ? (
-                      playerControlledToken.characterStats.spellcasting.spellsKnown.map((spell) => (
-                        <span key={spell} style={styles.spellTag}>{spell}</span>
-                      ))
-                    ) : (
-                      <span style={styles.spellTag}>No spells known</span>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* Action Economy Status */}
-              <div style={styles.actionEconomyStatus}>
-                <div style={styles.economyRow}>
-                  <span style={styles.economyLabel}>Action:</span>
-                  <span style={{...styles.economyValue, color: playerControlledToken.actionAvailable ? '#4cb582' : '#888'}}>
-                    {playerControlledToken.actionAvailable ? '✓ Available' : '✗ Used'}
-                  </span>
-                </div>
-                <div style={styles.economyRow}>
-                  <span style={styles.economyLabel}>Bonus Action:</span>
-                  <span style={{...styles.economyValue, color: playerControlledToken.bonusActionAvailable ? '#4cb582' : '#888'}}>
-                    {playerControlledToken.bonusActionAvailable ? '✓ Available' : '✗ Used'}
-                  </span>
-                </div>
-                <div style={styles.economyRow}>
-                  <span style={styles.economyLabel}>Movement:</span>
-                  <span style={{...styles.economyValue, color: playerControlledToken.movementRemaining > 0 ? '#4cb582' : '#888'}}>
-                    {playerControlledToken.movementRemaining} ft
-                  </span>
-                </div>
-                <div style={styles.economyRow}>
-                  <span style={styles.economyLabel}>Reaction:</span>
-                  <span style={{...styles.economyValue, color: playerControlledToken.reactionAvailable ? '#4cb582' : '#888'}}>
-                    {playerControlledToken.reactionAvailable ? '✓ Available' : '✗ Used'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action Buttons Grid */}
-              <div style={styles.actionGrid}>
-                {/* Primary Actions */}
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(!playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {})}}
-                  disabled={!playerControlledToken.actionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "actionAvailable", false)}
-                  title="Make an Attack Roll or cast a spell with action cost"
-                >
-                  <div style={styles.actionButtonLabel}>⚔️ Attack</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(!playerControlledToken.actionAvailable ? styles.actionButtonDisabled : {})}}
-                  disabled={!playerControlledToken.actionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "actionAvailable", false)}
-                  title="Cast a spell with action cost"
-                >
-                  <div style={styles.actionButtonLabel}>✨ Cast Spell</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                {/* Movement & Positioning */}
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(playerControlledToken.movementRemaining === 0 ? styles.actionButtonDisabled : {})}}
-                  disabled={playerControlledToken.movementRemaining === 0}
-                  onClick={() => spendMovement(playerControlledToken, 5)}
-                  title="Move up to your speed (click multiple times)"
-                >
-                  <div style={styles.actionButtonLabel}>👣 Dash</div>
-                  <div style={styles.actionButtonCost}>Bonus Action</div>
-                </button>
-
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(playerControlledToken.movementRemaining === 0 ? styles.actionButtonDisabled : {})}}
-                  disabled={playerControlledToken.movementRemaining === 0}
-                  onClick={() => spendMovement(playerControlledToken, 5)}
-                  title="Disengage from enemies (move without provoking opportunity attacks)"
-                >
-                  <div style={styles.actionButtonLabel}>💨 Disengage</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(playerControlledToken.actionAvailable ? {} : styles.actionButtonDisabled)}}
-                  disabled={!playerControlledToken.actionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "actionAvailable", false)}
-                  title="Push, pull, or knock prone an opponent"
-                >
-                  <div style={styles.actionButtonLabel}>💪 Push/Trip</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                {/* Defensive Actions */}
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(playerControlledToken.actionAvailable ? {} : styles.actionButtonDisabled)}}
-                  disabled={!playerControlledToken.actionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "actionAvailable", false)}
-                  title="Dodge incoming attacks (AC +2)"
-                >
-                  <div style={styles.actionButtonLabel}>🛡️ Dodge</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(playerControlledToken.actionAvailable ? {} : styles.actionButtonDisabled)}}
-                  disabled={!playerControlledToken.actionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "actionAvailable", false)}
-                  title="Help an ally with an attack or ability check"
-                >
-                  <div style={styles.actionButtonLabel}>🤝 Help</div>
-                  <div style={styles.actionButtonCost}>1 Action</div>
-                </button>
-
-                {/* Bonus Action */}
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(!playerControlledToken.bonusActionAvailable ? styles.actionButtonDisabled : {})}}
-                  disabled={!playerControlledToken.bonusActionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "bonusActionAvailable", false)}
-                  title="Use a bonus action ability (class-specific)"
-                >
-                  <div style={styles.actionButtonLabel}>⚡ Bonus Action</div>
-                  <div style={styles.actionButtonCost}>1 Bonus</div>
-                </button>
-
-                {/* Reaction */}
-                <button 
-                  type="button" 
-                  style={{...styles.actionButton, ...(!playerControlledToken.reactionAvailable ? styles.actionButtonDisabled : {})}}
-                  disabled={!playerControlledToken.reactionAvailable}
-                  onClick={() => setEconomyField(playerControlledToken, "reactionAvailable", false)}
-                  title="Reaction: Opportunity attack, shield spell, etc."
-                >
-                  <div style={styles.actionButtonLabel}>⚡ Reaction</div>
-                  <div style={styles.actionButtonCost}>1 Reaction</div>
-                </button>
-              </div>
-
-              {/* Reset Button */}
-              <button 
-                type="button" 
-                style={styles.resetButton}
-                onClick={() => restoreTurnEconomy(playerControlledToken)}
-              >
-                Reset Turn Economy
-              </button>
             </div>
             </>
           )}
@@ -777,6 +736,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <div style={styles.controlRow}>
                 <button type="button" style={styles.secondaryButton} onClick={resetEncounter}>Reset Encounter</button>
                 <button type="button" style={styles.secondaryButton} onClick={levelUpAll}>Level Up All</button>
+                <button type="button" style={styles.secondaryButton} onClick={addDefaultEnemies} disabled={encounter.isReady}>Add Default Enemies</button>
               </div>
             </div>
           )}
@@ -804,15 +764,6 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <button type="button" style={styles.secondaryButton} onClick={placeNewToken}>Add to Encounter</button>
             </div>
           )}
-
-          <div style={styles.panelCard}>
-            <h3 style={styles.panelTitle}>Encounter Log</h3>
-            <ul style={styles.logList}>
-              {(encounter.log || []).map((entry, index) => (
-                <li key={`${index}-${entry}`} style={styles.logItem}>{entry}</li>
-              ))}
-            </ul>
-          </div>
 
           {!hideEncounterChat && (
             <div style={styles.panelCard}>
@@ -843,6 +794,15 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               </form>
             </div>
           )}
+
+          <div style={styles.panelCard}>
+            <h3 style={styles.panelTitle}>Encounter Log</h3>
+            <ul style={styles.logList}>
+              {(encounter.log || []).map((entry, index) => (
+                <li key={`${index}-${entry}`} style={styles.logItem}>{entry}</li>
+              ))}
+            </ul>
+          </div>
         </aside>
       </section>
 
@@ -1085,6 +1045,7 @@ const styles = {
   initiativeItemActive: {
     borderColor: "rgba(201, 168, 76, 0.55)",
     boxShadow: "0 0 0 2px rgba(201, 168, 76, 0.2)",
+    background: "rgba(201, 168, 76, 0.08)",
   },
   initiativeSelectButton: {
     width: "100%",
@@ -1112,6 +1073,17 @@ const styles = {
   initiativeMeta: {
     color: "#94a3b8",
     fontSize: "0.85rem",
+  },
+  activeTurnBadge: {
+    marginLeft: "auto",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    background: "rgba(201, 168, 76, 0.18)",
+    color: "#f5e1a6",
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
   },
   controlRow: {
     display: "flex",
@@ -1149,6 +1121,20 @@ const styles = {
   },
   participantCardActive: {
     borderColor: "rgba(201, 168, 76, 0.5)",
+    boxShadow: "0 0 0 2px rgba(201, 168, 76, 0.16)",
+  },
+  participantActiveBadge: {
+    display: "inline-flex",
+    alignSelf: "flex-end",
+    marginBottom: "10px",
+    padding: "4px 8px",
+    borderRadius: "999px",
+    background: "rgba(201, 168, 76, 0.18)",
+    color: "#f5e1a6",
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
   },
   participantTopRow: { display: "flex", alignItems: "flex-start", gap: "12px" },
   participantDot: { width: "14px", height: "14px", borderRadius: "999px", marginTop: "4px", flexShrink: 0 },
@@ -1237,11 +1223,78 @@ const styles = {
     fontWeight: "600",
     fontSize: "13px",
   },
+  turnSectionTabs: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: "8px",
+    marginBottom: "12px",
+  },
+  turnSectionTab: {
+    padding: "10px 12px",
+    borderRadius: "12px",
+    border: "1px solid rgba(201, 168, 76, 0.16)",
+    background: "rgba(0, 0, 0, 0.22)",
+    color: "#d4c5a9",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "grid",
+    gap: "3px",
+  },
+  turnSectionTabActive: {
+    padding: "10px 12px",
+    borderRadius: "12px",
+    border: "1px solid rgba(201, 168, 76, 0.45)",
+    background: "rgba(201, 168, 76, 0.14)",
+    color: "#fff",
+    textAlign: "left",
+    cursor: "pointer",
+    display: "grid",
+    gap: "3px",
+  },
+  turnSectionTabLabel: {
+    fontSize: "13px",
+    fontWeight: "700",
+    letterSpacing: "0.02em",
+  },
+  turnSectionTabMeta: {
+    fontSize: "11px",
+    color: "#a0917a",
+  },
+  movementPanel: {
+    padding: "14px",
+    borderRadius: "12px",
+    background: "rgba(0, 0, 0, 0.28)",
+    border: "1px solid rgba(201, 168, 76, 0.15)",
+    marginBottom: "12px",
+    display: "grid",
+    gap: "12px",
+  },
+  movementSummary: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+  },
+  movementHint: {
+    margin: 0,
+    color: "#94a3b8",
+    fontSize: "0.9rem",
+    lineHeight: 1.5,
+  },
   actionGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
     gap: "8px",
     marginBottom: "12px",
+  },
+  actionHintBox: {
+    gridColumn: "1 / -1",
+    padding: "12px",
+    borderRadius: "10px",
+    border: "1px dashed rgba(148, 163, 184, 0.35)",
+    color: "#94a3b8",
+    background: "rgba(15, 23, 42, 0.45)",
+    lineHeight: 1.5,
   },
   actionButton: {
     padding: "12px",
