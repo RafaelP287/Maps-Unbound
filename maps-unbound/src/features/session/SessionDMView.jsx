@@ -119,14 +119,32 @@ function SessionDMView() {
             };
         });
     const playerCharacterNames = players.map((player) => player.username).filter(Boolean);
-    const sheetEntities = [
-        ...players.map((player, idx) => ({
-            kind: "Player",
-            name: player.username || `Player ${idx + 1}`,
-            className: "Adventurer",
-            level: 1,
-            hp: 30,
+    const combatEntityPool = {
+        players: players
+            .filter((player) => player.username)
+            .map((player) => ({
+                kind: "Player",
+                name: player.username,
+                hp: null,
+                className: "",
+                level: null,
+            })),
+        npcs: (campaign?.npcs || []).map((npc, idx) => ({
+            kind: "NPC",
+            name: npc.name || `NPC ${idx + 1}`,
+            hp: 20,
+            className: npc.role || "NPC",
+            level: null,
         })),
+        enemies: (campaign?.enemies || []).map((enemy, idx) => ({
+            kind: "Enemy",
+            name: enemy.name || `Enemy ${idx + 1}`,
+            hp: 26,
+            creatureType: enemy.role || "Enemy",
+            cr: "",
+        })),
+    };
+    const sheetEntities = [
         ...(campaign?.npcs || []).map((npc, idx) => ({
             kind: "NPC",
             name: npc.name || `NPC ${idx + 1}`,
@@ -229,29 +247,45 @@ function SessionDMView() {
         const encounterLabel = `Encounter ${encounterNumber}`;
         try {
             if (sessionId && token) {
-                const res = await fetch("/api/encounters", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({
-                        sessionId,
-                        name: encounterLabel,
-                        status: "In Progress",
-                        startedAt: new Date().toISOString(),
-                        rounds: Math.max(1, round),
-                        relatedMap: mapName || "",
+                const basePayload = {
+                    sessionId,
+                    name: encounterLabel,
+                    status: "In Progress",
+                    startedAt: new Date().toISOString(),
+                    rounds: Math.max(1, round),
+                    relatedMap: mapName || "",
+                    setActive: true,
+                };
+
+                const createEncounter = async (payload) => {
+                    const res = await fetch("/api/encounters", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!res.ok) {
+                        const data = await res.json().catch(() => ({}));
+                        throw new Error(data.error || "Failed to create encounter");
+                    }
+                    return res.json();
+                };
+
+                let encounter;
+                try {
+                    encounter = await createEncounter({
+                        ...basePayload,
                         initiative: serializeEncounterInitiative(startingTurns),
                         activeTurnIndex: getActiveTurnIndex(startingTurns),
-                        setActive: true,
-                    }),
-                });
-                if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || "Failed to create encounter");
+                    });
+                } catch (primaryError) {
+                    encounter = await createEncounter(basePayload).catch((fallbackError) => {
+                        throw new Error(fallbackError.message || primaryError.message || "Failed to create encounter");
+                    });
                 }
-                const encounter = await res.json();
+
                 setActiveEncounterId(encounter._id);
                 setActiveEncounterNumber(encounterNumber);
                 setEncounterSequence(encounterNumber);
@@ -481,6 +515,7 @@ function SessionDMView() {
                 onSceneNameChange={setSceneName}
                 onTurnsChange={handleTurnsChange}
                 playerCharacterNames={playerCharacterNames}
+                combatEntityPool={combatEntityPool}
             />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}

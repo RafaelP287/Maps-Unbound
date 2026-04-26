@@ -27,6 +27,31 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
     }, [normalizedEntities]);
 
     const selectedEntity = selectedEntityId ? entityById[selectedEntityId] : null;
+    const getEntitySummary = (entity) => {
+        if (!entity) {
+            return "";
+        }
+        if (entity.kind === "Enemy") {
+            return [entity.creatureType, entity.cr].filter(Boolean).join(" · ");
+        }
+        return [entity.className, entity.level ? `Level ${entity.level}` : ""].filter(Boolean).join(" · ");
+    };
+    const getEntityFacts = (entity) => {
+        if (!entity) {
+            return [];
+        }
+        return [
+            entity.hp !== undefined && entity.hp !== null && entity.hp !== "" ? { label: "HP", value: entity.hp } : null,
+            entity.initiative !== undefined && entity.initiative !== null && entity.initiative !== ""
+                ? { label: "Initiative", value: entity.initiative }
+                : null,
+            entity.level !== undefined && entity.level !== null && entity.level !== ""
+                ? { label: "Level", value: entity.level }
+                : null,
+            entity.cr ? { label: "CR", value: entity.cr } : null,
+        ].filter(Boolean);
+    };
+    const selectedEntityFacts = getEntityFacts(selectedEntity);
 
     return (
         <aside
@@ -52,7 +77,7 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                 <>
                     <div className="session-dm__panel-header">
                         <div>
-                            <p className="session-dm__panel-title">Sheets & Stat Blocks</p>
+                            <p className="session-dm__panel-title">Sheets & Reference</p>
                             <p className="session-dm__panel-subtitle">Quick reference cards</p>
                         </div>
                     </div>
@@ -70,54 +95,27 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                             </div>
                             <div className="session-dm__detail-title">
                                 <span className="session-dm__detail-name">{selectedEntity.name}</span>
-                                {selectedEntity.kind === "Player" && (
-                                    <span className="session-dm__detail-sub">
-                                        {selectedEntity.className} · Level {selectedEntity.level}
-                                    </span>
-                                )}
-                                {selectedEntity.kind === "NPC" && (
-                                    <span className="session-dm__detail-sub">
-                                        {selectedEntity.className} · Level {selectedEntity.level}
-                                    </span>
-                                )}
-                                {selectedEntity.kind === "Enemy" && (
-                                    <span className="session-dm__detail-sub">
-                                        {selectedEntity.creatureType} · {selectedEntity.cr}
-                                    </span>
+                                {getEntitySummary(selectedEntity) && (
+                                    <span className="session-dm__detail-sub">{getEntitySummary(selectedEntity)}</span>
                                 )}
                             </div>
-                            <div className="session-dm__detail-stats">
-                                <div className="session-dm__detail-card">
-                                    <span className="session-dm__detail-label">HP</span>
-                                    <span className="session-dm__detail-value">{selectedEntity.hp}</span>
+                            {selectedEntityFacts.length > 0 ? (
+                                <div className="session-dm__detail-stats">
+                                    {selectedEntityFacts.map((fact) => (
+                                        <div key={fact.label} className="session-dm__detail-card">
+                                            <span className="session-dm__detail-label">{fact.label}</span>
+                                            <span className="session-dm__detail-value">{fact.value}</span>
+                                        </div>
+                                    ))}
                                 </div>
-                                <div className="session-dm__detail-card">
-                                    <span className="session-dm__detail-label">AC</span>
-                                    <span className="session-dm__detail-value">16</span>
+                            ) : (
+                                <div className="session-dm__detail-block">
+                                    <span className="session-dm__section-title">Reference</span>
+                                    <p className="session-dm__panel-subtitle">
+                                        No additional session data has been recorded for this entity yet.
+                                    </p>
                                 </div>
-                                <div className="session-dm__detail-card">
-                                    <span className="session-dm__detail-label">Speed</span>
-                                    <span className="session-dm__detail-value">30</span>
-                                </div>
-                                <div className="session-dm__detail-card">
-                                    <span className="session-dm__detail-label">Initiative</span>
-                                    <span className="session-dm__detail-value">+4</span>
-                                </div>
-                            </div>
-                            <div className="session-dm__detail-block">
-                                <span className="session-dm__section-title">Traits</span>
-                                <p className="session-dm__panel-subtitle">
-                                    Quick trait summary, resistances, and notable passives.
-                                </p>
-                            </div>
-                            <div className="session-dm__detail-block">
-                                <span className="session-dm__section-title">Actions</span>
-                                <ul className="session-dm__detail-list">
-                                    <li>Multiattack (2)</li>
-                                    <li>Shadow Step (Recharge 5-6)</li>
-                                    <li>Tail Sweep (15 ft. cone)</li>
-                                </ul>
-                            </div>
+                            )}
                         </div>
                     ) : (
                         <>
@@ -155,31 +153,39 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                             </div>
                             {activeTab === "players" && (
                                 <div className="session-dm__section">
-                                    <div className="session-dm__sheet-list">
-                                        {players.map((player) => {
-                                            const id = player.entityId;
-                                            return (
-                                                <button
-                                                    key={player.entityId}
-                                                    type="button"
-                                                    className="session-dm__sheet session-dm__sheet-button"
-                                                    onClick={() => setSelectedEntityId(id)}
-                                                >
-                                                    <div className="session-dm__sheet-main">
-                                                        <span className="session-dm__sheet-name">{player.name}</span>
-                                                        <span className="session-dm__sheet-detail">
-                                                            {player.className} · L{player.level}
-                                                        </span>
-                                                    </div>
-                                                    <div className="session-dm__sheet-stats">
-                                                        <span className="session-dm__sheet-stat">HP {player.hp}</span>
-                                                        <span className="session-dm__sheet-stat">AC 16</span>
-                                                        <span className="session-dm__sheet-stat">Speed 30</span>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    {players.length > 0 ? (
+                                        <div className="session-dm__sheet-list">
+                                            {players.map((player) => {
+                                                const id = player.entityId;
+                                                return (
+                                                    <button
+                                                        key={player.entityId}
+                                                        type="button"
+                                                        className="session-dm__sheet session-dm__sheet-button"
+                                                        onClick={() => setSelectedEntityId(id)}
+                                                    >
+                                                        <div className="session-dm__sheet-main">
+                                                            <span className="session-dm__sheet-name">{player.name}</span>
+                                                            <span className="session-dm__sheet-detail">
+                                                                {getEntitySummary(player)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="session-dm__sheet-stats">
+                                                            {getEntityFacts(player).map((fact) => (
+                                                                <span key={fact.label} className="session-dm__sheet-stat">
+                                                                    {fact.label} {fact.value}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <p className="session-dm__panel-subtitle">
+                                            No campaign-linked character sheets are available yet.
+                                        </p>
+                                    )}
                                 </div>
                             )}
                             {activeTab === "npcs" && (
@@ -197,13 +203,15 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                                     <div className="session-dm__sheet-main">
                                                         <span className="session-dm__sheet-name">{npc.name}</span>
                                                         <span className="session-dm__sheet-detail">
-                                                            {npc.className} · L{npc.level}
+                                                            {getEntitySummary(npc)}
                                                         </span>
                                                     </div>
                                                     <div className="session-dm__sheet-stats">
-                                                        <span className="session-dm__sheet-stat">HP {npc.hp}</span>
-                                                        <span className="session-dm__sheet-stat">AC 13</span>
-                                                        <span className="session-dm__sheet-stat">Speed 30</span>
+                                                        {getEntityFacts(npc).map((fact) => (
+                                                            <span key={fact.label} className="session-dm__sheet-stat">
+                                                                {fact.label} {fact.value}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 </button>
                                             );
@@ -226,13 +234,15 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                                     <div className="session-dm__sheet-main">
                                                         <span className="session-dm__sheet-name">{enemy.name}</span>
                                                         <span className="session-dm__sheet-detail">
-                                                            {enemy.creatureType} · {enemy.cr}
+                                                            {getEntitySummary(enemy)}
                                                         </span>
                                                     </div>
                                                     <div className="session-dm__sheet-stats">
-                                                        <span className="session-dm__sheet-stat">HP {enemy.hp}</span>
-                                                        <span className="session-dm__sheet-stat">AC 17</span>
-                                                        <span className="session-dm__sheet-stat">Speed 40</span>
+                                                        {getEntityFacts(enemy).map((fact) => (
+                                                            <span key={fact.label} className="session-dm__sheet-stat">
+                                                                {fact.label} {fact.value}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 </button>
                                             );

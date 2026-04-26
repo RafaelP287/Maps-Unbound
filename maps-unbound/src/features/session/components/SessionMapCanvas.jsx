@@ -29,6 +29,7 @@ function SessionMapCanvas({
     onSceneNameChange,
     onTurnsChange,
     playerCharacterNames = [],
+    combatEntityPool = {},
 }) {
     const [isCombatState, setIsCombatState] = useState(false);
     const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
@@ -42,6 +43,8 @@ function SessionMapCanvas({
         rowIdRef.current += 1;
         return rowIdRef.current;
     };
+
+    const getParticipantKey = (kind, name) => `${kind}:${String(name || "").trim().toLowerCase()}`;
 
     const defaultHpByKind = (kind) => {
         if (kind === "Player") {
@@ -77,30 +80,38 @@ function SessionMapCanvas({
 
     const createParticipant = (kind, list, seed = {}) => ({
         id: seed.id ?? nextRowId(),
-        include: seed.include ?? true,
         kind,
         name: seed.name ?? suggestedName(kind, list),
         initiative: seed.initiative ?? 10,
         hp: seed.hp ?? defaultHpByKind(kind),
+        sourceLabel: seed.sourceLabel ?? "Custom",
+        ...defaultDetailByKind(kind),
+        ...seed,
     });
 
     const openCombatSetup = () => {
         const seededFromTurns = turns.map((turn) =>
             createParticipant(turn.kind || "Enemy", [], {
-                include: true,
                 name: turn.name || "",
                 initiative: typeof turn.initiative === "number" ? turn.initiative : 10,
                 hp: typeof turn.hp === "number" ? turn.hp : defaultHpByKind(turn.kind || "Enemy"),
+                sourceLabel: "Current Combat",
+                className: turn.className,
+                level: turn.level,
+                creatureType: turn.creatureType,
+                cr: turn.cr,
             })
         );
 
-        const seededFromPlayers = playerCharacterNames.map((name) =>
+        const seededFromPlayers = (combatEntityPool.players || []).map((player) =>
             createParticipant("Player", [], {
                 id: nextRowId(),
-                include: true,
-                name,
+                name: player.name,
                 initiative: 10,
-                hp: defaultHpByKind("Player"),
+                hp: player.hp ?? defaultHpByKind("Player"),
+                sourceLabel: "Campaign Player",
+                className: player.className,
+                level: player.level,
             })
         );
 
@@ -111,9 +122,26 @@ function SessionMapCanvas({
     };
 
     const applyCombatSetup = () => {
-        const activeRows = draftParticipants.filter((row) => row.include && row.name.trim());
+        const activeRows = draftParticipants.filter((row) => row.name.trim());
         if (activeRows.length === 0) {
-            setCombatSetupError("Add at least one included participant before starting combat.");
+            setCombatSetupError("Add at least one participant before starting combat.");
+            return;
+        }
+
+        const seenParticipants = new Set();
+        const duplicateParticipant = activeRows.find((row) => {
+            const key = getParticipantKey(row.kind, row.name);
+            if (!row.name.trim()) {
+                return false;
+            }
+            if (seenParticipants.has(key)) {
+                return true;
+            }
+            seenParticipants.add(key);
+            return false;
+        });
+        if (duplicateParticipant) {
+            setCombatSetupError(`${duplicateParticipant.name.trim()} is already in this encounter.`);
             return;
         }
 
@@ -133,6 +161,10 @@ function SessionMapCanvas({
             isActive: idx === 0,
             isNext: idx === 1,
             ...defaultDetailByKind(row.kind),
+            className: row.className ?? defaultDetailByKind(row.kind).className,
+            level: row.level ?? defaultDetailByKind(row.kind).level,
+            creatureType: row.creatureType ?? defaultDetailByKind(row.kind).creatureType,
+            cr: row.cr ?? defaultDetailByKind(row.kind).cr,
         }));
 
         if (onTurnsChange) {
@@ -153,44 +185,96 @@ function SessionMapCanvas({
         setIsCombatSetupOpen(false);
     };
 
-    const addParticipant = (kind) => {
-        setDraftParticipants((prev) => [...prev, createParticipant(kind, prev)]);
+    const addCustomEntity = (kind, name) => {
+        const trimmedName = String(name || "").trim();
+        if (!trimmedName) {
+            setCombatSetupError("New entities need a name before they can be added.");
+            return false;
+        }
+
+        const participantKey = getParticipantKey(kind, trimmedName);
+        const exists = draftParticipants.some((row) => getParticipantKey(row.kind, row.name) === participantKey);
+        if (exists) {
+            setCombatSetupError(`${trimmedName} is already in this encounter.`);
+            return false;
+        }
+
+        setDraftParticipants((prev) => [
+            ...prev,
+            createParticipant(kind, prev, {
+                name: trimmedName,
+                sourceLabel: "Custom Entity",
+            }),
+        ]);
+        setCombatSetupError("");
+        return true;
     };
 
-    const toggleParticipantInclude = (id, include) => {
-        setDraftParticipants((prev) =>
-            prev.map((item) => (item.id === id ? { ...item, include } : item))
-        );
+    const addParticipantFromPool = (kind, entry) => {
+        const participantName = entry.name || "";
+        const participantKey = getParticipantKey(kind, participantName);
+        const exists = draftParticipants.some((row) => getParticipantKey(row.kind, row.name) === participantKey);
+        if (participantName.trim() && exists) {
+            setCombatSetupError(`${participantName} is already in this encounter.`);
+            return;
+        }
+
+        setDraftParticipants((prev) => [
+            ...prev,
+            createParticipant(kind, prev, {
+                name: entry.name || suggestedName(kind, prev),
+                hp: entry.hp ?? defaultHpByKind(kind),
+                sourceLabel: kind === "Player" ? "Campaign Player" : "Campaign Roster",
+                className: entry.className,
+                level: entry.level,
+                creatureType: entry.creatureType,
+                cr: entry.cr,
+            }),
+        ]);
+        setCombatSetupError("");
     };
 
     const updateParticipantKind = (id, kind) => {
         setDraftParticipants((prev) =>
             prev.map((item) =>
-                item.id === id ? { ...item, kind, hp: defaultHpByKind(kind) } : item
+                item.id === id
+                    ? {
+                        ...item,
+                        kind,
+                        hp: defaultHpByKind(kind),
+                        sourceLabel: "Custom",
+                        ...defaultDetailByKind(kind),
+                    }
+                    : item
             )
         );
+        setCombatSetupError("");
     };
 
     const updateParticipantName = (id, name) => {
         setDraftParticipants((prev) =>
             prev.map((item) => (item.id === id ? { ...item, name } : item))
         );
+        setCombatSetupError("");
     };
 
     const updateParticipantInitiative = (id, initiative) => {
         setDraftParticipants((prev) =>
             prev.map((item) => (item.id === id ? { ...item, initiative } : item))
         );
+        setCombatSetupError("");
     };
 
     const updateParticipantHp = (id, hp) => {
         setDraftParticipants((prev) =>
             prev.map((item) => (item.id === id ? { ...item, hp } : item))
         );
+        setCombatSetupError("");
     };
 
     const removeParticipant = (id) => {
         setDraftParticipants((prev) => prev.filter((item) => item.id !== id));
+        setCombatSetupError("");
     };
 
     return (
@@ -264,8 +348,9 @@ function SessionMapCanvas({
                 draftParticipants={draftParticipants}
                 combatSetupError={combatSetupError}
                 onClose={() => setIsCombatSetupOpen(false)}
-                onAddParticipant={addParticipant}
-                onToggleInclude={toggleParticipantInclude}
+                onAddCustomEntity={addCustomEntity}
+                onAddParticipantFromPool={addParticipantFromPool}
+                entityPool={combatEntityPool}
                 onKindChange={updateParticipantKind}
                 onNameChange={updateParticipantName}
                 onInitiativeChange={updateParticipantInitiative}
