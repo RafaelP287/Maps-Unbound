@@ -13,6 +13,7 @@ const noteSchema = new mongoose.Schema(
     authorId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     authorRole: { type: String, enum: ["DM", "Player"], required: true },
     content: { type: String, trim: true, maxlength: 5000, required: true },
+    visibleToPlayers: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },

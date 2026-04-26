@@ -10,7 +10,7 @@ import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
 
-function CampaignDMView({ campaign, refetch }) {
+function CampaignDMView({ campaign, setCampaign }) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
@@ -160,6 +160,14 @@ function CampaignDMView({ campaign, refetch }) {
         }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
+      const updatedCampaign = await res.json();
+      const populatedMembers = [
+        { userId: dmMember.userId, role: "DM" },
+        ...editPlayers.map((player) => ({
+          userId: { _id: player.userId, username: player.username },
+          role: "Player",
+        })),
+      ];
       if (applySessionDeletes && pendingSessionDeleteIds.length > 0) {
         const sessionsToDelete = sessions.filter((session) => pendingSessionDeleteIds.includes(session._id));
         for (const session of sessionsToDelete) {
@@ -175,7 +183,15 @@ function CampaignDMView({ campaign, refetch }) {
         }
         await refetchSessions();
       }
-      await refetch();
+      setCampaign((prev) => ({
+        ...prev,
+        ...updatedCampaign,
+        currentQuest,
+        npcs,
+        enemies,
+        loot,
+        members: populatedMembers,
+      }));
       setPendingSessionDeleteIds([]);
       setShowSessionDeleteConfirmOnSave(false);
       setEditSection("general");

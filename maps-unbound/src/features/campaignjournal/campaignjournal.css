@@ -172,6 +172,14 @@
   line-height: 1.6;
 }
 
+.campaign-journal-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
 .campaign-journal-expand {
   align-self: flex-start;
   margin-top: 0.25rem;
@@ -192,6 +200,36 @@
   border-color: rgba(201, 168, 76, 0.55);
   background: rgba(201, 168, 76, 0.14);
   transform: translateY(-1px);
+}
+
+.campaign-journal-summary-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.35rem;
+}
+
+.campaign-journal-editor-label {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-journal-editor-input {
+  min-height: 7.5rem;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  color: #ecd7a0;
+  padding: 0.85rem 0.95rem;
+  line-height: 1.6;
+}
+
+.campaign-journal-editor-error {
+  margin: 0;
 }
 
 .campaign-journal-notes {
@@ -218,6 +256,13 @@
   flex-wrap: wrap;
 }
 
+.campaign-journal-note-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
 .campaign-journal-note-role {
   font-family: var(--font-heading);
   font-size: 0.66rem;
@@ -229,6 +274,79 @@
 .campaign-journal-note-date {
   color: #9b8767;
   font-size: 0.82rem;
+}
+
+.campaign-journal-note-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(201, 168, 76, 0.07);
+  font-size: 0.62rem;
+  color: #e7d3a8;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.campaign-journal-note-visibility-toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.7rem;
+  height: 0.95rem;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(0, 0, 0, 0.34);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.campaign-journal-note-visibility-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  background: #f7edd1;
+  transform: translateY(-50%);
+  transition: transform 0.2s ease;
+}
+
+.campaign-journal-note-visibility-toggle input:checked {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.95), rgba(255, 228, 171, 0.92));
+  border-color: rgba(255, 229, 168, 0.85);
+}
+
+.campaign-journal-note-visibility-toggle input:checked::after {
+  transform: translate(0.72rem, -50%);
+  background: #1d1409;
+}
+
+.campaign-journal-note-visibility-toggle:hover {
+  border-color: rgba(201, 168, 76, 0.35);
+  background: rgba(201, 168, 76, 0.11);
+  transform: translateY(-1px);
+}
+
+.campaign-journal-note-visibility-toggle span {
+  font-family: var(--font-heading);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.campaign-journal-note-visibility-toggle input:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.campaign-journal-note-visibility-error {
+  margin: 0.45rem 0 0;
 }
 
 .campaign-journal-note-content {

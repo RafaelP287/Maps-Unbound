@@ -8,6 +8,17 @@ const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
 const NOTE_ROLES = new Set(["DM", "Player"]);
 
+const sanitizeSessionNotesForViewer = (notes, isDM) =>
+  (Array.isArray(notes) ? notes : []).filter((note) =>
+    isDM || note?.authorRole !== "DM" || Boolean(note?.visibleToPlayers)
+  );
+
+const serializeSessionForViewer = (sessionDoc, isDM) => {
+  const session = typeof sessionDoc?.toObject === "function" ? sessionDoc.toObject() : { ...sessionDoc };
+  session.notes = sanitizeSessionNotesForViewer(session.notes, isDM);
+  return session;
+};
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -86,6 +97,7 @@ router.post("/", verifyToken, async (req, res) => {
               authorId: note?.authorId,
               authorRole: NOTE_ROLES.has(note?.authorRole) ? note.authorRole : "Player",
               content: note?.content?.trim?.() || "",
+              visibleToPlayers: note?.authorRole === "DM" ? Boolean(note?.visibleToPlayers) : true,
               createdAt: note?.createdAt ? new Date(note.createdAt) : new Date(),
               updatedAt: note?.updatedAt ? new Date(note.updatedAt) : new Date(),
             }))
@@ -179,9 +191,22 @@ router.put("/:id", verifyToken, async (req, res) => {
         authorId: req.user.userId,
         authorRole: "DM",
         content,
+        visibleToPlayers: Boolean(req.body.sessionNoteVisibleToPlayers),
         createdAt: new Date(),
         updatedAt: new Date(),
       };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "noteVisibilityIndex")) {
+      const noteIndex = Number(req.body.noteVisibilityIndex);
+      if (!Number.isInteger(noteIndex) || noteIndex < 0 || noteIndex >= session.notes.length) {
+        return res.status(400).json({ error: "Invalid noteVisibilityIndex" });
+      }
+
+      session.notes[noteIndex].visibleToPlayers = Boolean(req.body.noteVisibleToPlayers);
+      session.notes[noteIndex].updatedAt = new Date();
+      await session.save();
+      return res.json(serializeSessionForViewer(session, true));
     }
 
     const updatePayload = noteToAppend
@@ -213,15 +238,17 @@ router.get("/", verifyToken, async (req, res) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    const isMember = campaign.members.some(
+    const membership = campaign.members.find(
       (m) => m.userId.toString() === req.user.userId
     );
+    const isMember = Boolean(membership);
     if (!isMember) {
       return res.status(403).json({ error: "Access denied" });
     }
+    const isDM = membership.role === "DM";
 
     const sessions = await Session.find({ campaignId }).sort({ sessionNumber: 1, createdAt: 1 });
-    res.json(sessions);
+    res.json(sessions.map((session) => serializeSessionForViewer(session, isDM)));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -238,14 +265,16 @@ router.get("/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    const isMember = campaign.members.some(
+    const membership = campaign.members.find(
       (m) => m.userId.toString() === req.user.userId
     );
+    const isMember = Boolean(membership);
     if (!isMember) {
       return res.status(403).json({ error: "Access denied" });
     }
+    const isDM = membership.role === "DM";
 
-    res.json(session);
+    res.json(serializeSessionForViewer(session, isDM));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

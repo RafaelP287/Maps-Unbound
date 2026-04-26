@@ -24,7 +24,7 @@ const getPrimaryEncounterDate = (encounter) =>
 
 function CampaignJournalPage() {
   const { id } = useParams();
-  const { token, loading: authLoading } = useAuth();
+  const { user, token, loading: authLoading } = useAuth();
   const { campaign, loading, error } = useCampaign(id);
   const {
     sessions,
@@ -36,6 +36,16 @@ function CampaignJournalPage() {
   const [encountersError, setEncountersError] = useState("");
   const [encountersResolved, setEncountersResolved] = useState(false);
   const [expandedSessionIds, setExpandedSessionIds] = useState({});
+  const [expandedEncounterSessionIds, setExpandedEncounterSessionIds] = useState({});
+  const [editingSessionId, setEditingSessionId] = useState(null);
+  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summarySaving, setSummarySaving] = useState(false);
+  const [summaryError, setSummaryError] = useState("");
+  const [sessionSummaryOverrides, setSessionSummaryOverrides] = useState({});
+  const [noteVisibilityOverrides, setNoteVisibilityOverrides] = useState({});
+  const [noteVisibilitySavingKey, setNoteVisibilitySavingKey] = useState("");
+  const [noteVisibilityErrorKey, setNoteVisibilityErrorKey] = useState("");
+  const [noteVisibilityError, setNoteVisibilityError] = useState("");
 
   useEffect(() => {
     if (sessionsLoading) {
@@ -103,8 +113,20 @@ function CampaignJournalPage() {
       title: session.title || "Untitled Session",
       status: session.status || "Planned",
       date: getPrimarySessionDate(session),
-      summary: session.summary?.trim() || "",
-      notes: Array.isArray(session.notes) ? session.notes : [],
+      summary: Object.prototype.hasOwnProperty.call(sessionSummaryOverrides, session._id)
+        ? sessionSummaryOverrides[session._id]
+        : session.summary?.trim() || "",
+      notes: Array.isArray(session.notes)
+        ? session.notes.map((note, noteIndex) => {
+            const overrideKey = `${session._id}:${noteIndex}`;
+            return {
+              ...note,
+              visibleToPlayers: Object.prototype.hasOwnProperty.call(noteVisibilityOverrides, overrideKey)
+                ? noteVisibilityOverrides[overrideKey]
+                : Boolean(note?.visibleToPlayers),
+            };
+          })
+        : [],
       meta: [
         session.sessionNumber ? `Session ${session.sessionNumber}` : null,
         session.notes?.length ? `${session.notes.length} notes` : null,
@@ -133,7 +155,7 @@ function CampaignJournalPage() {
       const bTime = b.date ? new Date(b.date).getTime() : 0;
       return bTime - aTime;
     });
-  }, [encountersBySession, sessions]);
+  }, [encountersBySession, noteVisibilityOverrides, sessionSummaryOverrides, sessions]);
 
   if (loading || authLoading || sessionsLoading || !encountersResolved) {
     return <LoadingPage>Opening the campaign journal...</LoadingPage>;
@@ -151,11 +173,97 @@ function CampaignJournalPage() {
   }
 
   const backgroundImage = campaign.image || placeholderImage;
+  const dmMember = campaign.members?.find((member) => member.role === "DM");
+  const isDM = dmMember?.userId?._id?.toString() === user?.id?.toString();
   const toggleSessionExpanded = (sessionId) => {
     setExpandedSessionIds((prev) => ({
       ...prev,
       [sessionId]: !prev[sessionId],
     }));
+  };
+  const toggleEncounterExpanded = (sessionId) => {
+    setExpandedEncounterSessionIds((prev) => ({
+      ...prev,
+      [sessionId]: !prev[sessionId],
+    }));
+  };
+  const startEditingSummary = (sessionId, currentSummary = "") => {
+    setEditingSessionId(sessionId);
+    setSummaryDraft(currentSummary);
+    setSummaryError("");
+  };
+  const cancelEditingSummary = () => {
+    setEditingSessionId(null);
+    setSummaryDraft("");
+    setSummaryError("");
+  };
+  const saveSessionSummary = async (sessionId) => {
+    if (!sessionId || !token || summarySaving) return;
+
+    setSummarySaving(true);
+    setSummaryError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          summary: summaryDraft.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update session summary");
+      }
+
+      setSessionSummaryOverrides((prev) => ({
+        ...prev,
+        [sessionId]: summaryDraft.trim(),
+      }));
+      setEditingSessionId(null);
+      setSummaryDraft("");
+    } catch (err) {
+      setSummaryError(err.message || "Failed to update session summary");
+    } finally {
+      setSummarySaving(false);
+    }
+  };
+  const updateNoteVisibility = async (sessionId, noteIndex, visibleToPlayers) => {
+    if (!sessionId || !token) return;
+
+    const noteKey = `${sessionId}:${noteIndex}`;
+    setNoteVisibilitySavingKey(noteKey);
+    setNoteVisibilityErrorKey("");
+    setNoteVisibilityError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          noteVisibilityIndex: noteIndex,
+          noteVisibleToPlayers: visibleToPlayers,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update note visibility");
+      }
+
+      setNoteVisibilityOverrides((prev) => ({
+        ...prev,
+        [noteKey]: visibleToPlayers,
+      }));
+    } catch (err) {
+      setNoteVisibilityErrorKey(noteKey);
+      setNoteVisibilityError(err.message || "Failed to update note visibility");
+    } finally {
+      setNoteVisibilitySavingKey("");
+    }
   };
 
   return (
@@ -222,13 +330,68 @@ function CampaignJournalPage() {
                   </p>
                   {item.type === "Session" && (
                     <>
-                      <button
-                        type="button"
-                        className="campaign-journal-expand"
-                        onClick={() => toggleSessionExpanded(item.sessionId)}
-                      >
-                        {expandedSessionIds[item.sessionId] ? "Hide Notes" : "View Notes"}
-                      </button>
+                      {editingSessionId === item.sessionId ? (
+                        <div className="campaign-journal-summary-editor">
+                          <label className="campaign-journal-editor-label" htmlFor={`summary-${item.sessionId}`}>
+                            Edit Session Summary
+                          </label>
+                          <textarea
+                            id={`summary-${item.sessionId}`}
+                            className="campaign-journal-editor-input"
+                            value={summaryDraft}
+                            onChange={(event) => setSummaryDraft(event.target.value)}
+                            maxLength="2000"
+                            placeholder="Write a session summary..."
+                          />
+                          {summaryError && (
+                            <p className="campaign-error-text campaign-journal-editor-error">{summaryError}</p>
+                          )}
+                          <div className="campaign-journal-entry-actions">
+                            <button
+                              type="button"
+                              className="campaign-journal-expand"
+                              onClick={() => saveSessionSummary(item.sessionId)}
+                              disabled={summarySaving}
+                            >
+                              {summarySaving ? "Saving..." : "Save Summary"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-ghost campaign-btn-link"
+                              onClick={cancelEditingSummary}
+                              disabled={summarySaving}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="campaign-journal-entry-actions">
+                          {isDM && (
+                            <button
+                              type="button"
+                              className="campaign-journal-expand"
+                              onClick={() => startEditingSummary(item.sessionId, item.summary)}
+                            >
+                              Edit Session Summary
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="campaign-journal-expand"
+                            onClick={() => toggleSessionExpanded(item.sessionId)}
+                          >
+                            {expandedSessionIds[item.sessionId] ? "Hide Notes" : "View Notes"}
+                          </button>
+                          <button
+                            type="button"
+                            className="campaign-journal-expand"
+                            onClick={() => toggleEncounterExpanded(item.sessionId)}
+                          >
+                            {expandedEncounterSessionIds[item.sessionId] ? "Hide Encounters" : "View Encounters"}
+                          </button>
+                        </div>
+                      )}
                       {expandedSessionIds[item.sessionId] && (
                         item.notes.length > 0 ? (
                           <div className="campaign-journal-notes">
@@ -238,13 +401,37 @@ function CampaignJournalPage() {
                                 className="campaign-journal-note"
                               >
                                 <div className="campaign-journal-note-top">
-                                  <span className="campaign-journal-note-role">
-                                    {note.authorRole || "Player"}
-                                  </span>
+                                  <div className="campaign-journal-note-meta">
+                                    <span className="campaign-journal-note-role">
+                                      {note.authorRole || "Player"}
+                                    </span>
+                                    {isDM && note.authorRole === "DM" && (
+                                      <label className="campaign-journal-note-visibility-toggle">
+                                        <input
+                                          type="checkbox"
+                                          checked={Boolean(note.visibleToPlayers)}
+                                          onChange={(event) =>
+                                            updateNoteVisibility(item.sessionId, index, event.target.checked)
+                                          }
+                                          disabled={noteVisibilitySavingKey === `${item.sessionId}:${index}`}
+                                        />
+                                        <span>
+                                          {noteVisibilitySavingKey === `${item.sessionId}:${index}`
+                                            ? "Saving"
+                                            : "Player View"}
+                                        </span>
+                                      </label>
+                                    )}
+                                  </div>
                                   <span className="campaign-journal-note-date">
                                     {formatTimelineDate(note.createdAt)}
                                   </span>
                                 </div>
+                                {noteVisibilityErrorKey === `${item.sessionId}:${index}` && (
+                                  <p className="campaign-error-text campaign-journal-note-visibility-error">
+                                    {noteVisibilityError}
+                                  </p>
+                                )}
                                 <p className="campaign-journal-note-content">{note.content}</p>
                               </article>
                             ))}
@@ -252,6 +439,39 @@ function CampaignJournalPage() {
                         ) : (
                           <div className="campaign-journal-notes">
                             <p className="campaign-section-empty">No notes were recorded for this session.</p>
+                          </div>
+                        )
+                      )}
+                      {expandedEncounterSessionIds[item.sessionId] && (
+                        (encountersBySession[item.sessionId] || []).length > 0 ? (
+                          <div className="campaign-journal-notes">
+                            {(encountersBySession[item.sessionId] || []).map((encounter) => (
+                              <article
+                                key={`${item.sessionId}-encounter-${encounter._id}`}
+                                className="campaign-journal-note"
+                              >
+                                <div className="campaign-journal-note-top">
+                                  <div className="campaign-journal-note-meta">
+                                    <span className="campaign-journal-note-role">Encounter</span>
+                                  </div>
+                                  <span className="campaign-journal-note-date">
+                                    {formatTimelineDate(getPrimaryEncounterDate(encounter))}
+                                  </span>
+                                </div>
+                                <p className="campaign-journal-note-content">
+                                  <strong>{encounter.name || "Untitled Encounter"}</strong>
+                                  {encounter.summary?.trim()
+                                    ? `\n${encounter.summary.trim()}`
+                                    : encounter.notes?.trim()
+                                      ? `\n${encounter.notes.trim()}`
+                                      : ""}
+                                </p>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="campaign-journal-notes">
+                            <p className="campaign-section-empty">No encounters were recorded for this session.</p>
                           </div>
                         )
                       )}
