@@ -110,11 +110,49 @@ const characterSchema = new Schema(
       min: 0,
       default: 0,
     },
+    inspiration: {
+      type: Boolean,
+      default: false,
+    },
 
     // --- Vitals (Current State) ---
     hp: {
       current: { type: Number, min: 0, default: 10 },
       max: { type: Number, min: 1, default: 10 },
+    },
+    temporaryHp: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    armorClass: {
+      type: Number,
+      min: 0,
+      default: 10,
+    },
+    initiative: {
+      type: Number,
+      default: 0,
+    },
+    speed: {
+      type: Number,
+      min: 0,
+      default: 30,
+    },
+    passivePerception: {
+      type: Number,
+      min: 0,
+      default: 10,
+    },
+    hitDice: {
+      type: String,
+      trim: true,
+      maxlength: 30,
+      default: "",
+    },
+    deathSaves: {
+      successes: { type: Number, min: 0, max: 3, default: 0 },
+      failures: { type: Number, min: 0, max: 3, default: 0 },
     },
     mana: {
       current: { type: Number, min: 0, default: 0 },
@@ -222,6 +260,22 @@ characterSchema.virtual("totalAttributes").get(function () {
   }
 
   return totals;
+});
+
+characterSchema.virtual("proficiencyBonus").get(function () {
+  return Math.floor(((this.level || 1) - 1) / 4) + 2;
+});
+
+characterSchema.virtual("abilityModifiers").get(function () {
+  const scores = this.totalAttributes || this.attributes || {};
+  return {
+    str: Math.floor(((scores.str || 10) - 10) / 2),
+    dex: Math.floor(((scores.dex || 10) - 10) / 2),
+    con: Math.floor(((scores.con || 10) - 10) / 2),
+    int: Math.floor(((scores.int || 10) - 10) / 2),
+    wis: Math.floor(((scores.wis || 10) - 10) / 2),
+    cha: Math.floor(((scores.cha || 10) - 10) / 2),
+  };
 });
 
 // Calculates attribute bonuses from race and etc.
@@ -352,7 +406,9 @@ characterSchema.pre("save", async function () {
     doc.characterId = counter.seq; // Assign the new number to the character
 
     // --- Skill Initialization ---
-    doc.skillProficiencies = DEFAULT_SKILLS.map((skill) => ({ ...skill }));
+    if (!doc.skillProficiencies?.length) {
+      doc.skillProficiencies = DEFAULT_SKILLS.map((skill) => ({ ...skill }));
+    }
   } catch (error) {
     throw error;
   }

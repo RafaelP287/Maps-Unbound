@@ -15,6 +15,7 @@ import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
 import Characters from "./features/characters/Characters.jsx";
 import CreateCharacter from "./features/characters/CreateCharacter.jsx";
+import CharacterEditor from "./features/characters/CharacterEditor.jsx";
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
 
 import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
@@ -341,6 +342,7 @@ function App() {
           
           {/* Character Routes */}
           <Route path="characters" element={<Characters />} />
+          <Route path="characters/:id/edit" element={<CharacterEditor />} />
           <Route path="create-character" element={<CreateCharacter />} />
 
 

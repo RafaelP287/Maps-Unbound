@@ -1,132 +1,93 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
-import CharacterCard from "./CharacterCard";
-import Button from "../../shared/Button.jsx";
 import Gate from "../../shared/Gate.jsx";
+import CharacterCard from "./CharacterCard.jsx";
 
+const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 
-const AUTH_STORAGE_KEY = "maps-unbound-auth";
-const apiServer = import.meta.env.VITE_API_SERVER;
-
-const Characters = () => {
-  // Authentication
-  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
-  if (!isLoggedIn) {
-    return (
-      <Gate>
-        Sign in to access your characters.
-      </Gate>
-    );
-  }
-
-  const navigate = useNavigate();
+function Characters() {
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const [characters, setCharacters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Fetches Characters
+    if (!isLoggedIn || !user?.username) {
+      setIsLoading(false);
+      return;
+    }
+
     const fetchCharacters = async () => {
+      setIsLoading(true);
+      setError("");
+
       try {
-        const response = await fetch(
-          `${apiServer}/api/users/${user.username}/characters`,
-        );
+        const response = await fetch(`${API_SERVER}/api/users/${user.username}/characters`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch characters");
+          throw new Error("Failed to fetch characters.");
         }
 
         const data = await response.json();
-        console.log("API DATA:", data);
-        setCharacters(data.characters);
+        setCharacters(Array.isArray(data.characters) ? data.characters : []);
       } catch (err) {
-        console.error("Error fetching characters:", err);
-        setError("Could not load your characters.");
+        setError(err.message || "Could not load your characters.");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCharacters();
-  }, [navigate]);
+  }, [isLoggedIn, user?.username]);
 
-  // Handle Loading and Error states
-  if (isLoading) {
-    return (
-      <div style={{ color: "white", textAlign: "center", marginTop: "50px" }}>
-        Loading your heroes...
-      </div>
-    );
+  if (authLoading) {
+    return <div className="character-status">Loading your character vault...</div>;
   }
 
-  if (error) {
-    return (
-      <div style={{ color: "#ff6b6b", textAlign: "center", marginTop: "50px" }}>
-        {error}
-      </div>
-    );
+  if (!isLoggedIn) {
+    return <Gate>Sign in to access your characters.</Gate>;
   }
 
-  // Page
   return (
-    <>
-      <div style={styles.header}>
-        <h1>My Characters</h1>
-        <Link to="/create-character">
-          <button style={primaryBtnStyle}>+ Create New Character</button>
-        </Link>
-      </div>
+    <div className="character-page">
+      <div className="character-shell">
+        <header className="character-header">
+          <div className="character-header-copy">
+            <p className="character-eyebrow">Adventurer Roster</p>
+            <h1 className="character-title">My Characters</h1>
+            <p className="character-subtitle">Open a sheet to edit stats, story notes, proficiencies, and combat details.</p>
+          </div>
 
-      <div style={styles.list}>
-        {characters.length === 0 ? (
-          <p style={{ color: "#aaa" }}>
-            You haven't created any characters yet.
-          </p>
-        ) : (
-          characters.map((character) => (
-            <CharacterCard
-              key={character._id || character.characterId}
-              character={character}
-              user={user?.username}
-            />
-          ))
+          <Link to="/create-character" className="character-btn-link">
+            <Plus aria-hidden="true" />
+            Create Character
+          </Link>
+        </header>
+
+        <div className="character-divider" />
+
+        {isLoading && <div className="character-status">Loading your heroes...</div>}
+        {error && <div className="character-error">{error}</div>}
+
+        {!isLoading && !error && (
+          <div className="character-list-grid">
+            {characters.length === 0 ? (
+              <div className="character-empty-state">
+                <ScrollText aria-hidden="true" />
+                <p>You have not created any characters yet.</p>
+              </div>
+            ) : (
+              characters.map((character) => (
+                <CharacterCard key={character._id || character.characterId} character={character} />
+              ))
+            )}
+          </div>
         )}
       </div>
-    </>
+    </div>
   );
-};
-
-const styles = {
-  header: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    padding: "16px",
-  },
-  list: {
-    display: "flex",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: "16px",
-    padding: "16px",
-  },
-};
-
-const primaryBtnStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "0.85rem",
-  fontWeight: "600",
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
-  color: "var(--bg-deep)",
-  background: `linear-gradient(135deg, var(--gold), var(--gold-light))`,
-  border: "none",
-  borderRadius: "6px",
-  padding: "0.7rem 1.8rem",
-  cursor: "pointer",
-  boxShadow: `0 2px 16px rgba(201,168,76,0.25)`,
-  transition: "opacity 0.2s, transform 0.15s",
-};
+}
 
 export default Characters;

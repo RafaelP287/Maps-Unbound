@@ -35,6 +35,19 @@ export const DEFAULT_CLASSES = [
 
 export const DEFAULT_BACKGROUNDS = [
   { index: "acolyte", name: "Acolyte", url: "/api/2014/backgrounds/acolyte" },
+  { index: "charlatan", name: "Charlatan", url: "/api/2014/backgrounds/charlatan" },
+  { index: "criminal", name: "Criminal", url: "/api/2014/backgrounds/criminal" },
+  { index: "entertainer", name: "Entertainer", url: "/api/2014/backgrounds/entertainer" },
+  { index: "folk-hero", name: "Folk Hero", url: "/api/2014/backgrounds/folk-hero" },
+  { index: "guild-artisan", name: "Guild Artisan", url: "/api/2014/backgrounds/guild-artisan" },
+  { index: "hermit", name: "Hermit", url: "/api/2014/backgrounds/hermit" },
+  { index: "noble", name: "Noble", url: "/api/2014/backgrounds/noble" },
+  { index: "outlander", name: "Outlander", url: "/api/2014/backgrounds/outlander" },
+  { index: "sage", name: "Sage", url: "/api/2014/backgrounds/sage" },
+  { index: "sailor", name: "Sailor", url: "/api/2014/backgrounds/sailor" },
+  { index: "soldier", name: "Soldier", url: "/api/2014/backgrounds/soldier" },
+  { index: "urchin", name: "Urchin", url: "/api/2014/backgrounds/urchin" },
+  { index: "custom", name: "Custom", url: "/api/2014/backgrounds/custom" },
 ];
 
 export const DEFAULT_ALIGNMENTS = [

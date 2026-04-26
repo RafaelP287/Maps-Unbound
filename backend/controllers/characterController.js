@@ -1,9 +1,29 @@
 import { CONFIG } from "../config.js";
 
+import mongoose from "mongoose";
 import User from "../models/User.js";
 import Character from "../models/Character.js";
 import { Item, parseEquipmentData } from "../models/Item.js";
 import { parseSpellData } from "../models/Spell.js";
+
+function characterIdentifierQuery(id) {
+  const clauses = [];
+  const numericId = Number(id);
+
+  if (Number.isInteger(numericId)) {
+    clauses.push({ characterId: numericId });
+  }
+
+  if (mongoose.isValidObjectId(id)) {
+    clauses.push({ _id: id });
+  }
+
+  return clauses.length > 0 ? { $or: clauses } : { characterId: id };
+}
+
+async function findCharacterByIdentifier(id) {
+  return await Character.findOne(characterIdentifierQuery(id));
+}
 
 // Finds every character in the database
 async function getCharacters() {
@@ -18,14 +38,13 @@ async function getCharactersFromUser(username) {
 
 // Finds character by id
 async function getCharacter(id) {
-  return await Character.findOne({ characterId: id });
+  return await findCharacterByIdentifier(id);
 }
 
 // Finds character by id but expanded
 async function getCharacterExpanded(id) {
-  const character = await Character.findOne({ characterId: id }).populate(
-    "inventory",
-  );
+  const character = await Character.findOne(characterIdentifierQuery(id)).populate("inventory");
+  if (!character) return null;
   console.log(await character.getRace());
   console.log(await character.getClass());
   console.log(await character.getAlignment());
@@ -46,23 +65,48 @@ async function createCharacter(
   classObj,
   backgroundObj,
   alignmentObj,
-  baseStats,
+  sheetData = {},
 ) {
   try {
-    const userId = (await User.findOne({ username: userName }))?._id;
+    const user = await User.findOne({ username: userName });
+
+    if (!user) {
+      throw new Error(`User '${userName}' was not found.`);
+    }
 
     // Create and save the new Mongoose document
     const newCharacter = new Character({
       name: characterName,
-      user: userId,
+      user: user._id,
       race: raceObj,
       class: classObj,
       background: backgroundObj,
       alignment: alignmentObj,
-      baseAbilityScores: baseStats,
+      level: sheetData.level,
+      experience: sheetData.experience,
+      inspiration: sheetData.inspiration,
+      attributes: sheetData.attributes,
+      hp: sheetData.hp,
+      temporaryHp: sheetData.temporaryHp,
+      armorClass: sheetData.armorClass,
+      initiative: sheetData.initiative,
+      speed: sheetData.speed,
+      passivePerception: sheetData.passivePerception,
+      hitDice: sheetData.hitDice,
+      deathSaves: sheetData.deathSaves,
+      personalityTraits: sheetData.personalityTraits,
+      ideals: sheetData.ideals,
+      bonds: sheetData.bonds,
+      flaws: sheetData.flaws,
+      featuresAndTraits: sheetData.featuresAndTraits,
+      languages: sheetData.languages,
+      weaponProficiencies: sheetData.weaponProficiencies,
+      armorProficiencies: sheetData.armorProficiencies,
+      toolProficiencies: sheetData.toolProficiencies,
+      skillProficiencies: sheetData.skillProficiencies,
+      attacks: sheetData.attacks,
     });
 
-    newCharacter.calculateBonuses();
     await newCharacter.save();
 
     console.log(
@@ -72,13 +116,59 @@ async function createCharacter(
     return newCharacter;
   } catch (error) {
     console.error("Error creating character:", error);
+    throw error;
   }
+}
+
+// Character update function
+async function updateCharacter(id, updates) {
+  const character = await findCharacterByIdentifier(id);
+
+  if (!character) {
+    return null;
+  }
+
+  Object.assign(character, updates);
+  await character.save();
+  return character;
+}
+
+// Deletes a character only when the requesting user owns it.
+async function deleteCharacter(id, userName) {
+  const user = await User.findOne({ username: userName });
+
+  if (!user) {
+    return { status: "user_not_found" };
+  }
+
+  const character = await findCharacterByIdentifier(id);
+
+  if (!character) {
+    return { status: "not_found" };
+  }
+
+  if (String(character.user) !== String(user._id)) {
+    return { status: "forbidden" };
+  }
+
+  const inventoryResult = await Item.deleteMany({ owner: character._id });
+  await character.deleteOne();
+
+  return {
+    status: "deleted",
+    character,
+    deletedInventoryCount: inventoryResult.deletedCount || 0,
+  };
 }
 
 // Adds Spell
 async function addSpellToCharacter(id, spellIndex) {
   try {
-    const currentCharacter = await Character.findOne({ characterId: id });
+    const currentCharacter = await findCharacterByIdentifier(id);
+
+    if (!currentCharacter) {
+      throw new Error("Character not found.");
+    }
 
     const response = await fetch(
       `${CONFIG.api5e}/api/2014/spells/${spellIndex}`,
@@ -112,7 +202,7 @@ const addItemToInventory = async (req, res) => {
     }
 
     // Verify character exists
-    const character = await Character.findOne({ characterId: id });
+    const character = await findCharacterByIdentifier(id);
     if (!character) {
       return res.status(404).json({ error: "Character not found." });
     }
@@ -171,6 +261,8 @@ export {
   getCharacterExpanded,
   getCharacterByName,
   createCharacter,
+  updateCharacter,
+  deleteCharacter,
   addSpellToCharacter,
   addItemToInventory,
 };
