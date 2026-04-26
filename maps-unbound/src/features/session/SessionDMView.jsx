@@ -5,7 +5,7 @@ import SessionLeftPanel from "./components/SessionLeftPanel";
 import SessionMapCanvas from "./components/SessionMapCanvas";
 import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
@@ -27,6 +27,10 @@ function SessionDMView() {
     const [sceneName, setSceneName] = useState("");
     const [turns, setTurns] = useState([]);
     const [combatRound, setCombatRound] = useState(0);
+    const [activeEncounterId, setActiveEncounterId] = useState(null);
+    const [activeEncounterNumber, setActiveEncounterNumber] = useState(null);
+    const [encounterSequence, setEncounterSequence] = useState(0);
+    const [combatEvents, setCombatEvents] = useState([]);
     const [notesDraft, setNotesDraft] = useState("");
     const [notesSaving, setNotesSaving] = useState(false);
     const [notesError, setNotesError] = useState("");
@@ -55,6 +59,12 @@ function SessionDMView() {
         }
         return orderedSessions.find((session) => session?._id === sessionId) || null;
     }, [orderedSessions, sessionId]);
+    const existingEncounterCount = Array.isArray(currentSession?.encounterIds) ? currentSession.encounterIds.length : 0;
+
+    useEffect(() => {
+        setEncounterSequence(existingEncounterCount);
+        setActiveEncounterNumber(null);
+    }, [currentSession?._id, existingEncounterCount]);
 
     const previousSessionNotes = useMemo(() => {
         if (!sessionId) {
@@ -133,6 +143,66 @@ function SessionDMView() {
         })),
     ];
 
+    const createCombatEvent = (title, detail, tone = "neutral", kind = "note") => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title,
+        detail,
+        tone,
+        kind,
+        createdAt: new Date().toISOString(),
+    });
+
+    const pushCombatEvents = (entries) => {
+        setCombatEvents((prev) => [...prev, ...entries]);
+    };
+
+    const serializeEncounterInitiative = (encounterTurns = []) =>
+        encounterTurns.map((turn) => ({
+            name: turn.name || "",
+            kind: turn.kind || "Enemy",
+            hp: turn.hp !== undefined && turn.hp !== null ? String(turn.hp) : "",
+            initiative: Number.isFinite(Number(turn.initiative)) ? Number(turn.initiative) : 0,
+        }));
+
+    const getActiveTurnIndex = (encounterTurns = []) => {
+        const activeIndex = encounterTurns.findIndex((turn) => turn.isActive);
+        return activeIndex >= 0 ? activeIndex : 0;
+    };
+
+    const syncEncounterState = async (encounterId, encounterTurns, nextRound, statusOverride = null) => {
+        if (!encounterId || !token) {
+            return;
+        }
+
+        const payload = {
+            initiative: serializeEncounterInitiative(encounterTurns),
+            activeTurnIndex: getActiveTurnIndex(encounterTurns),
+            rounds: Math.max(0, nextRound),
+            relatedMap: sceneName || "",
+        };
+        if (statusOverride) {
+            payload.status = statusOverride;
+        }
+        if (statusOverride === "Completed") {
+            payload.endedAt = new Date().toISOString();
+            payload.summary = sceneName ? `Scene: ${sceneName}` : "";
+        }
+
+        const res = await fetch(`/api/encounters/${encounterId}`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || "Failed to sync encounter");
+        }
+    };
+
     const handleTurnsChange = (nextTurns) => {
         if (!nextTurns || nextTurns.length === 0) {
             setTurns([]);
@@ -151,6 +221,96 @@ function SessionDMView() {
         setCombatRound(0);
     };
 
+    const handleCombatStart = async ({ turns: startingTurns = [], round = 1, mapName = "" }) => {
+        const opener = startingTurns.find((turn) => turn.isActive)?.name || startingTurns[0]?.name || "Unknown";
+        const participants = startingTurns.length;
+        const locationLabel = mapName ? ` at ${mapName}` : "";
+        const encounterNumber = encounterSequence + 1;
+        const encounterLabel = `Encounter ${encounterNumber}`;
+        try {
+            if (sessionId && token) {
+                const res = await fetch("/api/encounters", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        name: encounterLabel,
+                        status: "In Progress",
+                        startedAt: new Date().toISOString(),
+                        rounds: Math.max(1, round),
+                        relatedMap: mapName || "",
+                        initiative: serializeEncounterInitiative(startingTurns),
+                        activeTurnIndex: getActiveTurnIndex(startingTurns),
+                        setActive: true,
+                    }),
+                });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.error || "Failed to create encounter");
+                }
+                const encounter = await res.json();
+                setActiveEncounterId(encounter._id);
+                setActiveEncounterNumber(encounterNumber);
+                setEncounterSequence(encounterNumber);
+            }
+
+            pushCombatEvents([
+                createCombatEvent(
+                    `${encounterLabel} Started`,
+                    `${opener} acts first in Round ${round}.${locationLabel} ${participants} combatants entered initiative.`,
+                    "alert",
+                    "encounter-start"
+                ),
+                createCombatEvent(
+                    `Round ${round}`,
+                    locationLabel ? `Combat opened${locationLabel}.` : "Combat opened.",
+                    "highlight",
+                    "round"
+                ),
+                createCombatEvent(
+                    opener,
+                    "",
+                    "neutral",
+                    "turn"
+                ),
+            ]);
+        } catch (err) {
+            setActiveEncounterId(null);
+            pushCombatEvents([
+                createCombatEvent("Encounter Start Failed", err.message || "Failed to save encounter.", "muted", "note"),
+            ]);
+        }
+    };
+
+    const handleCombatEnd = async ({ turns: endingTurns = [], round = 0, mapName = "" }) => {
+        const closer = endingTurns.find((turn) => turn.isActive)?.name || "No active combatant";
+        const locationLabel = mapName ? ` at ${mapName}` : "";
+        const encounterLabel = activeEncounterNumber ? `Encounter ${activeEncounterNumber}` : "Encounter";
+        try {
+            if (activeEncounterId) {
+                await syncEncounterState(activeEncounterId, endingTurns, round, "Completed");
+                setActiveEncounterId(null);
+            }
+            setActiveEncounterNumber(null);
+
+            pushCombatEvents([
+                createCombatEvent(
+                    `${encounterLabel} Ended`,
+                    `${closer} held the active turn when combat ended${locationLabel}${round ? ` in Round ${round}` : ""}.`,
+                    "muted",
+                    "encounter-end"
+                ),
+            ]);
+        } catch (err) {
+            pushCombatEvents([
+                createCombatEvent("Encounter End Failed", err.message || "Failed to save encounter.", "muted", "note"),
+            ]);
+        }
+    };
+
     const handleAdvanceTurn = () => {
         if (turns.length === 0) {
             return;
@@ -160,6 +320,7 @@ function SessionDMView() {
         const activeIndex = currentActiveIndex >= 0 ? currentActiveIndex : 0;
         const nextActiveIndex = (activeIndex + 1) % turns.length;
         const isEndingLastTurn = activeIndex === turns.length - 1;
+        const nextRoundValue = isEndingLastTurn ? combatRound + 2 : combatRound + 1;
 
         const nextTurns = turns.map((turn, idx) => ({
             ...turn,
@@ -168,8 +329,34 @@ function SessionDMView() {
         }));
 
         setTurns(nextTurns);
+        const upcomingEvents = [];
         if (isEndingLastTurn) {
+            const nextRound = combatRound + 2;
+            upcomingEvents.push(
+                createCombatEvent(
+                    `Round ${nextRound}`,
+                    `${nextTurns[nextActiveIndex]?.name || "The next combatant"} opens the round.`,
+                    "highlight",
+                    "round"
+                )
+            );
             setCombatRound((prevRound) => prevRound + 1);
+        }
+        upcomingEvents.push(
+            createCombatEvent(
+                `${nextTurns[nextActiveIndex]?.name || "Unknown"}`,
+                "",
+                "neutral",
+                "turn"
+            )
+        );
+        pushCombatEvents(upcomingEvents);
+        if (activeEncounterId) {
+            syncEncounterState(activeEncounterId, nextTurns, nextRoundValue).catch((err) => {
+                pushCombatEvents([
+                    createCombatEvent("Encounter Sync Failed", err.message || "Failed to update encounter.", "muted", "note"),
+                ]);
+            });
         }
     };
 
@@ -194,6 +381,10 @@ function SessionDMView() {
         setEndingSession(true);
         setEndSessionError("");
         try {
+            if (activeEncounterId && turns.length > 0) {
+                await syncEncounterState(activeEncounterId, turns, combatRound + 1, "Completed");
+                setActiveEncounterId(null);
+            }
             const res = await fetch(`/api/sessions/${sessionId}`, {
                 method: "PUT",
                 headers: {
@@ -285,6 +476,8 @@ function SessionDMView() {
                 round={combatRound}
                 onAdvanceTurn={handleAdvanceTurn}
                 onCombatStateChange={setIsCombatState}
+                onCombatStart={handleCombatStart}
+                onCombatEnd={handleCombatEnd}
                 onSceneNameChange={setSceneName}
                 onTurnsChange={handleTurnsChange}
                 playerCharacterNames={playerCharacterNames}
@@ -292,6 +485,7 @@ function SessionDMView() {
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
+                events={combatEvents}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}

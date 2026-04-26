@@ -24,6 +24,8 @@ function SessionMapCanvas({
     round = 0,
     onAdvanceTurn,
     onCombatStateChange,
+    onCombatStart,
+    onCombatEnd,
     onSceneNameChange,
     onTurnsChange,
     playerCharacterNames = [],
@@ -141,6 +143,13 @@ function SessionMapCanvas({
         if (onCombatStateChange) {
             onCombatStateChange(true);
         }
+        if (onCombatStart) {
+            onCombatStart({
+                turns: computedTurns,
+                round: 1,
+                mapName: selectedMap?.name || "",
+            });
+        }
         setIsCombatSetupOpen(false);
     };
 
@@ -216,11 +225,24 @@ function SessionMapCanvas({
                 >
                     Maps
                 </button>
+                <button type="button" className="session-dm__map-btn">Roll Dice</button>
+                <button type="button" className="session-dm__map-btn">Ping</button>
+                <button type="button" className="session-dm__map-btn">Hitbox</button>
                 <button
                     type="button"
-                    className="session-dm__map-btn"
+                    className={[
+                        "session-dm__map-btn",
+                        isCombatState ? "session-dm__map-btn--danger" : "",
+                    ].filter(Boolean).join(" ")}
                     onClick={() => {
                         if (isCombatState) {
+                            if (onCombatEnd) {
+                                onCombatEnd({
+                                    turns,
+                                    round: turns.length > 0 ? round + 1 : 0,
+                                    mapName: selectedMap?.name || "",
+                                });
+                            }
                             setIsCombatState(false);
                             if (onTurnsChange) {
                                 onTurnsChange([]);
@@ -234,11 +256,8 @@ function SessionMapCanvas({
                     }}
                     aria-pressed={isCombatState}
                 >
-                    Combat
+                    {isCombatState ? "End Combat" : "Start Combat"}
                 </button>
-                <button type="button" className="session-dm__map-btn">Roll Dice</button>
-                <button type="button" className="session-dm__map-btn">Ping</button>
-                <button type="button" className="session-dm__map-btn">Hitbox</button>
             </div>
             <EncounterOverlay
                 isOpen={isCombatSetupOpen}

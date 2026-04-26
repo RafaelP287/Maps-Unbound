@@ -37,10 +37,16 @@ function CampaignJournalPage() {
   const [encountersResolved, setEncountersResolved] = useState(false);
   const [expandedSessionIds, setExpandedSessionIds] = useState({});
   const [expandedEncounterSessionIds, setExpandedEncounterSessionIds] = useState({});
+  const [expandedEncounterIds, setExpandedEncounterIds] = useState({});
   const [editingSessionId, setEditingSessionId] = useState(null);
+  const [editingSessionNameId, setEditingSessionNameId] = useState(null);
+  const [sessionNameDraft, setSessionNameDraft] = useState("");
+  const [sessionNameSaving, setSessionNameSaving] = useState(false);
+  const [sessionNameError, setSessionNameError] = useState("");
   const [summaryDraft, setSummaryDraft] = useState("");
   const [summarySaving, setSummarySaving] = useState(false);
   const [summaryError, setSummaryError] = useState("");
+  const [sessionTitleOverrides, setSessionTitleOverrides] = useState({});
   const [sessionSummaryOverrides, setSessionSummaryOverrides] = useState({});
   const [noteVisibilityOverrides, setNoteVisibilityOverrides] = useState({});
   const [noteVisibilitySavingKey, setNoteVisibilitySavingKey] = useState("");
@@ -110,7 +116,9 @@ function CampaignJournalPage() {
       id: `session-${session._id}`,
       sessionId: session._id,
       type: "Session",
-      title: session.title || "Untitled Session",
+      title: Object.prototype.hasOwnProperty.call(sessionTitleOverrides, session._id)
+        ? sessionTitleOverrides[session._id]
+        : session.title || "Untitled Session",
       status: session.status || "Planned",
       date: getPrimarySessionDate(session),
       summary: Object.prototype.hasOwnProperty.call(sessionSummaryOverrides, session._id)
@@ -134,28 +142,12 @@ function CampaignJournalPage() {
       ].filter(Boolean),
     }));
 
-    const encounterItems = (sessions || []).flatMap((session) =>
-      (encountersBySession[session._id] || []).map((encounter) => ({
-        id: `encounter-${encounter._id}`,
-        type: "Encounter",
-        title: encounter.name || "Untitled Encounter",
-        status: encounter.status || "Planned",
-        date: getPrimaryEncounterDate(encounter),
-        summary: encounter.summary?.trim() || encounter.notes?.trim() || "",
-        meta: [
-          session.title ? `From ${session.title}` : null,
-          Number.isFinite(encounter.rounds) ? `${encounter.rounds} rounds` : null,
-          encounter.initiative?.length ? `${encounter.initiative.length} combatants` : null,
-        ].filter(Boolean),
-      }))
-    );
-
-    return [...sessionItems, ...encounterItems].sort((a, b) => {
+    return sessionItems.sort((a, b) => {
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
       return bTime - aTime;
     });
-  }, [encountersBySession, noteVisibilityOverrides, sessionSummaryOverrides, sessions]);
+  }, [encountersBySession, noteVisibilityOverrides, sessionSummaryOverrides, sessionTitleOverrides, sessions]);
 
   if (loading || authLoading || sessionsLoading || !encountersResolved) {
     return <LoadingPage>Opening the campaign journal...</LoadingPage>;
@@ -187,15 +179,64 @@ function CampaignJournalPage() {
       [sessionId]: !prev[sessionId],
     }));
   };
+  const toggleEncounterCardExpanded = (encounterId) => {
+    setExpandedEncounterIds((prev) => ({
+      ...prev,
+      [encounterId]: !prev[encounterId],
+    }));
+  };
   const startEditingSummary = (sessionId, currentSummary = "") => {
     setEditingSessionId(sessionId);
     setSummaryDraft(currentSummary);
     setSummaryError("");
   };
+  const startEditingSessionName = (sessionId, currentTitle = "") => {
+    setEditingSessionNameId(sessionId);
+    setSessionNameDraft(currentTitle);
+    setSessionNameError("");
+  };
   const cancelEditingSummary = () => {
     setEditingSessionId(null);
     setSummaryDraft("");
     setSummaryError("");
+  };
+  const cancelEditingSessionName = () => {
+    setEditingSessionNameId(null);
+    setSessionNameDraft("");
+    setSessionNameError("");
+  };
+  const saveSessionName = async (sessionId) => {
+    if (!sessionId || !token || sessionNameSaving) return;
+
+    setSessionNameSaving(true);
+    setSessionNameError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: sessionNameDraft.trim(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update session name");
+      }
+
+      setSessionTitleOverrides((prev) => ({
+        ...prev,
+        [sessionId]: sessionNameDraft.trim(),
+      }));
+      setEditingSessionNameId(null);
+      setSessionNameDraft("");
+    } catch (err) {
+      setSessionNameError(err.message || "Failed to update session name");
+    } finally {
+      setSessionNameSaving(false);
+    }
   };
   const saveSessionSummary = async (sessionId) => {
     if (!sessionId || !token || summarySaving) return;
@@ -325,6 +366,42 @@ function CampaignJournalPage() {
                   {item.meta.length > 0 && (
                     <p className="campaign-journal-entry-meta">{item.meta.join(" • ")}</p>
                   )}
+                  {item.type === "Session" && editingSessionNameId === item.sessionId && (
+                    <div className="campaign-journal-summary-editor">
+                      <label className="campaign-journal-editor-label" htmlFor={`title-${item.sessionId}`}>
+                        Edit Session Name
+                      </label>
+                      <input
+                        id={`title-${item.sessionId}`}
+                        className="campaign-journal-editor-input campaign-journal-editor-input--single-line"
+                        value={sessionNameDraft}
+                        onChange={(event) => setSessionNameDraft(event.target.value)}
+                        maxLength="120"
+                        placeholder="Enter a session name..."
+                      />
+                      {sessionNameError && (
+                        <p className="campaign-error-text campaign-journal-editor-error">{sessionNameError}</p>
+                      )}
+                      <div className="campaign-journal-entry-actions">
+                        <button
+                          type="button"
+                          className="campaign-journal-expand"
+                          onClick={() => saveSessionName(item.sessionId)}
+                          disabled={sessionNameSaving}
+                        >
+                          {sessionNameSaving ? "Saving..." : "Save Name"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost campaign-btn-link"
+                          onClick={cancelEditingSessionName}
+                          disabled={sessionNameSaving}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <p className="campaign-journal-entry-summary">
                     {item.summary || "No summary has been recorded for this entry yet."}
                   </p>
@@ -367,6 +444,15 @@ function CampaignJournalPage() {
                         </div>
                       ) : (
                         <div className="campaign-journal-entry-actions">
+                          {isDM && (
+                            <button
+                              type="button"
+                              className="campaign-journal-expand"
+                              onClick={() => startEditingSessionName(item.sessionId, item.title)}
+                            >
+                              Edit Session Name
+                            </button>
+                          )}
                           {isDM && (
                             <button
                               type="button"
@@ -446,9 +532,15 @@ function CampaignJournalPage() {
                         (encountersBySession[item.sessionId] || []).length > 0 ? (
                           <div className="campaign-journal-notes">
                             {(encountersBySession[item.sessionId] || []).map((encounter) => (
-                              <article
+                              <button
+                                type="button"
                                 key={`${item.sessionId}-encounter-${encounter._id}`}
-                                className="campaign-journal-note"
+                                className={[
+                                  "campaign-journal-note",
+                                  "campaign-journal-encounter-card",
+                                  expandedEncounterIds[encounter._id] ? "is-expanded" : "",
+                                ].join(" ")}
+                                onClick={() => toggleEncounterCardExpanded(encounter._id)}
                               >
                                 <div className="campaign-journal-note-top">
                                   <div className="campaign-journal-note-meta">
@@ -460,13 +552,46 @@ function CampaignJournalPage() {
                                 </div>
                                 <p className="campaign-journal-note-content">
                                   <strong>{encounter.name || "Untitled Encounter"}</strong>
-                                  {encounter.summary?.trim()
-                                    ? `\n${encounter.summary.trim()}`
-                                    : encounter.notes?.trim()
-                                      ? `\n${encounter.notes.trim()}`
-                                      : ""}
                                 </p>
-                              </article>
+                                {expandedEncounterIds[encounter._id] && (
+                                  <div className="campaign-journal-encounter-detail">
+                                    <p className="campaign-journal-entry-meta">
+                                      {[
+                                        encounter.status || "Planned",
+                                        Number.isFinite(encounter.rounds) ? `${encounter.rounds} rounds` : null,
+                                        encounter.relatedMap ? `Map: ${encounter.relatedMap}` : null,
+                                        encounter.initiative?.length ? `${encounter.initiative.length} combatants` : null,
+                                      ].filter(Boolean).join(" • ")}
+                                    </p>
+                                    {(encounter.summary?.trim() || encounter.notes?.trim()) && (
+                                      <p className="campaign-journal-note-content">
+                                        {encounter.summary?.trim() || encounter.notes?.trim()}
+                                      </p>
+                                    )}
+                                    {encounter.initiative?.length > 0 && (
+                                      <div className="campaign-journal-encounter-list">
+                                        {encounter.initiative.map((combatant, combatantIndex) => (
+                                          <div
+                                            key={`${encounter._id}-combatant-${combatantIndex}`}
+                                            className="campaign-journal-encounter-combatant"
+                                          >
+                                            <span>{combatant.name || `Combatant ${combatantIndex + 1}`}</span>
+                                            <span>
+                                              {[
+                                                combatant.kind || null,
+                                                combatant.initiative !== undefined && combatant.initiative !== null
+                                                  ? `Init ${combatant.initiative}`
+                                                  : null,
+                                                combatant.hp ? `HP ${combatant.hp}` : null,
+                                              ].filter(Boolean).join(" • ")}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </button>
                             ))}
                           </div>
                         ) : (
