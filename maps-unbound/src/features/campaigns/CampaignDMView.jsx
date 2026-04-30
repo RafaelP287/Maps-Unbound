@@ -7,6 +7,7 @@ import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
+import useCampaignSessions from "./use-campaign-sessions.js";
 
 function CampaignDMView({ campaign, refetch }) {
   const { token } = useAuth();
@@ -40,6 +41,13 @@ function CampaignDMView({ campaign, refetch }) {
       notes: npc?.notes || "",
     }))
   );
+  const [editEnemies, setEditEnemies] = useState(
+    (campaign.enemies || []).map((enemy) => ({
+      name: enemy?.name || "",
+      role: enemy?.role || "",
+      notes: enemy?.notes || "",
+    }))
+  );
   const [editLoot, setEditLoot] = useState(
     (campaign.loot || []).map((item) => ({
       name: item?.name || "",
@@ -53,16 +61,24 @@ function CampaignDMView({ campaign, refetch }) {
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+  const [startingSession, setStartingSession] = useState(false);
+  const [pendingSessionDeleteIds, setPendingSessionDeleteIds] = useState([]);
+  const [showSessionDeleteConfirmOnSave, setShowSessionDeleteConfirmOnSave] = useState(false);
+  const [sessionActionError, setSessionActionError] = useState("");
 
   // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const { sessions, refetch: refetchSessions } = useCampaignSessions(campaign._id);
 
   const backgroundImage = campaign.image || placeholderImage;
   const activeBg = isEditing && editImage ? editImage : backgroundImage;
+  const pendingSessionNames = sessions
+    .filter((session) => pendingSessionDeleteIds.includes(session._id))
+    .map((session) => session.title || "Untitled Session");
 
-  const handleSave = async () => {
+  const executeSave = async ({ applySessionDeletes = false } = {}) => {
     setSaving(true); setSaveError(null);
     try {
       // Keep front-end guardrails aligned with backend limits for faster feedback.
@@ -80,6 +96,11 @@ function CampaignDMView({ campaign, refetch }) {
         role: npc.role.trim(),
         notes: npc.notes.trim(),
       })).filter((npc) => npc.name);
+      const enemies = editEnemies.map((enemy) => ({
+        name: enemy.name.trim(),
+        role: enemy.role.trim(),
+        notes: enemy.notes.trim(),
+      })).filter((enemy) => enemy.name);
       const loot = editLoot.map((item) => {
         const quantity = Number(item.quantity);
         return {
@@ -113,15 +134,41 @@ function CampaignDMView({ campaign, refetch }) {
           status: editStatus,
           currentQuest,
           npcs,
+          enemies,
           loot,
           members: memberPayload,
         }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
+      if (applySessionDeletes && pendingSessionDeleteIds.length > 0) {
+        const sessionsToDelete = sessions.filter((session) => pendingSessionDeleteIds.includes(session._id));
+        for (const session of sessionsToDelete) {
+          const deleteRes = await fetch(`/api/sessions/${session._id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!deleteRes.ok) {
+            const data = await deleteRes.json().catch(() => ({}));
+            const sessionName = session.title || "Untitled Session";
+            throw new Error(data.error || `Failed to delete session: ${sessionName}`);
+          }
+        }
+        await refetchSessions();
+      }
       await refetch();
+      setPendingSessionDeleteIds([]);
+      setShowSessionDeleteConfirmOnSave(false);
       setIsEditing(false);
     } catch (err) { setSaveError(err.message || "Failed to save changes."); }
     finally { setSaving(false); }
+  };
+
+  const handleSave = async () => {
+    if (pendingSessionDeleteIds.length > 0) {
+      setShowSessionDeleteConfirmOnSave(true);
+      return;
+    }
+    await executeSave();
   };
 
   const handleCancelEdit = () => {
@@ -143,6 +190,13 @@ function CampaignDMView({ campaign, refetch }) {
         notes: npc?.notes || "",
       }))
     );
+    setEditEnemies(
+      (campaign.enemies || []).map((enemy) => ({
+        name: enemy?.name || "",
+        role: enemy?.role || "",
+        notes: enemy?.notes || "",
+      }))
+    );
     setEditLoot(
       (campaign.loot || []).map((item) => ({
         name: item?.name || "",
@@ -153,6 +207,8 @@ function CampaignDMView({ campaign, refetch }) {
     );
     setEditPlayers(players.map((m) => ({ userId: m.userId._id, username: m.userId.username })));
     setSaveError(null);
+    setPendingSessionDeleteIds([]);
+    setShowSessionDeleteConfirmOnSave(false);
     setIsEditing(false);
   };
 
@@ -171,6 +227,60 @@ function CampaignDMView({ campaign, refetch }) {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
       navigate("/campaigns");
     } catch (err) { setDeleteError(err.message || "Failed to delete campaign."); setDeleting(false); setShowDeleteConfirm(false); }
+  };
+
+  const handleStartSession = async () => {
+    if (startingSession) return;
+    setStartingSession(true);
+    setSaveError(null);
+    setSessionActionError("");
+    try {
+      const nextSessionNumber = (sessions?.length || 0) + 1;
+      const title = `Session ${nextSessionNumber}`;
+      const createdAt = new Date().toISOString();
+      const payload = {
+        campaignId: campaign._id,
+        title,
+        sessionNumber: nextSessionNumber,
+        status: "In Progress",
+        startedAt: createdAt,
+        participants: campaign.members.map((member) => ({
+          userId: member.userId?._id || member.userId,
+          role: member.role,
+        })),
+      };
+
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to start session");
+      }
+
+      const createdSession = await res.json();
+      await refetchSessions();
+      navigate(
+        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
+      );
+    } catch (err) {
+      setSaveError(err.message || "Failed to start session.");
+    } finally {
+      setStartingSession(false);
+    }
+  };
+
+  const toggleSessionPendingDelete = (sessionId) => {
+    setPendingSessionDeleteIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId]
+    );
   };
 
   return (
@@ -298,6 +408,97 @@ function CampaignDMView({ campaign, refetch }) {
             <section className="campaign-section-panel">
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Session Records</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-edit-list">
+                {sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
+                {sessions.map((session) => (
+                  <div className="campaign-edit-item" key={session._id}>
+                    <div className="campaign-resource-title-row">
+                      <h3 className="campaign-resource-title">{session.title || "Untitled Session"}</h3>
+                      <span className="campaign-resource-meta">{session.status || "Planned"}</span>
+                    </div>
+                    <p className="campaign-helper-text">
+                      {session.startedAt
+                        ? `Started ${new Date(session.startedAt).toLocaleString()}`
+                        : "Start time not recorded"}
+                      {session.endedAt ? ` • Ended ${new Date(session.endedAt).toLocaleString()}` : ""}
+                    </p>
+                    <button
+                      type="button"
+                      className={pendingSessionDeleteIds.includes(session._id) ? "btn-cancel" : "btn-delete"}
+                      onClick={() => toggleSessionPendingDelete(session._id)}
+                    >
+                      {pendingSessionDeleteIds.includes(session._id) ? "Undo Delete" : "Mark Delete"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {pendingSessionDeleteIds.length > 0 && (
+                <p className="campaign-helper-text">
+                  {pendingSessionDeleteIds.length} session record(s) marked for deletion. They will be deleted when you save changes.
+                </p>
+              )}
+              {sessionActionError && <p className="campaign-error-text">{sessionActionError}</p>}
+            </section>
+          )}
+
+          {isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Enemy Tracker</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <div className="campaign-edit-list">
+                {editEnemies.length === 0 && <p className="campaign-helper-text">No enemies added yet.</p>}
+                {editEnemies.map((enemy, idx) => (
+                  <div className="campaign-edit-item" key={`enemy-${idx}`}>
+                    <input
+                      type="text"
+                      maxLength="80"
+                      placeholder="Enemy name"
+                      value={enemy.name}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, name: e.target.value } : p))}
+                    />
+                    <input
+                      type="text"
+                      maxLength="120"
+                      placeholder="Role (Boss, Minion, Beast...)"
+                      value={enemy.role}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, role: e.target.value } : p))}
+                    />
+                    <textarea
+                      maxLength="400"
+                      placeholder="Notes"
+                      value={enemy.notes}
+                      onChange={(e) => setEditEnemies((prev) => prev.map((p, i) => i === idx ? { ...p, notes: e.target.value } : p))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      onClick={() => setEditEnemies((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      Remove Enemy
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn-edit"
+                onClick={() => setEditEnemies((prev) => [...prev, { name: "", role: "", notes: "" }])}
+              >
+                + Add Enemy
+              </button>
+            </section>
+          )}
+
+          {isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">NPC Tracker</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
@@ -411,6 +612,7 @@ function CampaignDMView({ campaign, refetch }) {
               campaign={campaign}
               dm={dm}
               players={players}
+              sessions={sessions}
               isDM
               onStartEditing={startEditing}
             />
@@ -421,9 +623,10 @@ function CampaignDMView({ campaign, refetch }) {
               <button
                 type="button"
                 className="btn-start-session"
-                onClick={() => navigate("/session", { state: { campaign } })}
+                onClick={handleStartSession}
+                disabled={startingSession}
               >
-                ▶ Start Session
+                {startingSession ? "Starting Session..." : "▶ Start Session"}
               </button>
               <p className="campaign-helper-text">
                 Open the map board and session tools for this campaign.
@@ -474,6 +677,43 @@ function CampaignDMView({ campaign, refetch }) {
                 {deleting ? "Deleting…" : "Yes, Delete"}
               </button>
               <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showSessionDeleteConfirmOnSave && (
+        <div className="campaign-modal-overlay" onClick={() => setShowSessionDeleteConfirmOnSave(false)} role="presentation">
+          <div className="campaign-modal-box" onClick={(event) => event.stopPropagation()}>
+            <div className="campaign-modal-icon">⚠</div>
+            <h3 className="campaign-modal-title">Delete Marked Sessions?</h3>
+            <p className="campaign-modal-body">
+              The following session record(s) are marked to be deleted on save:
+            </p>
+            <div className="campaign-session-delete-list">
+              {pendingSessionNames.map((name) => (
+                <p key={name} className="campaign-modal-body" style={{ margin: 0 }}>
+                  • <strong style={{ color: "var(--gold-light)" }}>{name}</strong>
+                </p>
+              ))}
+            </div>
+            <p className="campaign-modal-body" style={{ color: "#ff9b93" }}>
+              This action cannot be undone.
+            </p>
+            <div className="campaign-btn-row">
+              <button
+                className="btn-delete"
+                onClick={() => executeSave({ applySessionDeletes: true })}
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Yes, Save and Delete"}
+              </button>
+              <button
+                className="btn-cancel"
+                onClick={() => setShowSessionDeleteConfirmOnSave(false)}
+                disabled={saving}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

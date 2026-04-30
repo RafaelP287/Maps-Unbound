@@ -36,6 +36,18 @@ const normalizeNpcs = (input) => {
     .slice(0, 100);
 };
 
+const normalizeEnemies = (input) => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((enemy) => ({
+      name: enemy?.name?.trim?.() || "",
+      role: enemy?.role?.trim?.() || "",
+      notes: enemy?.notes?.trim?.() || "",
+    }))
+    .filter((enemy) => enemy.name)
+    .slice(0, 100);
+};
+
 const normalizeLoot = (input) => {
   if (!Array.isArray(input)) return [];
   return input
@@ -146,6 +158,7 @@ router.post("/", verifyToken, async (req, res) => {
       status,
       currentQuest: normalizeCurrentQuest(req.body.currentQuest),
       npcs: normalizeNpcs(req.body.npcs),
+      enemies: normalizeEnemies(req.body.enemies),
       loot: normalizeLoot(req.body.loot),
       members,
     });
@@ -214,6 +227,9 @@ router.put("/:id", verifyToken, async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, "npcs")) {
       req.body.npcs = normalizeNpcs(req.body.npcs);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "enemies")) {
+      req.body.enemies = normalizeEnemies(req.body.enemies);
     }
     if (Object.prototype.hasOwnProperty.call(req.body, "loot")) {
       req.body.loot = normalizeLoot(req.body.loot);

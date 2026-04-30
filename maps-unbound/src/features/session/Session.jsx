@@ -1,16 +1,21 @@
-import { Link } from "react-router-dom";
+// Session route entrypoint:
+// - `/session` renders lobby flow
+// - legacy `?view=dm` links are redirected to `/session/dm`
+import { Navigate, useSearchParams } from "react-router-dom";
+import SessionDMView from "./SessionDMView.jsx";
+import SessionLobby from "./SessionLobby.jsx";
 
 function Session() {
-    return (
-        <div>
-            <h1>Session Page</h1>
-            <p>This will probably be a lobby waiting page.</p>
-            <p>Button to test for DM View.</p>
-            <Link to="/session/dm">
-                <button>DM View</button>
-            </Link>
-        </div>
-    )
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get("view");
+
+  if (view === "dm") {
+    const params = new URLSearchParams(searchParams);
+    params.delete("view");
+    return <Navigate to={`/session/dm?${params.toString()}`} replace />;
+  }
+
+  return <SessionLobby />;
 }
 
 export default Session;

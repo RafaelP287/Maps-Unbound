@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { ThreeDDice } from "dddice-js";
 import AppLayout from "./layout/AppLayout.jsx";
+import SessionLayout from "./layout/SessionLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 import Maps from "./features/maps/Maps.jsx";
@@ -14,7 +15,13 @@ import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
 import Characters from "./features/characters/Characters.jsx";
 import CreateCharacter from "./features/characters/CreateCharacter.jsx";
+import CharacterEditor from "./features/characters/CharacterEditor.jsx";
 import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+
+import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
+
+import RulesetReader from "./features/ruleset/RulesetReader.jsx";
+
 import Profile from "./features/profile/Profile.jsx";
 import Signup from "./features/auth/Signup.jsx";
 import Login from "./features/auth/Login.jsx";
@@ -296,46 +303,75 @@ function App() {
         dddiceRef.current.roll(dice);
     }, []);
 
-    return (
-        <BrowserRouter>
-            <Routes>
-                <Route path="/" element={<AppLayout />}>
-                    <Route index element={<Home />} />
-                    <Route path="profile" element={<Profile />} />
-                    <Route
-                        path="maps"
-                        element={
-                            <Maps
-                                initializeDice={initializeDice}
-                                cleanupDice={cleanupDice}
-                                retryDice={retryDice}
-                                resizeDice={resizeDice}
-                                rollDice={rollDice}
-                                isDiceReady={isDiceReady}
-                                diceError={diceError}
-                                pixelRatio={PIXEL_RATIO}
-                                rollNotifs={rollNotifs}
-                            />
-                        }
-                    />
-                    <Route path="session">
-                        <Route index element={<Session />} />
-                        <Route path="dm" element={<SessionDMView />} />
-                    </Route>
-                    <Route path="characters" element={<Characters />} />
-                    <Route path="create-character" element={<CreateCharacter />} />
-                    <Route path="campaigns">
-                        <Route index element={<Campaigns />} />
-                        <Route path="new" element={<CreateCampaign />} />
-                        <Route path=":id" element={<ViewCampaign />} />
-                    </Route>
-                    <Route path="party-finder" element={<PartyFinder />} />
-                    <Route path="signup" element={<Signup />} />
-                    <Route path="login" element={<Login />} />
-                </Route>
-            </Routes>
-        </BrowserRouter>
-    );
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="session" element={<SessionLayout />}>
+          <Route index element={<Session />} />
+          <Route path="dm" element={<SessionDMView />} />
+        </Route>
+        <Route path="/" element={<AppLayout />}>
+          {/* Home route */}
+          <Route index element={<Home />} />
+
+          {/* Profile route */}
+          <Route path="profile" element={<Profile />} />
+          
+          {/* Map routes */}
+          <Route 
+            path="maps" 
+            element={
+              <Maps 
+                initializeDice={initializeDice}
+                cleanupDice={cleanupDice}
+                retryDice={retryDice}
+                resizeDice={resizeDice}
+                rollDice={rollDice}
+                isDiceReady={isDiceReady}
+                diceError={diceError}
+                pixelRatio={PIXEL_RATIO}
+                rollNotifs={rollNotifs}
+              />
+            } 
+          />
+          {/* Session Route */}
+          <Route path="session">
+              <Route index element={<Session />} />
+              <Route path="dm" element={<SessionDMView />} />
+          </Route>
+          
+          {/* Character Routes */}
+          <Route path="characters" element={<Characters />} />
+          <Route path="characters/:id/edit" element={<CharacterEditor />} />
+          <Route path="create-character" element={<CreateCharacter />} />
+
+
+          {/* Campaign routes */}
+          <Route path="campaigns">
+            <Route index element={<Campaigns />} />
+            <Route path="new" element={<CreateCampaign />} />
+            <Route path=":id" element={<ViewCampaign />} />
+          </Route>
+
+          {/* Party Finder route */}
+          <Route path="party-finder" element={<PartyFinder />} />
+
+          {/* Asset Finder route */}
+          <Route path="asset-finder" element={<AssetFinder />} />
+
+          {/* Ruleset Reader route */}
+          <Route path="ruleset" element={<RulesetReader />} />
+
+          {/* Profile route */}
+          <Route path="profile" element={<Profile />} />
+
+          {/* Auth routes */}
+          <Route path="signup" element={<Signup />} />
+          <Route path="login" element={<Login />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;

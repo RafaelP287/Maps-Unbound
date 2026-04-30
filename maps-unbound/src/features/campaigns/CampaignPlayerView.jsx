@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import placeholderImage from "./images/DnD.jpg";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
+import useCampaignSessions from "./use-campaign-sessions.js";
 
 function CampaignPlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -10,6 +11,7 @@ function CampaignPlayerView({ campaign, user }) {
   // Player-facing roster excludes the DM for party-size displays.
   const players = campaign.members.filter((m) => m.role === "Player");
   const backgroundImage = campaign.image || placeholderImage;
+  const { sessions } = useCampaignSessions(campaign._id);
 
   return (
     <div className="campaign-page">
@@ -23,7 +25,7 @@ function CampaignPlayerView({ campaign, user }) {
         <CampaignHero campaign={campaign} />
 
         <div className="campaign-card-panel">
-          <CampaignSections campaign={campaign} dm={dm} players={players} user={user} />
+          <CampaignSections campaign={campaign} dm={dm} players={players} sessions={sessions} user={user} />
 
           {/* Footer */}
           <div className="campaign-footer">
