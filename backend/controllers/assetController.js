@@ -16,13 +16,81 @@ const s3Client = new S3Client({
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
 const ONE_MB = 1048576;    // 1MB in bytes
 const ONE_GB = 1073741824; // 1GB in bytes
+const MAX_ASSET_PAGE_SIZE = 20;
+
+const getRequestUsername = (req) => req.user?.username || req.body.username || req.query.username;
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getPageOptions = (req) => {
+  const rawPage = Number.parseInt(req.query.page, 10);
+  const rawLimit = Number.parseInt(req.query.limit, 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
+  const requestedLimit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : MAX_ASSET_PAGE_SIZE;
+  const limit = Math.min(requestedLimit, MAX_ASSET_PAGE_SIZE);
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit,
+  };
+};
+
+const getSearchFilter = (req) => {
+  const search = req.query.search?.trim();
+  if (!search) return null;
+
+  const searchRegex = new RegExp(escapeRegex(search), "i");
+  return {
+    $or: [
+      { title: searchRegex },
+      { owner: searchRegex },
+      { tags: searchRegex },
+    ],
+  };
+};
+
+const addSearchFilter = (filter, req) => {
+  const searchFilter = getSearchFilter(req);
+  if (!searchFilter) return filter;
+  return { $and: [filter, searchFilter] };
+};
+
+const normalizeTags = (tags) => {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .map((tag) => tag?.toString().trim())
+    .filter(Boolean)
+    .slice(0, 30);
+};
+
+const serializeAsset = (asset, username) => {
+  const assetObj = asset.toObject ? asset.toObject() : asset;
+  const likedBy = Array.isArray(assetObj.likedBy) ? assetObj.likedBy : [];
+  const favoritedBy = Array.isArray(assetObj.favoritedBy) ? assetObj.favoritedBy : [];
+  const { likedBy: _likedBy, favoritedBy: _favoritedBy, ...publicAsset } = assetObj;
+
+  return {
+    ...publicAsset,
+    likes: likedBy.length > 0 ? likedBy.length : publicAsset.likes || 0,
+    favorites: favoritedBy.length > 0 ? favoritedBy.length : publicAsset.favorites || 0,
+    userLiked: username ? likedBy.includes(username) : false,
+    userFavorited: username ? favoritedBy.includes(username) : false,
+  };
+};
+
+const canViewAsset = (asset, username) => asset.isPublic || asset.owner === username;
 
 // Generate an Upload URL (Enforces 1MB limit & 1GB total user limit)
 export const generateUploadData = async (req, res) => {
   try {
     // Takes the body payload
     const { category, isPublic, fileSize, fileName, fileType } = req.body;
-    const owner = req.body.username; 
+    const owner = getRequestUsername(req);
+
+    if (!owner) {
+      return res.status(400).json({ message: "Username is required." });
+    }
 
     if (!["image", "audio"].includes(category)) {
       return res.status(400).json({ message: "Invalid category. Must be image or audio." });
@@ -78,8 +146,12 @@ export const generateUploadData = async (req, res) => {
 // Confirm Upload (Saves metadata to MongoDB after successful S3 upload)
 export const confirmUpload = async (req, res) => {
   try {
-    const { s3Key, category, size, isPublic, title, description } = req.body;
-    const owner = req.body.username; 
+    const { s3Key, category, size, isPublic, title, description, tags } = req.body;
+    const owner = getRequestUsername(req);
+
+    if (!owner) {
+      return res.status(400).json({ message: "Username is required." });
+    }
 
     const newAsset = new Asset({
       owner,
@@ -90,17 +162,18 @@ export const confirmUpload = async (req, res) => {
       category,
       size,
       isPublic,
+      tags: normalizeTags(tags),
     });
 
     const savedAsset = await newAsset.save();
-    res.status(201).json(savedAsset);
+    res.status(201).json(serializeAsset(savedAsset, owner));
   } catch (error) {
     res.status(500).json({ message: "Failed to save asset metadata", error: error.message });
   }
 };
 
 // Helper function to attach signed URLs to an array of assets
-const attachSignedUrls = async (assets) => {
+const attachSignedUrls = async (assets, username) => {
   return Promise.all(
     assets.map(async (asset) => {
       const command = new GetObjectCommand({
@@ -112,28 +185,44 @@ const attachSignedUrls = async (assets) => {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
       // Convert Mongoose document to plain object to safely overwrite the URL
-      const assetObj = asset.toObject ? asset.toObject() : asset;
+      const assetObj = serializeAsset(asset, username);
       return { ...assetObj, url: signedUrl };
     })
   );
+};
+
+const sendPaginatedAssets = async (req, res, filter, sort, username) => {
+  const { page, limit, skip } = getPageOptions(req);
+  const searchableFilter = addSearchFilter(filter, req);
+
+  const [assets, totalItems] = await Promise.all([
+    Asset.find(searchableFilter).sort(sort).skip(skip).limit(limit),
+    Asset.countDocuments(searchableFilter),
+  ]);
+
+  const assetsWithUrls = await attachSignedUrls(assets, username);
+  res.status(200).json({
+    assets: assetsWithUrls,
+    pagination: {
+      page,
+      limit,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / limit)),
+    },
+  });
 };
 
 // Get User's Own Assets
 export const getUserAssets = async (req, res) => {
   try {
     // Look in the query string, not the body, for GET requests
-    const owner = req.query.username; 
+    const owner = getRequestUsername(req);
     
     if (!owner) {
       return res.status(400).json({ message: "Username is required." });
     }
 
-    const assets = await Asset.find({ owner }).sort({ createdAt: -1 });
-    
-    // (Assuming you kept the attachSignedUrls logic from earlier)
-    const assetsWithUrls = await attachSignedUrls(assets);
-    
-    res.status(200).json(assetsWithUrls);
+    await sendPaginatedAssets(req, res, { owner }, { createdAt: -1 }, owner);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch assets", error: error.message });
   }
@@ -142,19 +231,107 @@ export const getUserAssets = async (req, res) => {
 // Get All Public Assets (Globally searchable)
 export const getPublicAssets = async (req, res) => {
   try {
-    const publicAssets = await Asset.find({ isPublic: true }).sort({ createdAt: -1 });
-    const assetsWithUrls = await attachSignedUrls(publicAssets);
-    res.status(200).json(assetsWithUrls);
+    const username = getRequestUsername(req);
+    const sort = req.query.sort === "topLiked"
+      ? { likes: -1, favorites: -1, createdAt: -1 }
+      : { createdAt: -1 };
+    await sendPaginatedAssets(req, res, { isPublic: true }, sort, username);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch public assets", error: error.message });
   }
 };
 
+// Get assets liked by the current user
+export const getLikedAssets = async (req, res) => {
+  try {
+    const username = getRequestUsername(req);
+
+    if (!username) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    await sendPaginatedAssets(req, res, {
+      likedBy: username,
+      $or: [{ isPublic: true }, { owner: username }],
+    }, { createdAt: -1 }, username);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch liked assets", error: error.message });
+  }
+};
+
+// Get assets favorited by the current user
+export const getFavoritedAssets = async (req, res) => {
+  try {
+    const username = getRequestUsername(req);
+
+    if (!username) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    await sendPaginatedAssets(req, res, {
+      favoritedBy: username,
+      $or: [{ isPublic: true }, { owner: username }],
+    }, { createdAt: -1 }, username);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch favorited assets", error: error.message });
+  }
+};
+
+const toggleAssetUserList = async (req, res, listField, countField, userFlagField) => {
+  try {
+    const { id } = req.params;
+    const username = getRequestUsername(req);
+
+    if (!username) {
+      return res.status(400).json({ message: "Username is required." });
+    }
+
+    const asset = await Asset.findById(id);
+
+    if (!asset) return res.status(404).json({ message: "Asset not found." });
+    if (!canViewAsset(asset, username)) {
+      return res.status(403).json({ message: "Asset is private." });
+    }
+
+    const userList = new Set(asset[listField] || []);
+    if (userList.has(username)) {
+      userList.delete(username);
+    } else {
+      userList.add(username);
+    }
+
+    asset[listField] = Array.from(userList);
+    asset[countField] = asset[listField].length;
+
+    const savedAsset = await asset.save();
+    const serializedAsset = serializeAsset(savedAsset, username);
+
+    res.status(200).json({
+      ...serializedAsset,
+      [userFlagField]: savedAsset[listField].includes(username),
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update asset", error: error.message });
+  }
+};
+
+export const toggleAssetLike = (req, res) => (
+  toggleAssetUserList(req, res, "likedBy", "likes", "userLiked")
+);
+
+export const toggleAssetFavorite = (req, res) => (
+  toggleAssetUserList(req, res, "favoritedBy", "favorites", "userFavorited")
+);
+
 // Delete an Asset
 export const deleteAsset = async (req, res) => {
   try {
     const { id } = req.params;
-    const owner = req.body.username; 
+    const owner = getRequestUsername(req);
+
+    if (!owner) {
+      return res.status(400).json({ message: "Username is required." });
+    }
 
     const asset = await Asset.findById(id);
 

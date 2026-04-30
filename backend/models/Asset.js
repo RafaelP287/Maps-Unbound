@@ -45,10 +45,18 @@ const assetSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  likedBy: [{
+    type: String,
+    index: true,
+  }],
   favorites: {
     type: Number,
     default: 0,
   },
+  favoritedBy: [{
+    type: String,
+    index: true,
+  }],
   tags: [{
     type: String,
     index: true // Highly recommended for fast tag searching
