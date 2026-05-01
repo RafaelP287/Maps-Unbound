@@ -6,7 +6,7 @@ import Gate from "../../shared/Gate.jsx";
 const apiServer = import.meta.env.VITE_API_SERVER;
 const PAGE_SIZE = 20;
 const MASONRY_GAP = 24;
-const ASSET_CACHE_PREFIX = "maps-unbound-asset-page";
+const ASSET_CACHE_PREFIX = "maps-unbound-asset-page-v3";
 const ASSET_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const LIST_TABS = ["public", "topLiked", "liked", "favorites", "owned"];
@@ -101,6 +101,11 @@ const readCachedAssetPage = (cacheKey) => {
 
     const cachedPage = JSON.parse(rawCache);
     if (!cachedPage.expiresAt || cachedPage.expiresAt < Date.now()) {
+      localStorage.removeItem(cacheKey);
+      return null;
+    }
+
+    if (cachedPage.payload?.assets?.some((asset) => typeof asset.userCanDelete !== "boolean")) {
       localStorage.removeItem(cacheKey);
       return null;
     }
@@ -230,7 +235,8 @@ function AssetFinder() {
 
     const queryString = queryParams.toString();
     const cacheKey = getAssetCacheKey(activeTab, queryString);
-    const cachedPage = readCachedAssetPage(cacheKey);
+    const shouldUseAssetCache = !user?.isAdmin;
+    const cachedPage = shouldUseAssetCache ? readCachedAssetPage(cacheKey) : null;
 
     setSelectedAsset(null);
 
@@ -268,16 +274,18 @@ function AssetFinder() {
       };
       setAssets(nextAssets);
       setPagination(nextPagination);
-      writeCachedAssetPage(cacheKey, {
-        assets: nextAssets,
-        pagination: nextPagination,
-      });
+      if (shouldUseAssetCache) {
+        writeCachedAssetPage(cacheKey, {
+          assets: nextAssets,
+          pagination: nextPagination,
+        });
+      }
     } catch (err) {
       showToast(err.message, "error");
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, currentPage, searchQuery, token, user?.username, showToast]);
+  }, [activeTab, currentPage, searchQuery, token, user?.isAdmin, user?.username, showToast]);
 
   useEffect(() => {
     if (isLoggedIn && LIST_TABS.includes(activeTab)) {
@@ -465,11 +473,21 @@ function AssetFinder() {
     }
   };
 
+  const canDeleteAsset = useCallback((asset) => (
+    Boolean(asset.userCanDelete || asset.owner === user?.username || user?.isAdmin)
+  ), [user?.isAdmin, user?.username]);
+
   const handleDeleteAsset = async (asset, event) => {
     event?.stopPropagation();
 
-    if (asset.owner !== user?.username) return;
-    if (!window.confirm(`Delete "${asset.title}" from your asset vault?`)) return;
+    if (!canDeleteAsset(asset)) return;
+
+    const isOwnAsset = asset.owner === user?.username;
+    const confirmMessage = isOwnAsset
+      ? `Delete "${asset.title}" from your asset vault?`
+      : `You are about to delete "${asset.title}", an asset owned by ${asset.owner}. This asset does not belong to you. Delete it anyway?`;
+
+    if (!window.confirm(confirmMessage)) return;
 
     const actionKey = `${asset._id}-delete`;
     setAssetActionId(actionKey);
@@ -721,11 +739,11 @@ function AssetFinder() {
                           <Star size={15} fill={asset.userFavorited ? "currentColor" : "none"} />
                           <span>{asset.favorites || 0}</span>
                         </button>
-                        {asset.owner === user?.username && (
+                        {canDeleteAsset(asset) && (
                           <button
                             type="button"
-                            title="Delete asset"
-                            aria-label="Delete asset"
+                            title={asset.owner === user?.username ? "Delete asset" : "Delete asset as admin"}
+                            aria-label={asset.owner === user?.username ? "Delete asset" : "Delete asset as admin"}
                             onClick={(e) => handleDeleteAsset(asset, e)}
                             disabled={assetActionId === `${asset._id}-delete`}
                             style={getDeleteButtonStyle(true)}
@@ -799,11 +817,11 @@ function AssetFinder() {
                 <Star size={15} fill={selectedAsset.userFavorited ? "currentColor" : "none"} />
                 <span>{selectedAsset.favorites || 0}</span>
               </button>
-              {selectedAsset.owner === user?.username && (
+              {canDeleteAsset(selectedAsset) && (
                 <button
                   type="button"
-                  title="Delete asset"
-                  aria-label="Delete asset"
+                  title={selectedAsset.owner === user?.username ? "Delete asset" : "Delete asset as admin"}
+                  aria-label={selectedAsset.owner === user?.username ? "Delete asset" : "Delete asset as admin"}
                   onClick={(e) => handleDeleteAsset(selectedAsset, e)}
                   disabled={assetActionId === `${selectedAsset._id}-delete`}
                   style={getDeleteButtonStyle(true)}

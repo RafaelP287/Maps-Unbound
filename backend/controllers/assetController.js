@@ -3,6 +3,7 @@ import { createPresignedPost } from "@aws-sdk/s3-presigned-post";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 import Asset from "../models/Asset.js";
+import User from "../models/User.js";
 
 // Initialize S3 Client
 const s3Client = new S3Client({
@@ -19,6 +20,24 @@ const ONE_GB = 1073741824; // 1GB in bytes
 const MAX_ASSET_PAGE_SIZE = 20;
 
 const getRequestUsername = (req) => req.user?.username || req.body.username || req.query.username;
+
+const getRequestUserContext = async (req) => {
+  const fallbackUsername = getRequestUsername(req);
+  let userRecord = null;
+
+  if (req.user?.userId) {
+    userRecord = await User.findById(req.user.userId).select("username isAdmin");
+  }
+
+  if (!userRecord && fallbackUsername) {
+    userRecord = await User.findOne({ username: fallbackUsername }).select("username isAdmin");
+  }
+
+  return {
+    username: userRecord?.username || fallbackUsername,
+    isAdmin: Boolean(userRecord?.isAdmin || req.user?.isAdmin),
+  };
+};
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -64,7 +83,7 @@ const normalizeTags = (tags) => {
     .slice(0, 30);
 };
 
-const serializeAsset = (asset, username) => {
+const serializeAsset = (asset, username, isAdmin = false) => {
   const assetObj = asset.toObject ? asset.toObject() : asset;
   const likedBy = Array.isArray(assetObj.likedBy) ? assetObj.likedBy : [];
   const favoritedBy = Array.isArray(assetObj.favoritedBy) ? assetObj.favoritedBy : [];
@@ -76,6 +95,7 @@ const serializeAsset = (asset, username) => {
     favorites: favoritedBy.length > 0 ? favoritedBy.length : publicAsset.favorites || 0,
     userLiked: username ? likedBy.includes(username) : false,
     userFavorited: username ? favoritedBy.includes(username) : false,
+    userCanDelete: Boolean(username && (publicAsset.owner === username || isAdmin)),
   };
 };
 
@@ -173,7 +193,7 @@ export const confirmUpload = async (req, res) => {
 };
 
 // Helper function to attach signed URLs to an array of assets
-const attachSignedUrls = async (assets, username) => {
+const attachSignedUrls = async (assets, username, isAdmin = false) => {
   return Promise.all(
     assets.map(async (asset) => {
       const command = new GetObjectCommand({
@@ -185,13 +205,13 @@ const attachSignedUrls = async (assets, username) => {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
       // Convert Mongoose document to plain object to safely overwrite the URL
-      const assetObj = serializeAsset(asset, username);
+      const assetObj = serializeAsset(asset, username, isAdmin);
       return { ...assetObj, url: signedUrl };
     })
   );
 };
 
-const sendPaginatedAssets = async (req, res, filter, sort, username) => {
+const sendPaginatedAssets = async (req, res, filter, sort, userContext) => {
   const { page, limit, skip } = getPageOptions(req);
   const searchableFilter = addSearchFilter(filter, req);
 
@@ -200,7 +220,11 @@ const sendPaginatedAssets = async (req, res, filter, sort, username) => {
     Asset.countDocuments(searchableFilter),
   ]);
 
-  const assetsWithUrls = await attachSignedUrls(assets, username);
+  const assetsWithUrls = await attachSignedUrls(
+    assets,
+    userContext.username,
+    userContext.isAdmin,
+  );
   res.status(200).json({
     assets: assetsWithUrls,
     pagination: {
@@ -216,13 +240,14 @@ const sendPaginatedAssets = async (req, res, filter, sort, username) => {
 export const getUserAssets = async (req, res) => {
   try {
     // Look in the query string, not the body, for GET requests
-    const owner = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
+    const owner = userContext.username;
     
     if (!owner) {
       return res.status(400).json({ message: "Username is required." });
     }
 
-    await sendPaginatedAssets(req, res, { owner }, { createdAt: -1 }, owner);
+    await sendPaginatedAssets(req, res, { owner }, { createdAt: -1 }, userContext);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch assets", error: error.message });
   }
@@ -231,11 +256,11 @@ export const getUserAssets = async (req, res) => {
 // Get All Public Assets (Globally searchable)
 export const getPublicAssets = async (req, res) => {
   try {
-    const username = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
     const sort = req.query.sort === "topLiked"
       ? { likes: -1, favorites: -1, createdAt: -1 }
       : { createdAt: -1 };
-    await sendPaginatedAssets(req, res, { isPublic: true }, sort, username);
+    await sendPaginatedAssets(req, res, { isPublic: true }, sort, userContext);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch public assets", error: error.message });
   }
@@ -244,7 +269,8 @@ export const getPublicAssets = async (req, res) => {
 // Get assets liked by the current user
 export const getLikedAssets = async (req, res) => {
   try {
-    const username = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
+    const username = userContext.username;
 
     if (!username) {
       return res.status(400).json({ message: "Username is required." });
@@ -253,7 +279,7 @@ export const getLikedAssets = async (req, res) => {
     await sendPaginatedAssets(req, res, {
       likedBy: username,
       $or: [{ isPublic: true }, { owner: username }],
-    }, { createdAt: -1 }, username);
+    }, { createdAt: -1 }, userContext);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch liked assets", error: error.message });
   }
@@ -262,7 +288,8 @@ export const getLikedAssets = async (req, res) => {
 // Get assets favorited by the current user
 export const getFavoritedAssets = async (req, res) => {
   try {
-    const username = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
+    const username = userContext.username;
 
     if (!username) {
       return res.status(400).json({ message: "Username is required." });
@@ -271,7 +298,7 @@ export const getFavoritedAssets = async (req, res) => {
     await sendPaginatedAssets(req, res, {
       favoritedBy: username,
       $or: [{ isPublic: true }, { owner: username }],
-    }, { createdAt: -1 }, username);
+    }, { createdAt: -1 }, userContext);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch favorited assets", error: error.message });
   }
@@ -280,7 +307,8 @@ export const getFavoritedAssets = async (req, res) => {
 const toggleAssetUserList = async (req, res, listField, countField, userFlagField) => {
   try {
     const { id } = req.params;
-    const username = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
+    const username = userContext.username;
 
     if (!username) {
       return res.status(400).json({ message: "Username is required." });
@@ -304,7 +332,7 @@ const toggleAssetUserList = async (req, res, listField, countField, userFlagFiel
     asset[countField] = asset[listField].length;
 
     const savedAsset = await asset.save();
-    const serializedAsset = serializeAsset(savedAsset, username);
+    const serializedAsset = serializeAsset(savedAsset, username, userContext.isAdmin);
 
     res.status(200).json({
       ...serializedAsset,
@@ -327,16 +355,19 @@ export const toggleAssetFavorite = (req, res) => (
 export const deleteAsset = async (req, res) => {
   try {
     const { id } = req.params;
-    const owner = getRequestUsername(req);
+    const userContext = await getRequestUserContext(req);
+    const username = userContext.username;
 
-    if (!owner) {
+    if (!username) {
       return res.status(400).json({ message: "Username is required." });
     }
 
     const asset = await Asset.findById(id);
 
     if (!asset) return res.status(404).json({ message: "Asset not found." });
-    if (asset.owner !== owner) return res.status(403).json({ message: "Unauthorized deletion." });
+    if (asset.owner !== username && !userContext.isAdmin) {
+      return res.status(403).json({ message: "Unauthorized deletion." });
+    }
 
     // Delete from AWS S3
     await s3Client.send(new DeleteObjectCommand({
