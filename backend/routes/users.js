@@ -1,4 +1,5 @@
 import { Router } from "express";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 const router = Router();
 
@@ -58,6 +59,65 @@ router.put("/me/profile-image", verifyToken, async (req, res) => {
         profileImageUrl: user.profileImageUrl || "",
       },
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPDATE logged-in user's password
+router.put("/me/password", verifyToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: "Current password and new password are required." });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: "New password must be at least 8 characters." });
+    }
+
+    const user = await User.findById(req.user.userId).select("+password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const passwordMatches = await bcrypt.compare(currentPassword, user.password);
+    if (!passwordMatches) {
+      return res.status(401).json({ error: "Current password is incorrect." });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Password updated successfully." });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE logged-in user's account
+router.delete("/me", verifyToken, async (req, res) => {
+  try {
+    const { password } = req.body || {};
+
+    if (!password) {
+      return res.status(400).json({ error: "Password confirmation is required." });
+    }
+
+    const user = await User.findById(req.user.userId).select("+password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      return res.status(401).json({ error: "Password is incorrect." });
+    }
+
+    await User.findOneAndDelete({ _id: user._id });
+
+    res.json({ message: "Account deleted successfully." });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

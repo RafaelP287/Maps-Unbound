@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   BookOpen,
   CalendarDays,
   Crown,
   Map,
   ScrollText,
+  Settings,
   Shield,
-  Sparkles,
   Swords,
   UserRound,
   Users,
@@ -43,11 +43,24 @@ function formatDate(value) {
 }
 
 function Profile() {
-  const { user, token, isLoggedIn, updateUser, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { user, token, isLoggedIn, updateUser, logout, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordStatus, setPasswordStatus] = useState("");
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteSaving, setDeleteSaving] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [profileImageDraft, setProfileImageDraft] = useState(user?.profileImageUrl || "");
   const [profileImageSaving, setProfileImageSaving] = useState(false);
   const [profileImageError, setProfileImageError] = useState("");
@@ -211,6 +224,99 @@ function Profile() {
     }
   };
 
+  const handlePasswordChange = (event) => {
+    const { name, value } = event.target;
+    setPasswordForm((current) => ({ ...current, [name]: value }));
+    setPasswordError("");
+    setPasswordStatus("");
+  };
+
+  const changePassword = async (event) => {
+    event.preventDefault();
+    if (!token || passwordSaving) return;
+
+    setPasswordError("");
+    setPasswordStatus("");
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const res = await fetch("/api/users/me/password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || "Failed to update password.");
+      }
+
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordStatus("Password updated.");
+    } catch (err) {
+      setPasswordError(err.message || "Failed to update password.");
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  const deleteAccount = async (event) => {
+    event.preventDefault();
+    if (!token || deleteSaving) return;
+
+    setDeleteError("");
+
+    if (!deletePassword) {
+      setDeleteError("Enter your password to delete your account.");
+      return;
+    }
+
+    setDeleteSaving(true);
+    try {
+      const res = await fetch("/api/users/me", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || "Failed to delete account.");
+      }
+
+      logout();
+      navigate("/");
+    } catch (err) {
+      setDeleteError(err.message || "Failed to delete account.");
+    } finally {
+      setDeleteSaving(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="profile-page">
@@ -262,14 +368,14 @@ function Profile() {
           </div>
 
           <div className="profile-actions">
-            <Link to="/campaigns/new" className="profile-action profile-action-primary">
-              <Sparkles aria-hidden="true" />
-              New Campaign
-            </Link>
-            <Link to="/create-character" className="profile-action">
-              <UserRound aria-hidden="true" />
-              New Character
-            </Link>
+            <button
+              type="button"
+              className="profile-action profile-action-primary"
+              onClick={() => setIsSettingsOpen((current) => !current)}
+            >
+              <Settings aria-hidden="true" />
+              {isSettingsOpen ? "Profile Overview" : "Account Settings"}
+            </button>
           </div>
         </header>
 
@@ -278,111 +384,201 @@ function Profile() {
         <>
             {error && <div className="profile-error">{error}</div>}
 
-            <section className="profile-stats" aria-label="Profile summary">
-              {stats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div className="profile-stat" key={stat.label}>
-                    <span className="profile-stat-icon">
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <span className="profile-stat-label">{stat.label}</span>
-                    <strong className="profile-stat-value">{stat.value}</strong>
-                  </div>
-                );
-              })}
-            </section>
-
-            <div className="profile-grid">
-              <section className="profile-panel">
+            {isSettingsOpen ? (
+              <section className="profile-settings" aria-label="Account settings">
                 <div className="profile-section-head">
                   <div>
-                    <p className="profile-section-kicker">Table Work</p>
-                    <h2 className="profile-section-title">Campaigns</h2>
+                    <p className="profile-section-kicker">Account</p>
+                    <h2 className="profile-section-title">Settings</h2>
                   </div>
-                  <Link to="/campaigns" className="profile-text-link">View All</Link>
                 </div>
 
-                <div className="profile-panel-scroll">
-                  {profileCampaigns.length > 0 ? (
-                    <div className="profile-list">
-                      {profileCampaigns.map((campaign) => {
-                        const role = getCampaignRole(campaign, user?.id);
-                        return (
-                          <Link
-                            to={`/campaigns/${campaign._id}`}
-                            className="profile-list-item"
-                            key={campaign._id}
-                          >
-                            <span className="profile-list-icon">
-                              {role === "DM" ? <Crown aria-hidden="true" /> : <Users aria-hidden="true" />}
-                            </span>
-                            <span className="profile-list-main">
-                              <strong>{campaign.title || "Untitled Campaign"}</strong>
-                              <span>
-                                {role} • {campaign.members?.length || 0} members • {campaign.status || "Planning"}
-                              </span>
-                            </span>
-                            <span className="profile-list-date">
-                              <CalendarDays aria-hidden="true" />
-                              {formatDate(campaign.updatedAt || campaign.createdAt)}
-                            </span>
-                          </Link>
-                        );
-                      })}
+                <div className="profile-settings-grid">
+                  <form className="profile-settings-panel" onSubmit={changePassword}>
+                    <div>
+                      <h3>Change Password</h3>
+                      <p>Update the password used to sign in to this account.</p>
                     </div>
-                  ) : (
-                    <div className="profile-empty">
-                      <ScrollText aria-hidden="true" />
-                      <p>No campaigns yet.</p>
-                      <Link to="/campaigns/new" className="profile-text-link">Forge one</Link>
+                    <label className="profile-field">
+                      <span>Current Password</span>
+                      <input
+                        type="password"
+                        name="currentPassword"
+                        autoComplete="current-password"
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordChange}
+                      />
+                    </label>
+                    <label className="profile-field">
+                      <span>New Password</span>
+                      <input
+                        type="password"
+                        name="newPassword"
+                        autoComplete="new-password"
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordChange}
+                      />
+                    </label>
+                    <label className="profile-field">
+                      <span>Confirm New Password</span>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        autoComplete="new-password"
+                        value={passwordForm.confirmPassword}
+                        onChange={handlePasswordChange}
+                      />
+                    </label>
+                    {passwordError && <p className="profile-inline-error">{passwordError}</p>}
+                    {passwordStatus && <p className="profile-inline-success">{passwordStatus}</p>}
+                    <button type="submit" className="profile-save-button" disabled={passwordSaving}>
+                      {passwordSaving ? "Updating..." : "Update Password"}
+                    </button>
+                  </form>
+
+                  <div className="profile-settings-panel">
+                    <div>
+                      <h3>Session</h3>
+                      <p>Leave this device without changing your account.</p>
                     </div>
-                  )}
+                    <button type="button" className="profile-modal-close profile-settings-button" onClick={handleLogout}>
+                      Log Out
+                    </button>
+                  </div>
+
+                  <form className="profile-settings-panel profile-danger-panel" onSubmit={deleteAccount}>
+                    <div>
+                      <h3>Delete Account</h3>
+                      <p>This permanently removes your account. Enter your password to confirm.</p>
+                    </div>
+                    <label className="profile-field">
+                      <span>Password</span>
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={deletePassword}
+                        onChange={(event) => {
+                          setDeletePassword(event.target.value);
+                          setDeleteError("");
+                        }}
+                      />
+                    </label>
+                    {deleteError && <p className="profile-inline-error">{deleteError}</p>}
+                    <button type="submit" className="profile-danger-button" disabled={deleteSaving}>
+                      {deleteSaving ? "Deleting..." : "Delete Account"}
+                    </button>
+                  </form>
                 </div>
               </section>
+            ) : (
+              <>
+                <section className="profile-stats" aria-label="Profile summary">
+                  {stats.map((stat) => {
+                    const Icon = stat.icon;
+                    return (
+                      <div className="profile-stat" key={stat.label}>
+                        <span className="profile-stat-icon">
+                          <Icon aria-hidden="true" />
+                        </span>
+                        <span className="profile-stat-label">{stat.label}</span>
+                        <strong className="profile-stat-value">{stat.value}</strong>
+                      </div>
+                    );
+                  })}
+                </section>
 
-              <section className="profile-panel">
-                <div className="profile-section-head">
-                  <div>
-                    <p className="profile-section-kicker">Roster</p>
-                    <h2 className="profile-section-title">Characters</h2>
-                  </div>
-                  <Link to="/characters" className="profile-text-link">View All</Link>
-                </div>
+                <div className="profile-grid">
+                  <section className="profile-panel">
+                    <div className="profile-section-head">
+                      <div>
+                        <p className="profile-section-kicker">Table Work</p>
+                        <h2 className="profile-section-title">Campaigns</h2>
+                      </div>
+                      <Link to="/campaigns" className="profile-text-link">View All</Link>
+                    </div>
 
-                <div className="profile-panel-scroll">
-                  {profileCharacters.length > 0 ? (
-                    <div className="profile-card-grid">
-                      {profileCharacters.map((character) => {
-                        const characterId = character.characterId || character._id;
-                        return (
-                          <Link
-                            to={`/characters/${characterId}/edit`}
-                            className="profile-character-card"
-                            key={character._id || character.characterId}
-                          >
-                            <span className="profile-character-icon">
-                              <BookOpen aria-hidden="true" />
-                            </span>
-                            <strong>{character.name || "Unnamed Hero"}</strong>
-                            <span>
-                              Level {character.level || 1} {character.race?.name || "Adventurer"}{" "}
-                              {character.class?.name || "Hero"}
-                            </span>
-                          </Link>
-                        );
-                      })}
+                    <div className="profile-panel-scroll">
+                      {profileCampaigns.length > 0 ? (
+                        <div className="profile-list">
+                          {profileCampaigns.map((campaign) => {
+                            const role = getCampaignRole(campaign, user?.id);
+                            return (
+                              <Link
+                                to={`/campaigns/${campaign._id}`}
+                                className="profile-list-item"
+                                key={campaign._id}
+                              >
+                                <span className="profile-list-icon">
+                                  {role === "DM" ? <Crown aria-hidden="true" /> : <Users aria-hidden="true" />}
+                                </span>
+                                <span className="profile-list-main">
+                                  <strong>{campaign.title || "Untitled Campaign"}</strong>
+                                  <span>
+                                    {role} • {campaign.members?.length || 0} members • {campaign.status || "Planning"}
+                                  </span>
+                                </span>
+                                <span className="profile-list-date">
+                                  <CalendarDays aria-hidden="true" />
+                                  {formatDate(campaign.updatedAt || campaign.createdAt)}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="profile-empty">
+                          <ScrollText aria-hidden="true" />
+                          <p>No campaigns yet.</p>
+                          <Link to="/campaigns/new" className="profile-text-link">Forge one</Link>
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="profile-empty">
-                      <UserRound aria-hidden="true" />
-                      <p>No characters yet.</p>
-                      <Link to="/create-character" className="profile-text-link">Create one</Link>
+                  </section>
+
+                  <section className="profile-panel">
+                    <div className="profile-section-head">
+                      <div>
+                        <p className="profile-section-kicker">Roster</p>
+                        <h2 className="profile-section-title">Characters</h2>
+                      </div>
+                      <Link to="/characters" className="profile-text-link">View All</Link>
                     </div>
-                  )}
+
+                    <div className="profile-panel-scroll">
+                      {profileCharacters.length > 0 ? (
+                        <div className="profile-card-grid">
+                          {profileCharacters.map((character) => {
+                            const characterId = character.characterId || character._id;
+                            return (
+                              <Link
+                                to={`/characters/${characterId}/edit`}
+                                className="profile-character-card"
+                                key={character._id || character.characterId}
+                              >
+                                <span className="profile-character-icon">
+                                  <BookOpen aria-hidden="true" />
+                                </span>
+                                <strong>{character.name || "Unnamed Hero"}</strong>
+                                <span>
+                                  Level {character.level || 1} {character.race?.name || "Adventurer"}{" "}
+                                  {character.class?.name || "Hero"}
+                                </span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="profile-empty">
+                          <UserRound aria-hidden="true" />
+                          <p>No characters yet.</p>
+                          <Link to="/create-character" className="profile-text-link">Create one</Link>
+                        </div>
+                      )}
+                    </div>
+                  </section>
                 </div>
-              </section>
-            </div>
+              </>
+            )}
           </>
       </div>
 
