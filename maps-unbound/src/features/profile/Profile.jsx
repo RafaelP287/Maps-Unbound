@@ -1,227 +1,425 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  BookOpen,
+  CalendarDays,
+  Crown,
+  Map,
+  ScrollText,
+  Shield,
+  Sparkles,
+  Swords,
+  UserRound,
+  Users,
+} from "lucide-react";
+import { useAuth } from "../../context/AuthContext.jsx";
+import Gate from "../../shared/Gate.jsx";
+import ImageDrop from "../../shared/ImageDrop.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
 
-const AUTH_STORAGE_KEY = "maps-unbound-auth";
-
-function Profile() {
-    const navigate = useNavigate();
-    const [user, setUser] = useState(null);
-    const [campaigns, setCampaigns] = useState([]);
-    const [characters, setCharacters] = useState([]);
-    const [activeTab, setActiveTab] = useState('campaigns');
-
-    useEffect(() => {
-        const authData = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (!authData) {
-            navigate('/login');
-            return;
-        }
-
-        const loadData = async () => {
-            try {
-                const { user } = JSON.parse(authData);
-                setUser(user);
-                
-                // Load user data
-                // TODO: Replace with actual API calls
-                setCampaigns([
-                    { id: 1, name: "Dragons of the North", players: 4, lastPlayed: "2026-02-07" },
-                    { id: 2, name: "Curse of Strahd", players: 5, lastPlayed: "2026-02-05" },
-                ]);
-
-                setCharacters([
-                    { id: 1, name: "Elara Moonwhisper", class: "Wizard", level: 5, campaign: "Dragons of the North" },
-                    { id: 2, name: "Thorin Ironforge", class: "Fighter", level: 6, campaign: "Curse of Strahd" },
-                ]);
-            } catch (error) {
-                console.error("Failed to load user data:", error);
-                navigate('/login');
-            }
-        };
-
-        loadData();
-    }, [navigate]);
-
-    if (!user) {
-        return <div style={styles.loading}>Loading...</div>;
-    }
-
-    return (
-        <div style={styles.container}>
-            <div style={styles.header}>
-                <h1>Welcome, {user.username.charAt(0).toUpperCase() + user.username.slice(1).toLowerCase()}!</h1>
-                <p style={styles.email}>{user.email}</p>
-            </div>
-
-            <div style={styles.tabs}>
-                <button
-                    onClick={() => setActiveTab('campaigns')}
-                    style={activeTab === 'campaigns' ? styles.activeTab : styles.tab}
-                >
-                    My Campaigns
-                </button>
-                <button
-                    onClick={() => setActiveTab('characters')}
-                    style={activeTab === 'characters' ? styles.activeTab : styles.tab}
-                >
-                    My Characters
-                </button>
-            </div>
-
-            {activeTab === 'campaigns' && (
-                <div style={styles.content}>
-                    <div style={styles.sectionHeader}>
-                        <h2>Campaigns</h2>
-                        <Link to="/create-campaign">
-                            <button style={styles.createButton}>+ Create Campaign</button>
-                        </Link>
-                    </div>
-                    
-                    {campaigns.length === 0 ? (
-                        <p style={styles.empty}>No campaigns yet. Create your first one!</p>
-                    ) : (
-                        <div style={styles.grid}>
-                            {campaigns.map(campaign => (
-                                <div key={campaign.id} style={styles.card}>
-                                    <h3 style={styles.cardTitle}>{campaign.name}</h3>
-                                    <p>Players: {campaign.players}</p>
-                                    <p>Last Played: {campaign.lastPlayed}</p>
-                                    <button style={styles.viewButton}>View Campaign</button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'characters' && (
-                <div style={styles.content}>
-                    <div style={styles.sectionHeader}>
-                        <h2>Character Sheets</h2>
-                        <button style={styles.createButton}>+ Create Character</button>
-                    </div>
-                    
-                    {characters.length === 0 ? (
-                        <p style={styles.empty}>No characters yet. Create your first one!</p>
-                    ) : (
-                        <div style={styles.grid}>
-                            {characters.map(character => (
-                                <div key={character.id} style={styles.card}>
-                                    <h3 style={styles.cardTitle}>{character.name}</h3>
-                                    <p>Class: {character.class}</p>
-                                    <p>Level: {character.level}</p>
-                                    <p style={styles.campaignTag}>{character.campaign}</p>
-                                    <button style={styles.viewButton}>View Sheet</button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
+function formatDisplayName(username = "") {
+  if (!username) return "Adventurer";
+  return username.charAt(0).toUpperCase() + username.slice(1);
 }
 
-const styles = {
-    container: {
-        maxWidth: '1200px',
-        margin: '0 auto',
-        padding: '40px 20px',
-    },
-    loading: {
-        textAlign: 'center',
-        padding: '100px 20px',
-        fontSize: '18px',
-    },
-    header: {
-        textAlign: 'center',
-        marginBottom: '40px',
-    },
-    email: {
-        color: '#666',
-        fontSize: '14px',
-    },
-    tabs: {
-        display: 'flex',
-        gap: '10px',
-        marginBottom: '30px',
-        borderBottom: '2px solid #333',
-    },
-    tab: {
-        background: 'none',
-        border: 'none',
-        padding: '12px 24px',
-        fontSize: '16px',
-        cursor: 'pointer',
-        color: '#666',
-        borderBottom: '3px solid transparent',
-    },
-    activeTab: {
-        background: 'none',
-        border: 'none',
-        padding: '12px 24px',
-        fontSize: '16px',
-        cursor: 'pointer',
-        color: '#00FFFF',
-        borderBottom: '3px solid #00FFFF',
-        fontWeight: 'bold',
-    },
-    content: {
-        marginTop: '20px',
-    },
-    sectionHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-    },
-    createButton: {
-        background: '#00FFFF',
-        color: '#111',
-        border: 'none',
-        padding: '10px 20px',
-        borderRadius: '5px',
-        cursor: 'pointer',
-        fontSize: '14px',
-        fontWeight: 'bold',
-    },
-    grid: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-        gap: '20px',
-    },
-    card: {
-        background: '#1a1a1a',
-        padding: '20px',
-        borderRadius: '8px',
-        border: '1px solid #333',
-    },
-    cardTitle: {
-        color: '#00FFFF',
-        marginTop: 0,
-        marginBottom: '15px',
-    },
-    campaignTag: {
-        fontSize: '12px',
-        color: '#888',
-        fontStyle: 'italic',
-    },
-    viewButton: {
-        background: '#333',
-        color: 'white',
-        border: 'none',
-        padding: '8px 16px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        width: '100%',
-        marginTop: '10px',
-    },
-    empty: {
-        textAlign: 'center',
-        color: '#666',
-        padding: '40px 20px',
-        fontSize: '16px',
-    },
-};
+function getCampaignRole(campaign, userId) {
+  const member = campaign.members?.find((entry) => {
+    const memberId =
+      typeof entry.userId === "object"
+        ? entry.userId?._id || entry.userId?.id
+        : entry.userId;
+    return String(memberId) === String(userId);
+  });
+
+  return member?.role || "Player";
+}
+
+function formatDate(value) {
+  if (!value) return "No date recorded";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "No date recorded"
+    : date.toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" });
+}
+
+function Profile() {
+  const { user, token, isLoggedIn, updateUser, loading: authLoading } = useAuth();
+  const [campaigns, setCampaigns] = useState([]);
+  const [characters, setCharacters] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [profileImageDraft, setProfileImageDraft] = useState(user?.profileImageUrl || "");
+  const [profileImageSaving, setProfileImageSaving] = useState(false);
+  const [profileImageError, setProfileImageError] = useState("");
+  const [profileImageStatus, setProfileImageStatus] = useState("");
+  const [isProfileImageModalOpen, setIsProfileImageModalOpen] = useState(false);
+
+  useEffect(() => {
+    setProfileImageDraft(user?.profileImageUrl || "");
+  }, [user?.profileImageUrl]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !user?.username || !token) {
+      setCampaigns([]);
+      setCharacters([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfileData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const [campaignRes, characterRes] = await Promise.all([
+          fetch("/api/campaigns", {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`/api/users/${user.username}/characters`),
+        ]);
+
+        if (!campaignRes.ok) {
+          const data = await campaignRes.json().catch(() => ({}));
+          throw new Error(data.error || data.message || "Failed to load campaigns.");
+        }
+
+        if (!characterRes.ok) {
+          const data = await characterRes.json().catch(() => ({}));
+          throw new Error(data.error || data.message || "Failed to load characters.");
+        }
+
+        const campaignData = await campaignRes.json();
+        const characterData = await characterRes.json();
+
+        if (!cancelled) {
+          setCampaigns(Array.isArray(campaignData) ? campaignData : []);
+          setCharacters(Array.isArray(characterData.characters) ? characterData.characters : []);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || "Could not load profile details.");
+          setCampaigns([]);
+          setCharacters([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfileData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn, token, user?.username]);
+
+  const stats = useMemo(() => {
+    const dmCampaigns = campaigns.filter((campaign) => getCampaignRole(campaign, user?.id) === "DM").length;
+    const playerCampaigns = campaigns.length - dmCampaigns;
+
+    return [
+      { label: "Campaigns", value: campaigns.length, icon: Map },
+      { label: "Characters", value: characters.length, icon: Swords },
+      { label: "DM Seats", value: dmCampaigns, icon: Crown },
+      { label: "Player Seats", value: playerCampaigns, icon: Shield },
+    ];
+  }, [campaigns, characters, user?.id]);
+
+  const recentCampaigns = campaigns.slice(0, 4);
+  const recentCharacters = characters.slice(0, 4);
+  const hasProfileImageChange = profileImageDraft !== (user?.profileImageUrl || "");
+
+  const saveProfileImage = async () => {
+    if (!token || profileImageSaving) return;
+
+    setProfileImageSaving(true);
+    setProfileImageError("");
+    setProfileImageStatus("");
+    try {
+      const res = await fetch("/api/users/me/profile-image", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ profileImageUrl: profileImageDraft || "" }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || "Failed to update profile image.");
+      }
+
+      const data = await res.json();
+      updateUser(data.user);
+      setProfileImageStatus("Profile image updated.");
+      setIsProfileImageModalOpen(false);
+    } catch (err) {
+      setProfileImageError(err.message || "Failed to update profile image.");
+    } finally {
+      setProfileImageSaving(false);
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="profile-page">
+        <div className="profile-loading-page">
+          <LoadingPage>Opening your profile...</LoadingPage>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <Gate>Sign in to view your profile.</Gate>;
+  }
+
+  const openProfileImageModal = () => {
+    setProfileImageDraft(user?.profileImageUrl || "");
+    setProfileImageError("");
+    setProfileImageStatus("");
+    setIsProfileImageModalOpen(true);
+  };
+
+  const closeProfileImageModal = () => {
+    if (profileImageSaving) return;
+    setProfileImageDraft(user?.profileImageUrl || "");
+    setProfileImageError("");
+    setProfileImageStatus("");
+    setIsProfileImageModalOpen(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="profile-page">
+        <div className="profile-loading-page">
+          <LoadingPage>Gathering your chronicles...</LoadingPage>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-page">
+      <div className="profile-shell">
+        <header className="profile-header">
+          <div className="profile-identity">
+            <button
+              type="button"
+              className="profile-avatar"
+              onClick={openProfileImageModal}
+              aria-label="Change profile icon"
+              title="Change profile icon"
+            >
+              {user?.profileImageUrl ? (
+                <img src={user.profileImageUrl} alt="" />
+              ) : (
+                user?.username?.charAt(0).toUpperCase() || "A"
+              )}
+              <span className="profile-avatar-edit">Change</span>
+            </button>
+            <div>
+              <p className="profile-eyebrow">Player Profile</p>
+              <h1 className="profile-title">{formatDisplayName(user?.username)}</h1>
+              <p className="profile-subtitle">{user?.email || "No email on file"}</p>
+            </div>
+          </div>
+
+          <div className="profile-actions">
+            <Link to="/campaigns/new" className="profile-action profile-action-primary">
+              <Sparkles aria-hidden="true" />
+              New Campaign
+            </Link>
+            <Link to="/create-character" className="profile-action">
+              <UserRound aria-hidden="true" />
+              New Character
+            </Link>
+          </div>
+        </header>
+
+        <div className="profile-divider" />
+
+        <>
+            {error && <div className="profile-error">{error}</div>}
+
+            <section className="profile-stats" aria-label="Profile summary">
+              {stats.map((stat) => {
+                const Icon = stat.icon;
+                return (
+                  <div className="profile-stat" key={stat.label}>
+                    <span className="profile-stat-icon">
+                      <Icon aria-hidden="true" />
+                    </span>
+                    <span className="profile-stat-label">{stat.label}</span>
+                    <strong className="profile-stat-value">{stat.value}</strong>
+                  </div>
+                );
+              })}
+            </section>
+
+            <div className="profile-grid">
+              <section className="profile-panel">
+                <div className="profile-section-head">
+                  <div>
+                    <p className="profile-section-kicker">Table Work</p>
+                    <h2 className="profile-section-title">Campaigns</h2>
+                  </div>
+                  <Link to="/campaigns" className="profile-text-link">View All</Link>
+                </div>
+
+                {recentCampaigns.length > 0 ? (
+                  <div className="profile-list">
+                    {recentCampaigns.map((campaign) => {
+                      const role = getCampaignRole(campaign, user?.id);
+                      return (
+                        <Link
+                          to={`/campaigns/${campaign._id}`}
+                          className="profile-list-item"
+                          key={campaign._id}
+                        >
+                          <span className="profile-list-icon">
+                            {role === "DM" ? <Crown aria-hidden="true" /> : <Users aria-hidden="true" />}
+                          </span>
+                          <span className="profile-list-main">
+                            <strong>{campaign.title || "Untitled Campaign"}</strong>
+                            <span>
+                              {role} • {campaign.members?.length || 0} members • {campaign.status || "Planning"}
+                            </span>
+                          </span>
+                          <span className="profile-list-date">
+                            <CalendarDays aria-hidden="true" />
+                            {formatDate(campaign.updatedAt || campaign.createdAt)}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="profile-empty">
+                    <ScrollText aria-hidden="true" />
+                    <p>No campaigns yet.</p>
+                    <Link to="/campaigns/new" className="profile-text-link">Forge one</Link>
+                  </div>
+                )}
+              </section>
+
+              <section className="profile-panel">
+                <div className="profile-section-head">
+                  <div>
+                    <p className="profile-section-kicker">Roster</p>
+                    <h2 className="profile-section-title">Characters</h2>
+                  </div>
+                  <Link to="/characters" className="profile-text-link">View All</Link>
+                </div>
+
+                {recentCharacters.length > 0 ? (
+                  <div className="profile-card-grid">
+                    {recentCharacters.map((character) => {
+                      const characterId = character.characterId || character._id;
+                      return (
+                        <Link
+                          to={`/characters/${characterId}/edit`}
+                          className="profile-character-card"
+                          key={character._id || character.characterId}
+                        >
+                          <span className="profile-character-icon">
+                            <BookOpen aria-hidden="true" />
+                          </span>
+                          <strong>{character.name || "Unnamed Hero"}</strong>
+                          <span>
+                            Level {character.level || 1} {character.race?.name || "Adventurer"}{" "}
+                            {character.class?.name || "Hero"}
+                          </span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="profile-empty">
+                    <UserRound aria-hidden="true" />
+                    <p>No characters yet.</p>
+                    <Link to="/create-character" className="profile-text-link">Create one</Link>
+                  </div>
+                )}
+              </section>
+            </div>
+          </>
+      </div>
+
+      {isProfileImageModalOpen && (
+        <div className="profile-modal-backdrop" role="presentation" onClick={closeProfileImageModal}>
+          <div
+            className="profile-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-image-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="profile-section-head">
+              <div>
+                <p className="profile-section-kicker">Identity</p>
+                <h2 className="profile-section-title" id="profile-image-title">Profile Icon</h2>
+              </div>
+              <button
+                type="button"
+                className="profile-modal-close"
+                onClick={closeProfileImageModal}
+                disabled={profileImageSaving}
+              >
+                Close
+              </button>
+            </div>
+            <div className="profile-image-editor">
+              <div className="profile-image-preview" aria-hidden="true">
+                {profileImageDraft ? (
+                  <img src={profileImageDraft} alt="" />
+                ) : (
+                  <span>{user?.username?.charAt(0).toUpperCase() || "A"}</span>
+                )}
+              </div>
+              <div className="profile-image-drop">
+                <ImageDrop
+                  imagePreview={profileImageDraft || null}
+                  onImageChange={(value) => {
+                    setProfileImageDraft(value || "");
+                    setProfileImageError("");
+                    setProfileImageStatus("");
+                  }}
+                  compact
+                />
+              </div>
+            </div>
+            {profileImageError && <p className="profile-inline-error">{profileImageError}</p>}
+            {profileImageStatus && <p className="profile-inline-success">{profileImageStatus}</p>}
+            <div className="profile-modal-actions">
+              <button
+                type="button"
+                className="profile-modal-close"
+                onClick={closeProfileImageModal}
+                disabled={profileImageSaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="profile-save-button"
+                onClick={saveProfileImage}
+                disabled={!hasProfileImageChange || profileImageSaving}
+              >
+                {profileImageSaving ? "Saving..." : "Save Icon"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default Profile;

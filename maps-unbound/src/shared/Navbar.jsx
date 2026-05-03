@@ -38,7 +38,11 @@ function Navbar() {
 
             <Link to="/profile" className="nav-user-link">
               <span style={avatarStyle}>
-                {user.username[0].toUpperCase()}
+                {user.profileImageUrl ? (
+                  <img src={user.profileImageUrl} alt="" style={avatarImgStyle} />
+                ) : (
+                  user.username[0].toUpperCase()
+                )}
               </span>
               {user.username[0].toUpperCase() + user.username.slice(1)}
             </Link>
@@ -121,6 +125,14 @@ const avatarStyle = {
   fontFamily: "'Cinzel', serif",
   color: "var(--gold)",
   flexShrink: 0,
+  overflow: "hidden",
+};
+
+const avatarImgStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
 };
 
 export default Navbar;

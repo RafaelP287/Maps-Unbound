@@ -1,8 +1,26 @@
 import { Router } from "express";
+import jwt from "jsonwebtoken";
 const router = Router();
 
 import { getUsers, getUser, deleteUser } from "../controllers/userController.js";
 import { getCharactersFromUser } from '../controllers/characterController.js';
+import User from "../models/User.js";
+
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+};
 
 // GET all users
 router.get("/", async (req, res) => {
@@ -42,6 +60,37 @@ router.get("/:username/characters", async (req, res) => {
     res.status(200).json({ message: `Fetched all characters belonging to ${req.params.username}.`, characters: characters });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// UPDATE logged-in user's profile icon image
+router.put("/me/profile-image", verifyToken, async (req, res) => {
+  try {
+    const profileImageUrl = String(req.body?.profileImageUrl || "").trim();
+    if (profileImageUrl.length > 12_000_000) {
+      return res.status(400).json({ error: "Profile image is too large." });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { profileImageUrl: profileImageUrl || "" },
+      { new: true, runValidators: true }
+    ).select("_id username email profileImageUrl");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl || "",
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

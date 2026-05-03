@@ -69,6 +69,7 @@ router.post('/signup', async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
       },
       token,
     });
@@ -130,6 +131,7 @@ router.post('/login', async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
       },
       token,
     });

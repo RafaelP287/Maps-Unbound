@@ -31,6 +31,23 @@ export const AuthProvider = ({ children }) => {
     );
   };
 
+  const updateUser = (nextUser) => {
+    setUser(nextUser);
+
+    const authData = localStorage.getItem("maps-unbound-auth");
+    if (!authData) return;
+
+    try {
+      const parsed = JSON.parse(authData);
+      localStorage.setItem(
+        "maps-unbound-auth",
+        JSON.stringify({ ...parsed, user: nextUser })
+      );
+    } catch {
+      localStorage.removeItem("maps-unbound-auth");
+    }
+  };
+
   const logout = () => {
     setUser(null);
     setToken(null);
@@ -41,7 +58,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isLoggedIn, login, logout, loading }}
+      value={{ user, token, isLoggedIn, login, logout, updateUser, loading }}
     >
       {children}
     </AuthContext.Provider>
