@@ -138,8 +138,8 @@ function Profile() {
     ];
   }, [campaigns, characters, user?.id]);
 
-  const recentCampaigns = campaigns.slice(0, 4);
-  const recentCharacters = characters.slice(0, 4);
+  const profileCampaigns = campaigns;
+  const profileCharacters = characters;
   const hasProfileImageChange = profileImageDraft !== (user?.profileImageUrl || "");
   const profileInitial = user?.username?.charAt(0).toUpperCase() || "A";
 
@@ -303,40 +303,42 @@ function Profile() {
                   <Link to="/campaigns" className="profile-text-link">View All</Link>
                 </div>
 
-                {recentCampaigns.length > 0 ? (
-                  <div className="profile-list">
-                    {recentCampaigns.map((campaign) => {
-                      const role = getCampaignRole(campaign, user?.id);
-                      return (
-                        <Link
-                          to={`/campaigns/${campaign._id}`}
-                          className="profile-list-item"
-                          key={campaign._id}
-                        >
-                          <span className="profile-list-icon">
-                            {role === "DM" ? <Crown aria-hidden="true" /> : <Users aria-hidden="true" />}
-                          </span>
-                          <span className="profile-list-main">
-                            <strong>{campaign.title || "Untitled Campaign"}</strong>
-                            <span>
-                              {role} • {campaign.members?.length || 0} members • {campaign.status || "Planning"}
+                <div className="profile-panel-scroll">
+                  {profileCampaigns.length > 0 ? (
+                    <div className="profile-list">
+                      {profileCampaigns.map((campaign) => {
+                        const role = getCampaignRole(campaign, user?.id);
+                        return (
+                          <Link
+                            to={`/campaigns/${campaign._id}`}
+                            className="profile-list-item"
+                            key={campaign._id}
+                          >
+                            <span className="profile-list-icon">
+                              {role === "DM" ? <Crown aria-hidden="true" /> : <Users aria-hidden="true" />}
                             </span>
-                          </span>
-                          <span className="profile-list-date">
-                            <CalendarDays aria-hidden="true" />
-                            {formatDate(campaign.updatedAt || campaign.createdAt)}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="profile-empty">
-                    <ScrollText aria-hidden="true" />
-                    <p>No campaigns yet.</p>
-                    <Link to="/campaigns/new" className="profile-text-link">Forge one</Link>
-                  </div>
-                )}
+                            <span className="profile-list-main">
+                              <strong>{campaign.title || "Untitled Campaign"}</strong>
+                              <span>
+                                {role} • {campaign.members?.length || 0} members • {campaign.status || "Planning"}
+                              </span>
+                            </span>
+                            <span className="profile-list-date">
+                              <CalendarDays aria-hidden="true" />
+                              {formatDate(campaign.updatedAt || campaign.createdAt)}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="profile-empty">
+                      <ScrollText aria-hidden="true" />
+                      <p>No campaigns yet.</p>
+                      <Link to="/campaigns/new" className="profile-text-link">Forge one</Link>
+                    </div>
+                  )}
+                </div>
               </section>
 
               <section className="profile-panel">
@@ -348,35 +350,37 @@ function Profile() {
                   <Link to="/characters" className="profile-text-link">View All</Link>
                 </div>
 
-                {recentCharacters.length > 0 ? (
-                  <div className="profile-card-grid">
-                    {recentCharacters.map((character) => {
-                      const characterId = character.characterId || character._id;
-                      return (
-                        <Link
-                          to={`/characters/${characterId}/edit`}
-                          className="profile-character-card"
-                          key={character._id || character.characterId}
-                        >
-                          <span className="profile-character-icon">
-                            <BookOpen aria-hidden="true" />
-                          </span>
-                          <strong>{character.name || "Unnamed Hero"}</strong>
-                          <span>
-                            Level {character.level || 1} {character.race?.name || "Adventurer"}{" "}
-                            {character.class?.name || "Hero"}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="profile-empty">
-                    <UserRound aria-hidden="true" />
-                    <p>No characters yet.</p>
-                    <Link to="/create-character" className="profile-text-link">Create one</Link>
-                  </div>
-                )}
+                <div className="profile-panel-scroll">
+                  {profileCharacters.length > 0 ? (
+                    <div className="profile-card-grid">
+                      {profileCharacters.map((character) => {
+                        const characterId = character.characterId || character._id;
+                        return (
+                          <Link
+                            to={`/characters/${characterId}/edit`}
+                            className="profile-character-card"
+                            key={character._id || character.characterId}
+                          >
+                            <span className="profile-character-icon">
+                              <BookOpen aria-hidden="true" />
+                            </span>
+                            <strong>{character.name || "Unnamed Hero"}</strong>
+                            <span>
+                              Level {character.level || 1} {character.race?.name || "Adventurer"}{" "}
+                              {character.class?.name || "Hero"}
+                            </span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="profile-empty">
+                      <UserRound aria-hidden="true" />
+                      <p>No characters yet.</p>
+                      <Link to="/create-character" className="profile-text-link">Create one</Link>
+                    </div>
+                  )}
+                </div>
               </section>
             </div>
           </>

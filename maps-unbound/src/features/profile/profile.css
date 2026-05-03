@@ -329,6 +329,9 @@
 .profile-panel {
   padding: 1.15rem;
   min-width: 0;
+  height: 460px;
+  display: flex;
+  flex-direction: column;
 }
 
 .profile-status-panel {
@@ -343,6 +346,7 @@
   gap: 1rem;
   align-items: flex-start;
   margin-bottom: 1rem;
+  flex: 0 0 auto;
 }
 
 .profile-section-title {
@@ -363,6 +367,34 @@
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+}
+
+.profile-panel-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.35rem;
+  scrollbar-color: rgba(201, 168, 76, 0.46) rgba(255, 255, 255, 0.06);
+  scrollbar-width: thin;
+}
+
+.profile-panel-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.profile-panel-scroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.profile-panel-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.46);
+}
+
+.profile-panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 201, 106, 0.68);
 }
 
 .profile-list-item {
@@ -432,7 +464,7 @@
 }
 
 .profile-empty {
-  min-height: 180px;
+  min-height: 100%;
   border: 1px dashed rgba(201, 168, 76, 0.28);
   border-radius: 8px;
   background: rgba(201, 168, 76, 0.05);
@@ -475,6 +507,10 @@
   .profile-grid {
     display: grid;
   }
+
+  .profile-panel {
+    height: 420px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -511,5 +547,9 @@
 
   .profile-list-date {
     justify-self: flex-start;
+  }
+
+  .profile-panel {
+    height: 400px;
   }
 }
