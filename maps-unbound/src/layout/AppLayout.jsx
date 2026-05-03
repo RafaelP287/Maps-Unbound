@@ -5,15 +5,15 @@ import Footer from "../shared/Footer.jsx";
 
 function AppLayout() {
     const location = useLocation();
-    const isMaps = location.pathname === '/maps';
+    const isMapsCreator = location.pathname === '/maps/create';
 
     return (
         <div style={styles.page}>
             <Navbar />
-            <main style={isMaps ? styles.mainMaps : styles.main}>
+            <main style={isMapsCreator ? styles.mainMaps : styles.main}>
                 <Outlet />
             </main>
-            {!isMaps && <Footer />}
+            {!isMapsCreator && <Footer />}
         </div>
     );
 }

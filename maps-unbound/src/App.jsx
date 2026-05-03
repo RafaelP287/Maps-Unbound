@@ -6,6 +6,7 @@ import SessionLayout from "./layout/SessionLayout.jsx";
 
 import Home from "./features/home/Home.jsx";
 import Maps from "./features/maps/Maps.jsx";
+import MapsPage from "./features/maps/MapsPage.jsx";
 
 import Session from "./features/session/Session.jsx";
 import SessionDMView from "./features/session/SessionDMView.jsx";
@@ -320,22 +321,25 @@ function App() {
           <Route path="profile" element={<Profile />} />
           
           {/* Map routes */}
-          <Route 
-            path="maps" 
-            element={
-              <Maps 
-                initializeDice={initializeDice}
-                cleanupDice={cleanupDice}
-                retryDice={retryDice}
-                resizeDice={resizeDice}
-                rollDice={rollDice}
-                isDiceReady={isDiceReady}
-                diceError={diceError}
-                pixelRatio={PIXEL_RATIO}
-                rollNotifs={rollNotifs}
-              />
-            } 
-          />
+          <Route path="maps">
+            <Route index element={<MapsPage />} />
+            <Route
+              path="create"
+              element={
+                <Maps
+                  initializeDice={initializeDice}
+                  cleanupDice={cleanupDice}
+                  retryDice={retryDice}
+                  resizeDice={resizeDice}
+                  rollDice={rollDice}
+                  isDiceReady={isDiceReady}
+                  diceError={diceError}
+                  pixelRatio={PIXEL_RATIO}
+                  rollNotifs={rollNotifs}
+                />
+              }
+            />
+          </Route>
           {/* Session Route */}
           <Route path="session">
               <Route index element={<Session />} />

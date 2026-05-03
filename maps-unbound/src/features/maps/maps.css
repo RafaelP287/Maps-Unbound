@@ -1,0 +1,101 @@
+.maps-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(201, 168, 76, 0.12), transparent 34%),
+    radial-gradient(circle at 86% 12%, rgba(76, 175, 130, 0.08), transparent 28%),
+    var(--bg-deep);
+  color: var(--text-base);
+}
+
+.maps-shell {
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 3rem 0 5rem;
+}
+
+.maps-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.maps-header-copy {
+  min-width: 0;
+}
+
+.maps-eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.maps-title {
+  margin: 0;
+}
+
+.maps-subtitle {
+  max-width: 720px;
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.maps-divider {
+  width: 100%;
+  height: 1px;
+  margin: 1.25rem 0 1.6rem;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+}
+
+.maps-empty-state svg {
+  width: 18px;
+  height: 18px;
+}
+
+.maps-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.maps-empty-state {
+  min-height: 180px;
+  border: 1px dashed rgba(201, 168, 76, 0.28);
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.05);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.35rem;
+  padding: 1.5rem;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.maps-empty-state svg {
+  color: var(--gold);
+}
+
+.maps-empty-state p,
+.maps-status {
+  color: var(--text-muted);
+}
+
+.maps-status {
+  width: min(620px, calc(100% - 2rem));
+  margin: 4rem auto;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .maps-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+}
