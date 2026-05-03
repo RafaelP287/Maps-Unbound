@@ -1,12 +1,18 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isLoggedIn, loading } = useAuth();
+  const [profileImageBroken, setProfileImageBroken] = useState(false);
 
   const handleLogout = () => { logout(); navigate("/"); };
+
+  useEffect(() => {
+    setProfileImageBroken(false);
+  }, [user?.profileImageUrl]);
 
   if (loading) return null;
 
@@ -38,13 +44,18 @@ function Navbar() {
 
             <Link to="/profile" className="nav-user-link">
               <span style={avatarStyle}>
-                {user.profileImageUrl ? (
-                  <img src={user.profileImageUrl} alt="" style={avatarImgStyle} />
+                {user.profileImageUrl && !profileImageBroken ? (
+                  <img
+                    src={user.profileImageUrl}
+                    alt=""
+                    style={avatarImgStyle}
+                    onError={() => setProfileImageBroken(true)}
+                  />
                 ) : (
-                  user.username[0].toUpperCase()
+                  user.username?.[0]?.toUpperCase() || "A"
                 )}
               </span>
-              {user.username[0].toUpperCase() + user.username.slice(1)}
+              {(user.username?.[0]?.toUpperCase() || "A") + (user.username?.slice(1) || "")}
             </Link>
 
             <button className="nav-logout-btn" onClick={handleLogout}>

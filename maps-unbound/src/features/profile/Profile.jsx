@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   BookOpen,
@@ -53,10 +53,18 @@ function Profile() {
   const [profileImageError, setProfileImageError] = useState("");
   const [profileImageStatus, setProfileImageStatus] = useState("");
   const [isProfileImageModalOpen, setIsProfileImageModalOpen] = useState(false);
+  const [profileImageBroken, setProfileImageBroken] = useState(false);
+  const [draftImageBroken, setDraftImageBroken] = useState(false);
+  const closeProfileImageButtonRef = useRef(null);
 
   useEffect(() => {
     setProfileImageDraft(user?.profileImageUrl || "");
+    setProfileImageBroken(false);
   }, [user?.profileImageUrl]);
+
+  useEffect(() => {
+    setDraftImageBroken(false);
+  }, [profileImageDraft]);
 
   useEffect(() => {
     if (!isLoggedIn || !user?.username || !token) {
@@ -78,7 +86,7 @@ function Profile() {
               Authorization: `Bearer ${token}`,
             },
           }),
-          fetch(`/api/users/${user.username}/characters`),
+          fetch(`/api/users/${encodeURIComponent(user.username)}/characters`),
         ]);
 
         if (!campaignRes.ok) {
@@ -133,6 +141,43 @@ function Profile() {
   const recentCampaigns = campaigns.slice(0, 4);
   const recentCharacters = characters.slice(0, 4);
   const hasProfileImageChange = profileImageDraft !== (user?.profileImageUrl || "");
+  const profileInitial = user?.username?.charAt(0).toUpperCase() || "A";
+
+  const openProfileImageModal = () => {
+    setProfileImageDraft(user?.profileImageUrl || "");
+    setProfileImageError("");
+    setProfileImageStatus("");
+    setIsProfileImageModalOpen(true);
+  };
+
+  const closeProfileImageModal = useCallback(() => {
+    if (profileImageSaving) return;
+    setProfileImageDraft(user?.profileImageUrl || "");
+    setProfileImageError("");
+    setProfileImageStatus("");
+    setIsProfileImageModalOpen(false);
+  }, [profileImageSaving, user?.profileImageUrl]);
+
+  useEffect(() => {
+    if (!isProfileImageModalOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeProfileImageButtonRef.current?.focus();
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        closeProfileImageModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [closeProfileImageModal, isProfileImageModalOpen]);
 
   const saveProfileImage = async () => {
     if (!token || profileImageSaving) return;
@@ -180,21 +225,6 @@ function Profile() {
     return <Gate>Sign in to view your profile.</Gate>;
   }
 
-  const openProfileImageModal = () => {
-    setProfileImageDraft(user?.profileImageUrl || "");
-    setProfileImageError("");
-    setProfileImageStatus("");
-    setIsProfileImageModalOpen(true);
-  };
-
-  const closeProfileImageModal = () => {
-    if (profileImageSaving) return;
-    setProfileImageDraft(user?.profileImageUrl || "");
-    setProfileImageError("");
-    setProfileImageStatus("");
-    setIsProfileImageModalOpen(false);
-  };
-
   if (loading) {
     return (
       <div className="profile-page">
@@ -217,10 +247,10 @@ function Profile() {
               aria-label="Change profile icon"
               title="Change profile icon"
             >
-              {user?.profileImageUrl ? (
-                <img src={user.profileImageUrl} alt="" />
+              {user?.profileImageUrl && !profileImageBroken ? (
+                <img src={user.profileImageUrl} alt="" onError={() => setProfileImageBroken(true)} />
               ) : (
-                user?.username?.charAt(0).toUpperCase() || "A"
+                <span>{profileInitial}</span>
               )}
               <span className="profile-avatar-edit">Change</span>
             </button>
@@ -371,16 +401,17 @@ function Profile() {
                 className="profile-modal-close"
                 onClick={closeProfileImageModal}
                 disabled={profileImageSaving}
+                ref={closeProfileImageButtonRef}
               >
                 Close
               </button>
             </div>
             <div className="profile-image-editor">
               <div className="profile-image-preview" aria-hidden="true">
-                {profileImageDraft ? (
-                  <img src={profileImageDraft} alt="" />
+                {profileImageDraft && !draftImageBroken ? (
+                  <img src={profileImageDraft} alt="" onError={() => setDraftImageBroken(true)} />
                 ) : (
-                  <span>{user?.username?.charAt(0).toUpperCase() || "A"}</span>
+                  <span>{profileInitial}</span>
                 )}
               </div>
               <div className="profile-image-drop">
