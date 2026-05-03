@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Play, Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 import CampaignCard from "./CampaignCard.jsx";
@@ -36,9 +37,6 @@ function CampaignsPage() {
         
         const data = await res.json();
         
-        // Log the data to see what the backend is actually sending
-        console.log("Fetched campaigns data:", data); 
-
         // Ensure we only set an array to state
         if (Array.isArray(data)) {
           setCampaigns(data);
@@ -118,38 +116,33 @@ function CampaignsPage() {
   return (
     <div className="campaign-page-padded">
       <div className="campaign-content-wide">
-        {/* Header */}
-        <header className="campaign-page-header-wide">
-          <div className="campaign-header-divider" />
-          <div className="campaign-header-row">
-            <span className="campaign-header-rune-lg">✦</span>
-            <h1 className="campaign-page-title-lg">Your Campaigns</h1>
-            <span className="campaign-header-rune-lg">✦</span>
+        <header className="campaign-index-header">
+          <div className="campaign-index-header-copy">
+            <p className="campaign-index-eyebrow">Campaign Library</p>
+            <h1 className="campaign-index-title">Your Campaigns</h1>
+            <p className="campaign-index-subtitle">
+              Manage the adventures you run, join the parties you play in, and start a table session when the group is ready.
+            </p>
           </div>
-          <div className="campaign-header-divider" />
-          <div
-            style={{
-              marginTop: "1.5rem",
-              display: "flex",
-              gap: "0.75rem",
-              justifyContent: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Link to="/campaigns/new">
-              <button className="btn-primary">+ Forge New Campaign</button>
+
+          <div className="campaign-index-actions">
+            <Link to="/campaigns/new" className="character-btn-link">
+              <Plus aria-hidden="true" />
+              Create Campaign
             </Link>
             <button
               type="button"
-              className="btn-primary"
+              className="campaign-index-start"
               onClick={() => setShowStartSession(true)}
             >
-              ▶ Start Session
+              <Play aria-hidden="true" />
+              Start Session
             </button>
           </div>
         </header>
 
-        {/* Campaign grid */}
+        <div className="campaign-index-divider" />
+
         <div className="campaign-list">
           {campaigns.length > 0 ? (
             campaigns.map((c) => (
@@ -157,7 +150,7 @@ function CampaignsPage() {
             ))
           ) : (
             <div className="campaign-empty">
-              <span className="campaign-empty-icon">📜</span>
+              <ScrollText aria-hidden="true" className="campaign-empty-svg" />
               <h2 className="campaign-empty-title">No campaigns found</h2>
               <p className="campaign-empty-subtext">The chronicles are blank. Begin a new adventure.</p>
             </div>

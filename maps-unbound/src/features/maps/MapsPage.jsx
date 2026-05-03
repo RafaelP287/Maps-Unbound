@@ -2,12 +2,17 @@ import { Link } from "react-router-dom";
 import { Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
 
 function MapsPage() {
   const { isLoggedIn, loading: authLoading } = useAuth();
 
   if (authLoading) {
-    return <div className="maps-status">Loading your map vault...</div>;
+    return (
+      <div className="maps-page">
+        <LoadingPage>Loading your map vault...</LoadingPage>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {

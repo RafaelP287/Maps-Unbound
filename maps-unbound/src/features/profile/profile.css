@@ -1,9 +1,6 @@
 .profile-page {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 12% 0%, rgba(201, 168, 76, 0.12), transparent 32%),
-    radial-gradient(circle at 82% 12%, rgba(76, 175, 130, 0.08), transparent 28%),
-    var(--bg-deep);
+  background: radial-gradient(ellipse at 20% 0%, var(--bg-warm) 0%, var(--bg-deep) 60%);
   color: var(--text-base);
 }
 
