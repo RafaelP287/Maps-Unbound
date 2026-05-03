@@ -271,7 +271,9 @@ function CampaignDMView({ campaign, setCampaign }) {
     setSaveError(null);
     setSessionActionError("");
     try {
-      const nextSessionNumber = (sessions?.length || 0) + 1;
+      const nextSessionNumber = Array.isArray(sessions)
+        ? Math.max(0, ...sessions.map((session) => Number(session.sessionNumber) || 0)) + 1
+        : 1;
       const title = `Session ${nextSessionNumber}`;
       const createdAt = new Date().toISOString();
       const payload = {

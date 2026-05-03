@@ -30,7 +30,7 @@ function CampaignsPage() {
     if (!isLoggedIn) { setLoading(false); return; }
     const fetchCampaigns = async () => {
       try {
-        const res = await fetch("http://localhost:5001/api/campaigns", {
+        const res = await fetch("/api/campaigns", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
         
@@ -79,7 +79,9 @@ function CampaignsPage() {
         throw new Error(sessionsData.error || "Failed to load campaign sessions");
       }
       const existingSessions = await sessionsRes.json();
-      const nextSessionNumber = (Array.isArray(existingSessions) ? existingSessions.length : 0) + 1;
+      const nextSessionNumber = Array.isArray(existingSessions)
+        ? Math.max(0, ...existingSessions.map((session) => Number(session.sessionNumber) || 0)) + 1
+        : 1;
 
       const createRes = await fetch("/api/sessions", {
         method: "POST",

@@ -49,9 +49,6 @@ function Navbar() {
           </>
         ) : (
           <>
-            <Link to="/ruleset" className={isActive("/ruleset")}>
-              Compendium
-            </Link>
             <Link to="/login" className="nav-signin-btn">
               Enter the Realm
             </Link>
