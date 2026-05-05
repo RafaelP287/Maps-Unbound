@@ -7,12 +7,6 @@ const formatStartDate = (value) => {
   return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
 };
 
-const formatQuestUpdated = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
-};
-
 const getPrimarySessionDate = (session) =>
   session?.startedAt || session?.scheduledFor || session?.createdAt || null;
 
@@ -27,7 +21,16 @@ const formatSessionWindow = (session) => {
   return endedLabel ? `${startedLabel} • ${endedLabel}` : startedLabel;
 };
 
-function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null }) {
+function CampaignSections({
+  campaign,
+  dm,
+  players,
+  sessions = [],
+  sessionsLoading = false,
+  isDM = false,
+  user = null,
+  onStartEditing = null,
+}) {
   const currentQuest = campaign.currentQuest;
   const npcs = campaign.npcs || [];
   const enemies = campaign.enemies || [];
@@ -320,7 +323,11 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           <p className="campaign-section-subtext">
             A record of all sessions held for this campaign.
           </p>
-          {sortedSessions.length > 0 ? (
+          {sessionsLoading ? (
+            <div className="campaign-timeline-item">
+              <span className="campaign-section-empty">Loading session records...</span>
+            </div>
+          ) : sortedSessions.length > 0 ? (
             <div className="campaign-card-frame">
               <div className="campaign-card-scroll">
                 {selectedSession ? (
@@ -368,7 +375,9 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           )}
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">{sortedSessions.length} session records</span>
+          <span className="campaign-resource-count">
+            {sessionsLoading ? "Loading sessions" : `${sortedSessions.length} session records`}
+          </span>
           <div className="campaign-inline-actions">
             {isDM ? (
               <button className="btn-ghost" onClick={() => onStartEditing?.("sessions")} type="button">

@@ -11,6 +11,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
 import useCampaignSessions from "../campaigns/use-campaign-sessions";
 import LoadingPage from "../../shared/Loading.jsx";
+import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 
 function SessionDMView() {
@@ -40,7 +41,7 @@ function SessionDMView() {
     const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
     const { campaign, loading } = useCampaign(campaignId);
-    const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId);
+    const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId, { includeNotes: true });
 
     const orderedSessions = useMemo(() => {
         return [...sessions].sort((a, b) => {
@@ -435,6 +436,8 @@ function SessionDMView() {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to end session");
             }
+            clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
             navigate(exitLink);
         } catch (err) {
             setEndSessionError(err.message || "Failed to end session.");
@@ -476,6 +479,8 @@ function SessionDMView() {
             }
             setNotesDraft("");
             setNotesStatus("Session note saved.");
+            clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
             await refetchSessions();
         } catch (err) {
             setNotesError(err.message || "Failed to save note.");

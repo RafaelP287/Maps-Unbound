@@ -61,6 +61,8 @@ const campaignSchema = new mongoose.Schema({
   sessionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Session", default: [] },
 }, {timestamps: true});
 
+campaignSchema.index({ "members.userId": 1, updatedAt: -1 });
+
 const Campaign = mongoose.model("Campaign", campaignSchema);
 
 export default Campaign;

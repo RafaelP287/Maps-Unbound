@@ -16,6 +16,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
+import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 
 function formatDisplayName(username = "") {
   if (!username) return "Adventurer";
@@ -87,9 +88,21 @@ function Profile() {
     }
 
     let cancelled = false;
+    const campaignsCacheKey = `campaigns:list:${user.id || "current"}`;
+    const charactersCacheKey = `characters:list:${user.username}`;
+    const cachedCampaigns = getCachedValue(campaignsCacheKey);
+    const cachedCharacters = getCachedValue(charactersCacheKey);
+    const hasCachedProfileData = Boolean(cachedCampaigns || cachedCharacters);
+
+    if (cachedCampaigns || cachedCharacters) {
+      setCampaigns(cachedCampaigns || []);
+      setCharacters(cachedCharacters || []);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     const loadProfileData = async () => {
-      setLoading(true);
       setError("");
       try {
         const [campaignRes, characterRes] = await Promise.all([
@@ -116,14 +129,20 @@ function Profile() {
         const characterData = await characterRes.json();
 
         if (!cancelled) {
-          setCampaigns(Array.isArray(campaignData) ? campaignData : []);
-          setCharacters(Array.isArray(characterData.characters) ? characterData.characters : []);
+          const nextCampaigns = Array.isArray(campaignData) ? campaignData : [];
+          const nextCharacters = Array.isArray(characterData.characters) ? characterData.characters : [];
+          setCampaigns(nextCampaigns);
+          setCharacters(nextCharacters);
+          setCachedValue(campaignsCacheKey, nextCampaigns);
+          setCachedValue(charactersCacheKey, nextCharacters);
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || "Could not load profile details.");
-          setCampaigns([]);
-          setCharacters([]);
+          if (!hasCachedProfileData) {
+            setError(err.message || "Could not load profile details.");
+            setCampaigns([]);
+            setCharacters([]);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -137,7 +156,7 @@ function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, token, user?.username]);
+  }, [isLoggedIn, token, user?.id, user?.username]);
 
   const stats = useMemo(() => {
     const dmCampaigns = campaigns.filter((campaign) => getCampaignRole(campaign, user?.id) === "DM").length;

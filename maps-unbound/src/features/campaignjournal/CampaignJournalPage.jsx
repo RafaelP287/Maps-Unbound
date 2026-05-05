@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 
 import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "../campaigns/use-campaign.js";
-import useCampaignSessions from "../campaigns/use-campaign-sessions.js";
+import { clearCachePrefix, getCachedValue, setCachedValue } from "../../shared/dataCache.js";
 import placeholderImage from "../campaigns/images/DnD.jpg";
 import "./campaignjournal.css";
 
@@ -26,15 +26,10 @@ function CampaignJournalPage() {
   const { id } = useParams();
   const { user, token, loading: authLoading } = useAuth();
   const { campaign, loading, error } = useCampaign(id);
-  const {
-    sessions,
-    loading: sessionsLoading,
-    error: sessionsError,
-  } = useCampaignSessions(id);
+  const [sessions, setSessions] = useState([]);
   const [encountersBySession, setEncountersBySession] = useState({});
-  const [encountersLoading, setEncountersLoading] = useState(false);
-  const [encountersError, setEncountersError] = useState("");
-  const [encountersResolved, setEncountersResolved] = useState(false);
+  const [journalLoading, setJournalLoading] = useState(true);
+  const [journalError, setJournalError] = useState("");
   const [expandedSessionIds, setExpandedSessionIds] = useState({});
   const [expandedEncounterSessionIds, setExpandedEncounterSessionIds] = useState({});
   const [expandedEncounterIds, setExpandedEncounterIds] = useState({});
@@ -54,62 +49,69 @@ function CampaignJournalPage() {
   const [noteVisibilityError, setNoteVisibilityError] = useState("");
 
   useEffect(() => {
-    if (sessionsLoading) {
-      setEncountersResolved(false);
-      return;
-    }
-
-    if (!token || !Array.isArray(sessions) || sessions.length === 0) {
+    if (!id || !token) {
+      setSessions([]);
       setEncountersBySession({});
-      setEncountersLoading(false);
-      setEncountersError("");
-      setEncountersResolved(true);
+      setJournalLoading(false);
+      setJournalError("");
       return;
     }
 
     let cancelled = false;
+    const cacheKey = `campaign:journal:${user?.id || "current"}:${id}`;
+    const cachedJournal = getCachedValue(cacheKey);
+    const hasCachedJournal = Boolean(cachedJournal);
 
-    const fetchEncounters = async () => {
-      setEncountersResolved(false);
-      setEncountersLoading(true);
-      setEncountersError("");
+    if (cachedJournal) {
+      setSessions(Array.isArray(cachedJournal.sessions) ? cachedJournal.sessions : []);
+      setEncountersBySession(cachedJournal.encountersBySession || {});
+      setJournalLoading(false);
+    } else {
+      setJournalLoading(true);
+    }
+
+    const fetchJournal = async () => {
+      setJournalError("");
       try {
-        const results = await Promise.all(
-          sessions.map(async (session) => {
-            const res = await fetch(`/api/encounters?sessionId=${session._id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-              const data = await res.json().catch(() => ({}));
-              throw new Error(data.error || `Failed to load encounters for ${session.title || "session"}`);
-            }
-            const data = await res.json();
-            return [session._id, Array.isArray(data) ? data : []];
-          })
-        );
+        const res = await fetch(`/api/sessions/journal/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || data.message || "Failed to load campaign journal");
+        }
 
+        const data = await res.json();
+        const nextJournal = {
+          sessions: Array.isArray(data.sessions) ? data.sessions : [],
+          encountersBySession: data.encountersBySession || {},
+        };
         if (!cancelled) {
-          setEncountersBySession(Object.fromEntries(results));
+          setSessions(nextJournal.sessions);
+          setEncountersBySession(nextJournal.encountersBySession);
+          setCachedValue(cacheKey, nextJournal);
         }
       } catch (err) {
         if (!cancelled) {
-          setEncountersBySession({});
-          setEncountersError(err.message || "Failed to load encounters");
+          if (!hasCachedJournal) {
+            setSessions([]);
+            setEncountersBySession({});
+            setJournalError(err.message || "Failed to load campaign journal");
+          }
         }
       } finally {
         if (!cancelled) {
-          setEncountersLoading(false);
-          setEncountersResolved(true);
+          setJournalLoading(false);
         }
       }
     };
 
-    fetchEncounters();
+    fetchJournal();
 
     return () => {
       cancelled = true;
     };
-  }, [sessions, sessionsLoading, token]);
+  }, [id, token, user?.id]);
 
   const timelineItems = useMemo(() => {
     const sessionItems = (sessions || []).map((session) => ({
@@ -147,9 +149,21 @@ function CampaignJournalPage() {
       const bTime = b.date ? new Date(b.date).getTime() : 0;
       return bTime - aTime;
     });
-  }, [encountersBySession, noteVisibilityOverrides, sessionSummaryOverrides, sessionTitleOverrides, sessions]);
+  }, [noteVisibilityOverrides, sessionSummaryOverrides, sessionTitleOverrides, sessions]);
 
-  if (loading || authLoading || sessionsLoading || !encountersResolved) {
+  const journalCacheKey = `campaign:journal:${user?.id || "current"}:${id}`;
+  const setJournalSessions = (updater) => {
+    setSessions((currentSessions) => {
+      const nextSessions = typeof updater === "function" ? updater(currentSessions) : updater;
+      setCachedValue(journalCacheKey, {
+        sessions: nextSessions,
+        encountersBySession,
+      });
+      return nextSessions;
+    });
+  };
+
+  if (loading || authLoading || journalLoading) {
     return <LoadingPage>Opening the campaign journal...</LoadingPage>;
   }
 
@@ -230,6 +244,12 @@ function CampaignJournalPage() {
         ...prev,
         [sessionId]: sessionNameDraft.trim(),
       }));
+      setJournalSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === sessionId ? { ...session, title: sessionNameDraft.trim() } : session
+        )
+      );
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
       setEditingSessionNameId(null);
       setSessionNameDraft("");
     } catch (err) {
@@ -263,6 +283,12 @@ function CampaignJournalPage() {
         ...prev,
         [sessionId]: summaryDraft.trim(),
       }));
+      setJournalSessions((currentSessions) =>
+        currentSessions.map((session) =>
+          session._id === sessionId ? { ...session, summary: summaryDraft.trim() } : session
+        )
+      );
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
       setEditingSessionId(null);
       setSummaryDraft("");
     } catch (err) {
@@ -299,6 +325,20 @@ function CampaignJournalPage() {
         ...prev,
         [noteKey]: visibleToPlayers,
       }));
+      setJournalSessions((currentSessions) =>
+        currentSessions.map((session) => {
+          if (session._id !== sessionId || !Array.isArray(session.notes)) return session;
+          return {
+            ...session,
+            notes: session.notes.map((note, index) =>
+              index === noteIndex
+                ? { ...note, visibleToPlayers, updatedAt: new Date().toISOString() }
+                : note
+            ),
+          };
+        })
+      );
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
     } catch (err) {
       setNoteVisibilityErrorKey(noteKey);
       setNoteVisibilityError(err.message || "Failed to update note visibility");
@@ -322,9 +362,9 @@ function CampaignJournalPage() {
         </div>
 
         <section className="campaign-card-panel">
-          {(sessionsError || encountersError) && (
+          {journalError && (
             <div className="campaign-error-banner">
-              {sessionsError || encountersError}
+              {journalError}
             </div>
           )}
 
@@ -342,12 +382,12 @@ function CampaignJournalPage() {
             <div className="campaign-journal-stat">
               <span className="campaign-journal-stat-label">Timeline</span>
               <strong className="campaign-journal-stat-value">
-                {sessionsLoading || encountersLoading ? "Updating..." : `${timelineItems.length} entries`}
+                {journalLoading ? "Updating..." : `${timelineItems.length} entries`}
               </strong>
             </div>
           </div>
 
-          {sessionsLoading || encountersLoading ? (
+          {journalLoading ? (
             <div className="campaign-journal-placeholder">
               <p className="campaign-section-empty">Loading campaign activity…</p>
             </div>

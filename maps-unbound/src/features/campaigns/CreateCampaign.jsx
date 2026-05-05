@@ -4,6 +4,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
+import { clearCachePrefix } from "../../shared/dataCache.js";
 
 function CreateCampaignPage() {
   const navigate = useNavigate();
@@ -71,6 +72,7 @@ function CreateCampaignPage() {
         }),
       });
       if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Failed to create campaign"); }
+      clearCachePrefix("campaigns:list:");
       navigate("/campaigns");
     } catch (err) { setError(err.message); } finally { setLoading(false); }
   };

@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import CampaignCard from "./CampaignCard.jsx";
 import Gate from "../../shared/Gate.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
+import { clearCachePrefix, removeCachedValue, setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
@@ -29,6 +30,16 @@ function CampaignsPage() {
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
+    const cacheKey = `campaigns:list:${user?.id || "current"}`;
+    const cachedCampaigns = getCachedValue(cacheKey);
+    const hasCachedCampaigns = Boolean(cachedCampaigns);
+    if (cachedCampaigns) {
+      setCampaigns(cachedCampaigns);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     const fetchCampaigns = async () => {
       try {
         const res = await fetch("/api/campaigns", {
@@ -40,9 +51,11 @@ function CampaignsPage() {
         // Ensure we only set an array to state
         if (Array.isArray(data)) {
           setCampaigns(data);
+          setCachedValue(cacheKey, data);
         } else if (data && Array.isArray(data.campaigns)) {
           // Fallback just in case your backend wraps it like { campaigns: [...] }
           setCampaigns(data.campaigns);
+          setCachedValue(cacheKey, data.campaigns);
         } else {
           console.warn("Expected an array of campaigns, but got:", data);
           setCampaigns([]); 
@@ -50,11 +63,11 @@ function CampaignsPage() {
 
       } catch (err) {
         console.error("Error fetching campaigns:", err);
-        setCampaigns([]); // Reset to empty array on network error
+        if (!hasCachedCampaigns) setCampaigns([]); // Reset to empty array on cold network error
       } finally { setLoading(false); }
     };
     fetchCampaigns();
-  }, [isLoggedIn, token]);
+  }, [isLoggedIn, token, user?.id]);
 
   if (loading || authLoading) {
     return <LoadingPage>Searching the archives...</LoadingPage>;
@@ -69,25 +82,12 @@ function CampaignsPage() {
     setStartSessionError("");
     setStartingCampaignId(campaign._id);
     try {
-      const sessionsRes = await fetch(`/api/sessions?campaignId=${campaign._id}`, {
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      });
-      if (!sessionsRes.ok) {
-        const sessionsData = await sessionsRes.json().catch(() => ({}));
-        throw new Error(sessionsData.error || "Failed to load campaign sessions");
-      }
-      const existingSessions = await sessionsRes.json();
-      const nextSessionNumber = Array.isArray(existingSessions)
-        ? Math.max(0, ...existingSessions.map((session) => Number(session.sessionNumber) || 0)) + 1
-        : 1;
-
       const createRes = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           campaignId: campaign._id,
-          title: `Session ${nextSessionNumber}`,
-          sessionNumber: nextSessionNumber,
+          title: "Session",
           status: "In Progress",
           startedAt: new Date().toISOString(),
           participants: (campaign.members || []).map((member) => ({
@@ -102,6 +102,8 @@ function CampaignsPage() {
       }
 
       const createdSession = await createRes.json();
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaign._id}`);
+      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
       setShowStartSession(false);
       navigate(
         `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`

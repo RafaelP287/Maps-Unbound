@@ -172,7 +172,10 @@ router.post("/", verifyToken, async (req, res) => {
 // Get all campaigns where the logged-in user is a member
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const campaigns = await Campaign.find({ "members.userId": req.user.userId });
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title description image playStyle maxPlayers startDate status members createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(campaigns);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -185,7 +188,7 @@ router.get("/:id", verifyToken, async (req, res) => {
     const campaign = await Campaign.findById(req.params.id).populate(
       "members.userId",
       "username email"
-    );
+    ).lean();
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
     const isMember = campaign.members.some(

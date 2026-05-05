@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
+import { clearCachePrefix, getCachedValue, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
 import {
   ABILITY_FIELDS,
   ALIGNMENT_OPTIONS,
@@ -69,8 +70,19 @@ function CharacterEditor() {
       return;
     }
 
-    const fetchCharacter = async () => {
+    const cacheKey = `characters:detail:${user?.username || "current"}:${id}`;
+    const cachedCharacter = getCachedValue(cacheKey);
+    const hasCachedCharacter = Boolean(cachedCharacter);
+    if (cachedCharacter) {
+      const cachedForm = characterToForm(cachedCharacter);
+      setFormData(cachedForm);
+      setInitialSnapshot(JSON.stringify(cachedForm));
+      setIsLoading(false);
+    } else {
       setIsLoading(true);
+    }
+
+    const fetchCharacter = async () => {
       setError("");
 
       try {
@@ -82,18 +94,24 @@ function CharacterEditor() {
         }
 
         const data = await response.json();
-        const nextForm = characterToForm(data.character || data);
+        const nextCharacter = data.character || data;
+        const nextForm = characterToForm(nextCharacter);
         setFormData(nextForm);
         setInitialSnapshot(JSON.stringify(nextForm));
+        setCachedValue(cacheKey, nextCharacter);
       } catch (err) {
-        setError(err.message || "Could not load that character.");
+        if (!hasCachedCharacter) {
+          setError(err.message || "Could not load that character.");
+          setFormData(DEFAULT_CHARACTER_FORM);
+          setInitialSnapshot(JSON.stringify(DEFAULT_CHARACTER_FORM));
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchCharacter();
-  }, [id, isLoggedIn]);
+  }, [id, isLoggedIn, user?.username]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -289,6 +307,8 @@ function CharacterEditor() {
       }
 
       allowNavigationRef.current = true;
+      removeCachedValue(`characters:detail:${user?.username || "current"}:${id}`);
+      clearCachePrefix("characters:list:");
       navigate("/characters");
     } catch (err) {
       setError(err.message || "Failed to delete character.");
@@ -328,9 +348,12 @@ function CharacterEditor() {
       }
 
       const data = await response.json();
-      const nextForm = characterToForm(data.character || data);
+      const nextCharacter = data.character || data;
+      const nextForm = characterToForm(nextCharacter);
       setFormData(nextForm);
       setInitialSnapshot(JSON.stringify(nextForm));
+      setCachedValue(`characters:detail:${user?.username || "current"}:${id}`, nextCharacter);
+      clearCachePrefix("characters:list:");
       setSuccess("Character saved.");
     } catch (err) {
       setError(err.message || "Failed to save character.");

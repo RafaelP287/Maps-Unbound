@@ -30,7 +30,14 @@ function CampaignPlayerView({ campaign, user }) {
         <CampaignHero campaign={campaign} />
 
         <div className="campaign-card-panel">
-          <CampaignSections campaign={campaign} dm={dm} players={players} sessions={sessions} user={user} />
+          <CampaignSections
+            campaign={campaign}
+            dm={dm}
+            players={players}
+            sessions={sessions}
+            sessionsLoading={sessionsLoading}
+            user={user}
+          />
 
           {/* Footer */}
           <div className="campaign-footer campaign-footer-split">

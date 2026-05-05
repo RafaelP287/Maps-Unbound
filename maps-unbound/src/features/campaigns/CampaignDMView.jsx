@@ -5,13 +5,13 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import placeholderImage from "./images/DnD.jpg";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
-import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
+import { clearCachePrefix, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
 
 function CampaignDMView({ campaign, setCampaign }) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
   const editFocusRef = useRef(null);
@@ -93,10 +93,6 @@ function CampaignDMView({ campaign, setCampaign }) {
 
     return () => cancelAnimationFrame(frame);
   }, [editSection, isEditing]);
-
-  if (sessionsLoading) {
-    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
-  }
 
   const executeSave = async ({ applySessionDeletes = false } = {}) => {
     setSaving(true); setSaveError(null);
@@ -183,15 +179,18 @@ function CampaignDMView({ campaign, setCampaign }) {
         }
         await refetchSessions();
       }
-      setCampaign((prev) => ({
-        ...prev,
+      const nextCampaign = {
+        ...campaign,
         ...updatedCampaign,
         currentQuest,
         npcs,
         enemies,
         loot,
         members: populatedMembers,
-      }));
+      };
+      setCampaign((prev) => ({ ...prev, ...nextCampaign }));
+      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, nextCampaign);
+      clearCachePrefix("campaigns:list:");
       setPendingSessionDeleteIds([]);
       setShowSessionDeleteConfirmOnSave(false);
       setEditSection("general");
@@ -261,6 +260,10 @@ function CampaignDMView({ campaign, setCampaign }) {
       // Hard delete campaign and return to list after successful API confirmation.
       const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
+      removeCachedValue(`campaign:detail:${user?.id || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
+      removeCachedValue(`campaign:journal:${user?.id || "current"}:${id}`);
+      clearCachePrefix("campaigns:list:");
       navigate("/campaigns");
     } catch (err) { setDeleteError(err.message || "Failed to delete campaign."); setDeleting(false); setShowDeleteConfirm(false); }
   };
@@ -302,6 +305,8 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
 
       const createdSession = await res.json();
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaign._id}`);
+      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
       await refetchSessions();
       navigate(
         `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
@@ -459,7 +464,8 @@ function CampaignDMView({ campaign, setCampaign }) {
                 <span className="campaign-details-icon">✦</span>
               </div>
               <div className="campaign-edit-list">
-                {sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
+                {sessionsLoading && <p className="campaign-helper-text">Loading session records...</p>}
+                {!sessionsLoading && sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
                 {sessions.map((session) => (
                   <div className="campaign-edit-item" key={session._id}>
                     <div className="campaign-resource-title-row">
@@ -669,6 +675,7 @@ function CampaignDMView({ campaign, setCampaign }) {
               dm={dm}
               players={players}
               sessions={sessions}
+              sessionsLoading={sessionsLoading}
               isDM
               onStartEditing={startEditing}
             />
