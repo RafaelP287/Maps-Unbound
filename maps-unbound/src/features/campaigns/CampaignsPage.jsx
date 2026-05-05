@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Play, Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -11,6 +11,8 @@ import { clearCachePrefix, removeCachedValue, setCachedValue, getCachedValue } f
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
+  const [activeCampaigns, setActiveCampaigns] = useState([]);
+  const [activeCampaignsLoading, setActiveCampaignsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showStartSession, setShowStartSession] = useState(false);
   const [startingCampaignId, setStartingCampaignId] = useState("");
@@ -27,6 +29,39 @@ function CampaignsPage() {
       return String(dmUserId) === String(user?.id);
     });
   }, [campaigns, user?.id]);
+
+  const fetchActiveCampaigns = useCallback(async (campaignList, { showLoading = true } = {}) => {
+    if (!Array.isArray(campaignList) || campaignList.length === 0 || !token) {
+      setActiveCampaigns([]);
+      return;
+    }
+
+    if (showLoading) setActiveCampaignsLoading(true);
+    try {
+      const activeSessionResults = await Promise.all(
+        campaignList.map(async (campaign) => {
+          const query = new URLSearchParams({ campaignId: campaign._id });
+          const res = await fetch(`/api/sessions?${query.toString()}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) return null;
+          const sessions = await res.json();
+          const activeSession = Array.isArray(sessions)
+            ? [...sessions]
+                .sort((a, b) => new Date(b.startedAt || b.createdAt || 0) - new Date(a.startedAt || a.createdAt || 0))
+                .find((session) => session.status === "In Progress")
+            : null;
+          return activeSession ? { campaign, session: activeSession } : null;
+        })
+      );
+      setActiveCampaigns(activeSessionResults.filter(Boolean));
+    } catch (err) {
+      console.error("Error fetching active campaigns:", err);
+      setActiveCampaigns([]);
+    } finally {
+      if (showLoading) setActiveCampaignsLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
@@ -49,25 +84,45 @@ function CampaignsPage() {
         const data = await res.json();
         
         // Ensure we only set an array to state
+        let nextCampaigns = [];
         if (Array.isArray(data)) {
-          setCampaigns(data);
-          setCachedValue(cacheKey, data);
+          nextCampaigns = data;
         } else if (data && Array.isArray(data.campaigns)) {
           // Fallback just in case your backend wraps it like { campaigns: [...] }
-          setCampaigns(data.campaigns);
-          setCachedValue(cacheKey, data.campaigns);
+          nextCampaigns = data.campaigns;
         } else {
           console.warn("Expected an array of campaigns, but got:", data);
-          setCampaigns([]); 
         }
+        setCampaigns(nextCampaigns);
+        setCachedValue(cacheKey, nextCampaigns);
+        await fetchActiveCampaigns(nextCampaigns);
 
       } catch (err) {
         console.error("Error fetching campaigns:", err);
         if (!hasCachedCampaigns) setCampaigns([]); // Reset to empty array on cold network error
+        await fetchActiveCampaigns(cachedCampaigns || []);
       } finally { setLoading(false); }
     };
     fetchCampaigns();
-  }, [isLoggedIn, token, user?.id]);
+  }, [fetchActiveCampaigns, isLoggedIn, token, user?.id]);
+
+  useEffect(() => {
+    if (!isLoggedIn || campaigns.length === 0) return;
+
+    const refreshActiveCampaigns = () => {
+      fetchActiveCampaigns(campaigns, { showLoading: false });
+    };
+    const intervalId = window.setInterval(refreshActiveCampaigns, 5000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshActiveCampaigns();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [campaigns, fetchActiveCampaigns, isLoggedIn]);
 
   if (loading || authLoading) {
     return <LoadingPage>Searching the archives...</LoadingPage>;
@@ -90,7 +145,7 @@ function CampaignsPage() {
           title: "Session",
           status: "In Progress",
           startedAt: new Date().toISOString(),
-          participants: (campaign.members || []).map((member) => ({
+          participants: (campaign.members || []).filter((member) => member.role === "DM").map((member) => ({
             userId: member.userId?._id || member.userId,
             role: member.role,
           })),
@@ -142,6 +197,37 @@ function CampaignsPage() {
             </button>
           </div>
         </header>
+
+        {(activeCampaignsLoading || activeCampaigns.length > 0) && (
+          <section className="campaign-active-panel">
+            <div className="campaign-active-panel-copy">
+              <p className="campaign-index-eyebrow">Active Campaigns</p>
+              <h2>Tables Open Now</h2>
+            </div>
+            <div className="campaign-active-list">
+              {activeCampaignsLoading ? (
+                <div className="campaign-active-empty">Checking open tables...</div>
+              ) : (
+                activeCampaigns.map(({ campaign, session }) => (
+                  <button
+                    key={`${campaign._id}-${session._id}`}
+                    type="button"
+                    className="campaign-active-item"
+                    onClick={() => navigate(
+                      `/session?campaignId=${campaign._id}&sessionId=${session._id}&sessionName=${encodeURIComponent(session.title || "Session")}`
+                    )}
+                  >
+                    <span>
+                      <strong>{campaign.title}</strong>
+                      <small>{session.title || "Active Session"} • {session.status}</small>
+                    </span>
+                    <span className="campaign-active-action">Enter Lobby</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </section>
+        )}
 
         <div className="campaign-index-divider" />
 

@@ -264,7 +264,7 @@ router.get("/", verifyToken, async (req, res) => {
 
     const sessionFields = includeNotes
       ? "campaignId title sessionNumber status scheduledFor startedAt endedAt summary notes participants tags createdAt updatedAt"
-      : "campaignId title sessionNumber status scheduledFor startedAt endedAt summary tags createdAt updatedAt";
+      : "campaignId title sessionNumber status scheduledFor startedAt endedAt summary participants tags createdAt updatedAt";
     const sessions = await Session.find({ campaignId })
       .select(sessionFields)
       .sort({ sessionNumber: 1, createdAt: 1 })
@@ -339,6 +339,45 @@ router.get("/:id", verifyToken, async (req, res) => {
     const isDM = membership.role === "DM";
 
     res.json(serializeSessionForViewer(session, isDM));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Join a session lobby or active session (campaign members only)
+router.post("/:id/join", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    if (["Completed", "Archived"].includes(session.status)) {
+      return res.status(400).json({ error: "This session is no longer open" });
+    }
+
+    const campaign = await Campaign.findById(session.campaignId).select("members").lean();
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const membership = getCampaignMembership(campaign, req.user.userId);
+    if (!membership) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const alreadyJoined = session.participants.some(
+      (participant) => participant.userId.toString() === req.user.userId
+    );
+
+    if (!alreadyJoined) {
+      session.participants.push({
+        userId: req.user.userId,
+        role: membership.role,
+      });
+      await session.save();
+    }
+
+    const updatedSession = await Session.findById(session._id).lean();
+    res.json(serializeSessionForViewer(updatedSession, membership.role === "DM"));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

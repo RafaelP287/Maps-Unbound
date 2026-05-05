@@ -1,90 +1,380 @@
 // Session lobby:
-// lets the DM rename the active session record before entering DM view.
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { useState } from "react";
+// shared waiting room layout for campaign members before the DM opens the live table.
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useCampaign from "../campaigns/use-campaign";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 import LoadingPage from "../../shared/Loading.jsx";
 
-function Session() {
-    const navigate = useNavigate();
-    const { token } = useAuth();
-    const [searchParams] = useSearchParams();
-    const campaignId = searchParams.get("campaignId");
-    const sessionId = searchParams.get("sessionId");
-    const sessionNameParam = searchParams.get("sessionName");
-    const { campaign, loading } = useCampaign(campaignId);
-    const [sessionName, setSessionName] = useState(sessionNameParam || "Session Name");
-    const [enteringDm, setEnteringDm] = useState(false);
-    const [lobbyError, setLobbyError] = useState("");
-    const campaignName = loading ? "Loading..." : campaign?.title || "Unknown Campaign";
+const getUserId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return getUserId(value._id);
+  if (value.id) return getUserId(value.id);
+  if (value.$oid) return value.$oid;
+  const stringValue = value.toString?.();
+  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+};
 
-    if (loading) {
-        return <LoadingPage>Preparing the session...</LoadingPage>;
+const formatLobbyTime = (value) => {
+  if (!value) return "Not scheduled";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "Not scheduled" : date.toLocaleString();
+};
+
+function SessionLobby() {
+  const navigate = useNavigate();
+  const { user, token } = useAuth();
+  const [searchParams] = useSearchParams();
+  const campaignId = searchParams.get("campaignId");
+  const sessionId = searchParams.get("sessionId");
+  const sessionNameParam = searchParams.get("sessionName");
+  const { campaign, loading: campaignLoading, error: campaignError } = useCampaign(campaignId);
+  const [session, setSession] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(Boolean(sessionId));
+  const [sessionName, setSessionName] = useState(sessionNameParam || "Session Name");
+  const [actionPending, setActionPending] = useState("");
+  const [lobbyError, setLobbyError] = useState("");
+  const [lobbyNotice, setLobbyNotice] = useState("");
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const autoJoinAttemptedRef = useRef(false);
+  const bootTimeoutRef = useRef(null);
+
+  const membership = useMemo(() => {
+    if (!campaign?.members || !user?.id) return null;
+    return campaign.members.find((member) => getUserId(member.userId) === getUserId(user.id)) || null;
+  }, [campaign?.members, user?.id]);
+
+  const isDM = membership?.role === "DM";
+  const participants = Array.isArray(session?.participants) ? session.participants : [];
+  const joinedUserIds = new Set(participants.map((participant) => getUserId(participant.userId || participant)));
+  const currentUserJoined = user?.id ? joinedUserIds.has(getUserId(user.id)) : false;
+  const playerMembers = (campaign?.members || []).filter((member) => member.role === "Player");
+  const dmMember = (campaign?.members || []).find((member) => member.role === "DM");
+  const rosterMembers = [dmMember, ...playerMembers].filter(Boolean);
+  const status = session?.status || "In Progress";
+  const isClosed = ["Completed", "Archived"].includes(status);
+
+  const bootToCampaign = (message) => {
+    if (bootTimeoutRef.current) return;
+    setLobbyNotice(message);
+    setLobbyError("");
+    bootTimeoutRef.current = window.setTimeout(() => {
+      navigate(campaignId ? `/campaigns/${campaignId}` : "/campaigns");
+    }, 3000);
+  };
+
+  const fetchSession = async ({ showLoading = true } = {}) => {
+    if (!sessionId || !token) {
+      setSessionLoading(false);
+      return;
+    }
+    if (showLoading) setSessionLoading(true);
+    setLobbyError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 404) {
+          bootToCampaign("The DM canceled this session. Returning you to the campaign...");
+          return;
+        }
+        throw new Error(data.error || "Failed to load session");
+      }
+      const data = await res.json();
+      setSession(data);
+      setSessionName(data.title || sessionNameParam || "Session Name");
+    } catch (err) {
+      setLobbyError(err.message || "Failed to load session.");
+    } finally {
+      setSessionLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, token]);
+
+  useEffect(() => {
+    if (!sessionId || !token || isDM || lobbyNotice) return;
+
+    const intervalId = window.setInterval(() => {
+      fetchSession({ showLoading: false });
+    }, 4000);
+
+    return () => window.clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, token, isDM, lobbyNotice]);
+
+  useEffect(() => {
+    return () => {
+      if (bootTimeoutRef.current) window.clearTimeout(bootTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    autoJoinAttemptedRef.current = false;
+  }, [sessionId, user?.id]);
+
+  const runSessionAction = async (actionName, request) => {
+    if (actionPending) return null;
+    setActionPending(actionName);
+    setLobbyError("");
+    try {
+      const res = await request();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Session action failed");
+      }
+      setSession(data);
+      return data;
+    } catch (err) {
+      setLobbyError(err.message || "Session action failed.");
+      return null;
+    } finally {
+      setActionPending("");
+    }
+  };
+
+  const handleEnterDm = async () => {
+    if (!sessionId || !token) return;
+    const nextSessionName = sessionName.trim() || "Session Name";
+    const data = await runSessionAction("dm", () =>
+      fetch(`/api/sessions/${sessionId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: nextSessionName,
+        }),
+      })
+    );
+    if (!data) return;
+
+    const query = new URLSearchParams();
+    if (campaignId) query.set("campaignId", campaignId);
+    if (sessionId) query.set("sessionId", sessionId);
+    query.set("sessionName", data.title || nextSessionName);
+    navigate(`/session/dm?${query.toString()}`);
+  };
+
+  const handleJoinLobby = () => {
+    if (!sessionId || !token) return;
+    runSessionAction("join", () =>
+      fetch(`/api/sessions/${sessionId}/join`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
+  };
+
+  useEffect(() => {
+    if (
+      !session ||
+      !campaign ||
+      lobbyNotice ||
+      isDM ||
+      currentUserJoined ||
+      isClosed ||
+      !sessionId ||
+      !token ||
+      autoJoinAttemptedRef.current
+    ) {
+      return;
     }
 
-    const handleEnterDm = async () => {
-        if (enteringDm) return;
-        const nextSessionName = sessionName.trim() || "Session Name";
-        setEnteringDm(true);
-        setLobbyError("");
-        try {
-            if (sessionId && token) {
-                const res = await fetch(`/api/sessions/${sessionId}`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify({ title: nextSessionName }),
-                });
-                if (!res.ok) {
-                    const data = await res.json().catch(() => ({}));
-                    throw new Error(data.error || "Failed to save session name");
-                }
-            }
+    autoJoinAttemptedRef.current = true;
+    handleJoinLobby();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, campaign, lobbyNotice, isDM, currentUserJoined, isClosed, sessionId, token]);
 
-            const query = new URLSearchParams();
-            if (campaignId) query.set("campaignId", campaignId);
-            if (sessionId) query.set("sessionId", sessionId);
-            query.set("sessionName", nextSessionName);
-            navigate(`/session/dm?${query.toString()}`);
-        } catch (err) {
-            setLobbyError(err.message || "Failed to continue to DM view.");
-        } finally {
-            setEnteringDm(false);
-        }
-    };
+  const handleCancelSession = async () => {
+    if (!sessionId || !token || !campaignId || actionPending) return;
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      return;
+    }
 
+    setActionPending("cancel");
+    setLobbyError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to cancel session");
+      }
+      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
+      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
+      navigate(`/campaigns/${campaignId}`);
+    } catch (err) {
+      setLobbyError(err.message || "Failed to cancel session.");
+      setActionPending("");
+    }
+  };
+
+  if (campaignLoading || sessionLoading) {
+    return <LoadingPage>Preparing the session lobby...</LoadingPage>;
+  }
+
+  if (campaignError || !campaign || !sessionId) {
     return (
-        <div className="session-page">
-            <div className="session-card">
-                <h1>Session Lobby</h1>
-                <p>This will probably be a lobby waiting page or a page to select the campaign.</p>
-                {campaignId && (
-                    <p>Selected campaign: {campaignName}</p>
-                )}
-                <label className="session-lobby__label" htmlFor="session-name-input">
-                    Session name (DM):
-                </label>
-                <input
-                    id="session-name-input"
-                    className="session-lobby__input"
-                    type="text"
-                    value={sessionName}
-                    onChange={(e) => setSessionName(e.target.value)}
-                />
-                <p>Button to test for DM View.</p>
-                <div className="session-actions">
-                    <button type="button" onClick={handleEnterDm} disabled={enteringDm}>
-                        {enteringDm ? "Opening..." : "DM View"}
-                    </button>
-                </div>
-                {lobbyError && <p className="campaign-error-text">{lobbyError}</p>}
-            </div>
+      <div className="session-page">
+        <div className="session-lobby">
+          <p className="session-lobby__eyebrow">Session Lobby</p>
+          <h1>Lobby Unavailable</h1>
+          <p>{campaignError || "This lobby needs a campaign and session link."}</p>
+          <Link to="/campaigns" className="session-lobby__button session-lobby__button--ghost">
+            Back to Campaigns
+          </Link>
         </div>
-    )
+      </div>
+    );
+  }
+
+  return (
+    <div className="session-page">
+      <main className="session-lobby">
+        <header className="session-lobby__header">
+          <div>
+            <p className="session-lobby__eyebrow">Session Lobby</p>
+            <h1>{sessionName}</h1>
+            <p>{campaign.title}</p>
+          </div>
+          <span className={`session-lobby__status is-${status.toLowerCase().replace(/\s+/g, "-")}`}>
+            {status}
+          </span>
+        </header>
+
+        {lobbyNotice && (
+          <div className="session-lobby__notice" role="status">
+            {lobbyNotice}
+          </div>
+        )}
+
+        <section className="session-lobby__grid">
+          <div className="session-lobby__panel session-lobby__panel--main">
+            <div className="session-lobby__panel-header">
+              <div>
+                <h2>Table Roster</h2>
+                <p>{participants.length} of {rosterMembers.length || campaign.members?.length || 0} campaign members joined</p>
+              </div>
+              <button
+                type="button"
+                className="session-lobby__button session-lobby__button--ghost"
+                onClick={fetchSession}
+                disabled={Boolean(actionPending)}
+              >
+                Refresh
+              </button>
+            </div>
+
+            <div className="session-lobby__roster">
+              {rosterMembers.map((member) => {
+                const memberUser = member.userId || {};
+                const memberId = getUserId(memberUser);
+                const isJoined = joinedUserIds.has(memberId);
+                return (
+                  <article className="session-lobby__player" key={`${member.role}-${memberId}`}>
+                    <div className="session-lobby__avatar" aria-hidden="true">
+                      {(memberUser.username || member.role || "?").slice(0, 1).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3>
+                        {memberUser.username || "Unknown Player"}
+                        {memberId === getUserId(user?.id) && <span>You</span>}
+                      </h3>
+                      <p>{member.role}</p>
+                    </div>
+                    <strong className={isJoined ? "is-ready" : ""}>
+                      {isJoined ? "Joined" : "Invited"}
+                    </strong>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+
+          <aside className="session-lobby__panel">
+            <div className="session-lobby__meta">
+              <span>Campaign</span>
+              <strong>{campaign.title}</strong>
+            </div>
+            <div className="session-lobby__meta">
+              <span>Session</span>
+              {isDM ? (
+                <input
+                  className="session-lobby__input"
+                  type="text"
+                  value={sessionName}
+                  onChange={(event) => setSessionName(event.target.value)}
+                  maxLength={120}
+                />
+              ) : (
+                <strong>{session?.title || sessionName}</strong>
+              )}
+            </div>
+            <div className="session-lobby__meta">
+              <span>Scheduled</span>
+              <strong>{formatLobbyTime(session?.scheduledFor)}</strong>
+            </div>
+            <div className="session-lobby__meta">
+              <span>Your Role</span>
+              <strong>{membership?.role || "Member"}</strong>
+            </div>
+
+            <div className="session-lobby__actions">
+              {isDM ? (
+                <>
+                  <button
+                    type="button"
+                    className="session-lobby__button"
+                    onClick={handleEnterDm}
+                    disabled={Boolean(actionPending) || isClosed}
+                  >
+                    {actionPending === "dm" ? "Opening..." : "Open DM Table"}
+                  </button>
+                  <button
+                    type="button"
+                    className="session-lobby__button session-lobby__button--danger"
+                    onClick={handleCancelSession}
+                    disabled={Boolean(actionPending)}
+                  >
+                    {actionPending === "cancel"
+                      ? "Canceling..."
+                      : confirmCancel
+                        ? "Confirm Cancel Session"
+                        : "Cancel Session"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="session-lobby__button" disabled>
+                    {currentUserJoined ? "Waiting for DM" : "Joining Lobby..."}
+                  </button>
+                </>
+              )}
+
+              <Link to={`/campaigns/${campaign._id}`} className="session-lobby__button session-lobby__button--ghost">
+                Back to Campaign
+              </Link>
+            </div>
+
+            {lobbyError && <p className="session-lobby__error">{lobbyError}</p>}
+          </aside>
+        </section>
+      </main>
+    </div>
+  );
 }
 
-export default Session;
+export default SessionLobby;

@@ -285,7 +285,7 @@ function CampaignDMView({ campaign, setCampaign }) {
         sessionNumber: nextSessionNumber,
         status: "In Progress",
         startedAt: createdAt,
-        participants: campaign.members.map((member) => ({
+        participants: campaign.members.filter((member) => member.role === "DM").map((member) => ({
           userId: member.userId?._id || member.userId,
           role: member.role,
         })),

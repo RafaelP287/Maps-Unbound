@@ -340,12 +340,6 @@ function App() {
               }
             />
           </Route>
-          {/* Session Route */}
-          <Route path="session">
-              <Route index element={<Session />} />
-              <Route path="dm" element={<SessionDMView />} />
-          </Route>
-          
           {/* Character Routes */}
           <Route path="characters" element={<Characters />} />
           <Route path="characters/:id/edit" element={<CharacterEditor />} />
