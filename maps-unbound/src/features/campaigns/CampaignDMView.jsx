@@ -264,7 +264,7 @@ function CampaignDMView({ campaign, setCampaign }) {
       clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
       removeCachedValue(`campaign:journal:${user?.id || "current"}:${id}`);
       clearCachePrefix("campaigns:list:");
-      navigate("/campaigns");
+      navigate("/campaigns", { replace: true });
     } catch (err) { setDeleteError(err.message || "Failed to delete campaign."); setDeleting(false); setShowDeleteConfirm(false); }
   };
 
@@ -307,7 +307,8 @@ function CampaignDMView({ campaign, setCampaign }) {
       removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
       await refetchSessions();
       navigate(
-        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
+        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`,
+        { replace: true }
       );
     } catch (err) {
       setSaveError(err.message || "Failed to start session.");

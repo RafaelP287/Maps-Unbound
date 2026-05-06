@@ -73,7 +73,7 @@ function CreateCampaignPage() {
       });
       if (!response.ok) { const data = await response.json(); throw new Error(data.error || "Failed to create campaign"); }
       clearCachePrefix("campaigns:list:");
-      navigate("/campaigns");
+      navigate("/campaigns", { replace: true });
     } catch (err) { setError(err.message); } finally { setLoading(false); }
   };
 

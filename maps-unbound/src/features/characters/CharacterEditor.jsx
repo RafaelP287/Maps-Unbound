@@ -309,7 +309,7 @@ function CharacterEditor() {
       allowNavigationRef.current = true;
       removeCachedValue(`characters:detail:${user?.username || "current"}:${id}`);
       clearCachePrefix("characters:list:");
-      navigate("/characters");
+      navigate("/characters", { replace: true });
     } catch (err) {
       setError(err.message || "Failed to delete character.");
       setIsDeleteConfirmOpen(false);

@@ -297,7 +297,7 @@ function Profile() {
 
   const handleLogout = () => {
     logout();
-    navigate("/");
+    navigate("/", { replace: true });
   };
 
   const deleteAccount = async (event) => {
@@ -328,7 +328,7 @@ function Profile() {
       }
 
       logout();
-      navigate("/");
+      navigate("/", { replace: true });
     } catch (err) {
       setDeleteError(err.message || "Failed to delete account.");
     } finally {

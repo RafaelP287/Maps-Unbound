@@ -5,7 +5,7 @@ import SessionLeftPanel from "./components/SessionLeftPanel";
 import SessionMapCanvas from "./components/SessionMapCanvas";
 import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
@@ -46,6 +46,9 @@ function SessionDMView() {
     const [notesSaving, setNotesSaving] = useState(false);
     const [notesError, setNotesError] = useState("");
     const [notesStatus, setNotesStatus] = useState("");
+    const allowSessionExitRef = useRef(false);
+    const sessionExitCleanupSentRef = useRef(false);
+    const sessionExitCleanupRef = useRef(null);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const sessionId = searchParams.get("sessionId");
@@ -437,13 +440,86 @@ function SessionDMView() {
     ].filter(Boolean).join(" ");
     const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
+    useEffect(() => {
+        sessionExitCleanupRef.current = {
+            activeEncounterId,
+            campaignId,
+            combatRound,
+            sceneName,
+            sessionId,
+            shouldEndOnExit: Boolean(sessionId && token && currentSession?.startedAt && !["Completed", "Archived"].includes(currentSession?.status)),
+            token,
+            turns,
+            userId: user?.id || "current",
+        };
+    }, [activeEncounterId, campaignId, combatRound, currentSession, sceneName, sessionId, token, turns, user?.id]);
+
+    useEffect(() => {
+        const endSessionOnExit = () => {
+            const cleanup = sessionExitCleanupRef.current;
+            if (!cleanup?.shouldEndOnExit || allowSessionExitRef.current) return;
+            if (sessionExitCleanupSentRef.current) return;
+            sessionExitCleanupSentRef.current = true;
+
+            if (cleanup.activeEncounterId && cleanup.turns.length > 0) {
+                fetch(`/api/encounters/${cleanup.activeEncounterId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${cleanup.token}`,
+                    },
+                    body: JSON.stringify({
+                        initiative: cleanup.turns.map((turn) => ({
+                            name: turn.name || "",
+                            kind: turn.kind || "Enemy",
+                            hp: turn.hp !== undefined && turn.hp !== null ? String(turn.hp) : "",
+                            initiative: Number.isFinite(Number(turn.initiative)) ? Number(turn.initiative) : 0,
+                        })),
+                        activeTurnIndex: Math.max(0, cleanup.turns.findIndex((turn) => turn.isActive)),
+                        rounds: Math.max(0, cleanup.combatRound + 1),
+                        relatedMap: cleanup.sceneName || "",
+                        status: "Completed",
+                        endedAt: new Date().toISOString(),
+                        summary: cleanup.sceneName ? `Scene: ${cleanup.sceneName}` : "",
+                    }),
+                    keepalive: true,
+                }).catch(() => {});
+            }
+
+            fetch(`/api/sessions/${cleanup.sessionId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${cleanup.token}`,
+                },
+                body: JSON.stringify({
+                    status: "Completed",
+                    endedAt: new Date().toISOString(),
+                    summary: cleanup.sceneName ? `Scene: ${cleanup.sceneName}` : undefined,
+                }),
+                keepalive: true,
+            }).catch(() => {});
+
+            if (cleanup.campaignId) {
+                clearCachePrefix(`campaign:sessions:${cleanup.userId}:${cleanup.campaignId}`);
+                removeCachedValue(`campaign:journal:${cleanup.userId}:${cleanup.campaignId}`);
+            }
+        };
+
+        window.addEventListener("pagehide", endSessionOnExit);
+        return () => {
+            window.removeEventListener("pagehide", endSessionOnExit);
+            endSessionOnExit();
+        };
+    }, []);
+
     const handleEndSession = async () => {
         if (endingSession) {
             return;
         }
 
         if (!sessionId || !token) {
-            navigate(exitLink);
+            navigate(exitLink, { replace: true });
             return;
         }
 
@@ -472,7 +548,9 @@ function SessionDMView() {
             }
             clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
             removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
-            navigate(exitLink);
+            allowSessionExitRef.current = true;
+            sessionExitCleanupSentRef.current = true;
+            navigate(exitLink, { replace: true });
         } catch (err) {
             setEndSessionError(err.message || "Failed to end session.");
         } finally {

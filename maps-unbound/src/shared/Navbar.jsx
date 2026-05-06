@@ -8,7 +8,7 @@ function Navbar() {
   const { user, logout, isLoggedIn, loading } = useAuth();
   const [profileImageBroken, setProfileImageBroken] = useState(false);
 
-  const handleLogout = () => { logout(); navigate("/"); };
+  const handleLogout = () => { logout(); navigate("/", { replace: true }); };
 
   useEffect(() => {
     setProfileImageBroken(false);

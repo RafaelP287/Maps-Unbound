@@ -37,9 +37,12 @@ function CampaignsPage() {
     }
 
     if (showLoading) setActiveCampaignsLoading(true);
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 8000);
     try {
       const res = await fetch("/api/campaigns/active-sessions", {
         headers: { Authorization: `Bearer ${token}` },
+        signal: controller.signal,
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -48,9 +51,12 @@ function CampaignsPage() {
       const data = await res.json();
       setActiveCampaigns(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error fetching active campaigns:", err);
+      if (err.name !== "AbortError") {
+        console.error("Error fetching active campaigns:", err);
+      }
       setActiveCampaigns([]);
     } finally {
+      window.clearTimeout(timeoutId);
       if (showLoading) setActiveCampaignsLoading(false);
     }
   }, [token]);
@@ -87,12 +93,12 @@ function CampaignsPage() {
         }
         setCampaigns(nextCampaigns);
         setCachedValue(cacheKey, nextCampaigns);
-        await fetchActiveCampaigns();
+        void fetchActiveCampaigns();
 
       } catch (err) {
         console.error("Error fetching campaigns:", err);
         if (!hasCachedCampaigns) setCampaigns([]); // Reset to empty array on cold network error
-        await fetchActiveCampaigns();
+        void fetchActiveCampaigns();
       } finally { setLoading(false); }
     };
     fetchCampaigns();
@@ -152,7 +158,8 @@ function CampaignsPage() {
       removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
       setShowStartSession(false);
       navigate(
-        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
+        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`,
+        { replace: true }
       );
     } catch (err) {
       setStartSessionError(err.message || "Failed to start session");

@@ -41,6 +41,9 @@ function SessionLobby() {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const autoJoinAttemptedRef = useRef(false);
   const bootTimeoutRef = useRef(null);
+  const allowLobbyExitRef = useRef(false);
+  const lobbyExitCleanupSentRef = useRef(false);
+  const lobbyExitCleanupRef = useRef(null);
 
   const membership = useMemo(() => {
     if (!campaign?.members || !user?.id) return null;
@@ -57,12 +60,61 @@ function SessionLobby() {
   const status = session?.status || "In Progress";
   const isClosed = ["Completed", "Archived"].includes(status);
 
+  useEffect(() => {
+    lobbyExitCleanupRef.current = {
+      campaignId,
+      isDM,
+      sessionId,
+      shouldCancelOnExit: Boolean(isDM && sessionId && token && session && !session.startedAt && !isClosed),
+      token,
+      userId: user?.id || "current",
+    };
+  }, [campaignId, isClosed, isDM, session, sessionId, token, user?.id]);
+
+  useEffect(() => {
+    return () => {
+      const cleanup = lobbyExitCleanupRef.current;
+      if (!cleanup?.shouldCancelOnExit || allowLobbyExitRef.current) return;
+      if (lobbyExitCleanupSentRef.current) return;
+      lobbyExitCleanupSentRef.current = true;
+
+      fetch(`/api/sessions/${cleanup.sessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${cleanup.token}` },
+        keepalive: true,
+      }).catch(() => {});
+
+      if (cleanup.campaignId) {
+        clearCachePrefix(`campaign:sessions:${cleanup.userId}:${cleanup.campaignId}`);
+        removeCachedValue(`campaign:journal:${cleanup.userId}:${cleanup.campaignId}`);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    const cancelOpenLobbyOnPageExit = () => {
+      const cleanup = lobbyExitCleanupRef.current;
+      if (!cleanup?.shouldCancelOnExit || allowLobbyExitRef.current) return;
+      if (lobbyExitCleanupSentRef.current) return;
+      lobbyExitCleanupSentRef.current = true;
+
+      fetch(`/api/sessions/${cleanup.sessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${cleanup.token}` },
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    window.addEventListener("pagehide", cancelOpenLobbyOnPageExit);
+    return () => window.removeEventListener("pagehide", cancelOpenLobbyOnPageExit);
+  }, []);
+
   const bootToCampaign = (message) => {
     if (bootTimeoutRef.current) return;
     setLobbyNotice(message);
     setLobbyError("");
     bootTimeoutRef.current = window.setTimeout(() => {
-      navigate(campaignId ? `/campaigns/${campaignId}` : "/campaigns");
+      navigate(campaignId ? `/campaigns/${campaignId}` : "/campaigns", { replace: true });
     }, 3000);
   };
 
@@ -118,7 +170,7 @@ function SessionLobby() {
     if (campaignId) query.set("campaignId", campaignId);
     if (sessionId) query.set("sessionId", sessionId);
     query.set("sessionName", session.title || sessionName);
-    navigate(`/session/player?${query.toString()}`);
+    navigate(`/session/player?${query.toString()}`, { replace: true });
   }, [campaignId, isDM, lobbyNotice, navigate, session, sessionId, sessionName]);
 
   useEffect(() => {
@@ -173,7 +225,8 @@ function SessionLobby() {
     if (campaignId) query.set("campaignId", campaignId);
     if (sessionId) query.set("sessionId", sessionId);
     query.set("sessionName", data.title || nextSessionName);
-    navigate(`/session/dm?${query.toString()}`);
+    allowLobbyExitRef.current = true;
+    navigate(`/session/dm?${query.toString()}`, { replace: true });
   };
 
   const handleJoinLobby = () => {
@@ -206,9 +259,9 @@ function SessionLobby() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, campaign, lobbyNotice, isDM, currentUserJoined, isClosed, sessionId, token]);
 
-  const handleCancelSession = async () => {
+  const cancelSession = async ({ requireConfirmation = true } = {}) => {
     if (!sessionId || !token || !campaignId || actionPending) return;
-    if (!confirmCancel) {
+    if (requireConfirmation && !confirmCancel) {
       setConfirmCancel(true);
       return;
     }
@@ -226,11 +279,26 @@ function SessionLobby() {
       }
       clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
       removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
-      navigate(`/campaigns/${campaignId}`);
+      allowLobbyExitRef.current = true;
+      navigate(`/campaigns/${campaignId}`, { replace: true });
     } catch (err) {
       setLobbyError(err.message || "Failed to cancel session.");
       setActionPending("");
     }
+  };
+
+  const handleCancelSession = () => {
+    cancelSession();
+  };
+
+  const handleLeaveLobby = () => {
+    if (!isDM || isClosed || session?.startedAt) {
+      allowLobbyExitRef.current = true;
+      navigate(`/campaigns/${campaign._id}`, { replace: true });
+      return;
+    }
+
+    cancelSession({ requireConfirmation: false });
   };
 
   if (campaignLoading || sessionLoading) {
@@ -379,9 +447,14 @@ function SessionLobby() {
                 </>
               )}
 
-              <Link to={`/campaigns/${campaign._id}`} className="session-lobby__button session-lobby__button--ghost">
+              <button
+                type="button"
+                className="session-lobby__button session-lobby__button--ghost"
+                onClick={handleLeaveLobby}
+                disabled={Boolean(actionPending)}
+              >
                 Back to Campaign
-              </Link>
+              </button>
             </div>
 
             {lobbyError && <p className="session-lobby__error">{lobbyError}</p>}

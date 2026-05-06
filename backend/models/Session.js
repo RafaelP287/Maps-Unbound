@@ -74,6 +74,7 @@ const sessionSchema = new mongoose.Schema(
 );
 
 sessionSchema.index({ campaignId: 1, sessionNumber: 1, createdAt: 1 });
+sessionSchema.index({ campaignId: 1, status: 1, startedAt: -1, createdAt: -1 });
 
 const Session = mongoose.model("Session", sessionSchema);
 

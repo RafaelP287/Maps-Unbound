@@ -198,7 +198,7 @@ function CreateCharacter() {
       }
 
       clearCachePrefix("characters:list:");
-      navigate("/characters");
+      navigate("/characters", { replace: true });
     } catch (error) {
       setSubmitError(error.message);
     } finally {

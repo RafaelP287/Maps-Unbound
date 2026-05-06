@@ -24,7 +24,7 @@ function SessionPlayerView() {
     setNotice(message);
     setError("");
     bootTimeoutRef.current = window.setTimeout(() => {
-      navigate(campaignId ? `/campaigns/${campaignId}` : "/campaigns");
+      navigate(campaignId ? `/campaigns/${campaignId}` : "/campaigns", { replace: true });
     }, 3000);
   };
 

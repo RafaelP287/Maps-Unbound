@@ -48,6 +48,8 @@ function PartyFinder() {
   
   const toastTimerRef = useRef(null);
   const toastExitTimerRef = useRef(null);
+  const partyExitCleanupSentRef = useRef(false);
+  const partyExitCleanupRef = useRef(null);
 
   const [lobbyCodeInput, setLobbyCodeInput] = useState("");
   const [newPartyConfig, setNewPartyConfig] = useState({
@@ -92,18 +94,24 @@ function PartyFinder() {
 
   useEffect(() => {
     const handleUnload = () => {
-      if (user?.username) {
-        const payload = JSON.stringify({ username: user.username });
+      const cleanup = partyExitCleanupRef.current;
+      if (cleanup?.shouldLeaveOnExit) {
+        if (partyExitCleanupSentRef.current) return;
+        partyExitCleanupSentRef.current = true;
+        const payload = JSON.stringify({ username: cleanup.username });
         const blob = new Blob([payload], { type: "application/json" });
-        navigator.sendBeacon(`${apiServer}/api/parties/leave`, blob);
+        navigator.sendBeacon(cleanup.leaveUrl, blob);
       }
     };
 
     window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
     return () => {
       window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+      handleUnload();
     };
-  }, [user]);
+  }, []);
 
   const handleCreateParty = async (e) => {
     e.preventDefault();
@@ -224,16 +232,25 @@ function PartyFinder() {
     }
   };
 
-  if (!isLoggedIn) {
-    return <Gate>Sign in to find adventuring parties.</Gate>;
-  }
-
-  const ownedParty = parties.find((p) => p.owner === user.username);
-  const otherParties = parties.filter((p) => p.owner !== user.username);
-  const joinedParty = otherParties.find((p) => p.players.includes(user.username));
+  const username = user?.username || "";
+  const ownedParty = parties.find((p) => p.owner === username);
+  const otherParties = parties.filter((p) => p.owner !== username);
+  const joinedParty = otherParties.find((p) => p.players.includes(username));
 
   const isCurrentlyInParty = !!(ownedParty || joinedParty);
   const isExpanded = isCurrentlyInParty && !isLeaving;
+
+  useEffect(() => {
+    partyExitCleanupRef.current = {
+      leaveUrl: `${apiServer}/api/parties/leave`,
+      shouldLeaveOnExit: Boolean(isLoggedIn && user?.username && isCurrentlyInParty),
+      username: user?.username || "",
+    };
+  }, [isCurrentlyInParty, isLoggedIn, user?.username]);
+
+  if (!isLoggedIn) {
+    return <Gate>Sign in to find adventuring parties.</Gate>;
+  }
 
   return (
     <div style={styles.container}>
