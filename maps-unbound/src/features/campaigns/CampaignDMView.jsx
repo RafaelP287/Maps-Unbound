@@ -278,13 +278,11 @@ function CampaignDMView({ campaign, setCampaign }) {
         ? Math.max(0, ...sessions.map((session) => Number(session.sessionNumber) || 0)) + 1
         : 1;
       const title = `Session ${nextSessionNumber}`;
-      const createdAt = new Date().toISOString();
       const payload = {
         campaignId: campaign._id,
         title,
         sessionNumber: nextSessionNumber,
         status: "In Progress",
-        startedAt: createdAt,
         participants: campaign.members.filter((member) => member.role === "DM").map((member) => ({
           userId: member.userId?._id || member.userId,
           role: member.role,

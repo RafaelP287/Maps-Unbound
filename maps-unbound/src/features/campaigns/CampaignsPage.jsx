@@ -30,31 +30,23 @@ function CampaignsPage() {
     });
   }, [campaigns, user?.id]);
 
-  const fetchActiveCampaigns = useCallback(async (campaignList, { showLoading = true } = {}) => {
-    if (!Array.isArray(campaignList) || campaignList.length === 0 || !token) {
+  const fetchActiveCampaigns = useCallback(async ({ showLoading = true } = {}) => {
+    if (!token) {
       setActiveCampaigns([]);
       return;
     }
 
     if (showLoading) setActiveCampaignsLoading(true);
     try {
-      const activeSessionResults = await Promise.all(
-        campaignList.map(async (campaign) => {
-          const query = new URLSearchParams({ campaignId: campaign._id });
-          const res = await fetch(`/api/sessions?${query.toString()}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (!res.ok) return null;
-          const sessions = await res.json();
-          const activeSession = Array.isArray(sessions)
-            ? [...sessions]
-                .sort((a, b) => new Date(b.startedAt || b.createdAt || 0) - new Date(a.startedAt || a.createdAt || 0))
-                .find((session) => session.status === "In Progress")
-            : null;
-          return activeSession ? { campaign, session: activeSession } : null;
-        })
-      );
-      setActiveCampaigns(activeSessionResults.filter(Boolean));
+      const res = await fetch("/api/campaigns/active-sessions", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to load active campaigns");
+      }
+      const data = await res.json();
+      setActiveCampaigns(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Error fetching active campaigns:", err);
       setActiveCampaigns([]);
@@ -95,12 +87,12 @@ function CampaignsPage() {
         }
         setCampaigns(nextCampaigns);
         setCachedValue(cacheKey, nextCampaigns);
-        await fetchActiveCampaigns(nextCampaigns);
+        await fetchActiveCampaigns();
 
       } catch (err) {
         console.error("Error fetching campaigns:", err);
         if (!hasCachedCampaigns) setCampaigns([]); // Reset to empty array on cold network error
-        await fetchActiveCampaigns(cachedCampaigns || []);
+        await fetchActiveCampaigns();
       } finally { setLoading(false); }
     };
     fetchCampaigns();
@@ -110,7 +102,7 @@ function CampaignsPage() {
     if (!isLoggedIn || campaigns.length === 0) return;
 
     const refreshActiveCampaigns = () => {
-      fetchActiveCampaigns(campaigns, { showLoading: false });
+      fetchActiveCampaigns({ showLoading: false });
     };
     const intervalId = window.setInterval(refreshActiveCampaigns, 5000);
     const handleVisibilityChange = () => {
@@ -144,7 +136,6 @@ function CampaignsPage() {
           campaignId: campaign._id,
           title: "Session",
           status: "In Progress",
-          startedAt: new Date().toISOString(),
           participants: (campaign.members || []).filter((member) => member.role === "DM").map((member) => ({
             userId: member.userId?._id || member.userId,
             role: member.role,

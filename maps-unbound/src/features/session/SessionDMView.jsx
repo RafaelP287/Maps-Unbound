@@ -14,6 +14,16 @@ import LoadingPage from "../../shared/Loading.jsx";
 import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 
+const getUserId = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (value._id) return getUserId(value._id);
+    if (value.id) return getUserId(value.id);
+    if (value.$oid) return value.$oid;
+    const stringValue = value.toString?.();
+    return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+};
+
 function SessionDMView() {
     const navigate = useNavigate();
     const { user, token } = useAuth();
@@ -110,10 +120,34 @@ function SessionDMView() {
 
     const campaignName = loading ? "Loading..." : campaign?.title || "";
     const sessionName = currentSession?.title || sessionNameParam || "";
-    const players = (campaign?.members || [])
-        .filter((member) => member.role === "Player")
+    const campaignMembersById = useMemo(() => {
+        return new Map(
+            (campaign?.members || []).map((member) => [getUserId(member.userId), member])
+        );
+    }, [campaign?.members]);
+    const sessionParticipants = useMemo(() => {
+        const participants = Array.isArray(currentSession?.participants) ? currentSession.participants : [];
+        return participants
+            .map((participant) => {
+                const userId = getUserId(participant.userId || participant);
+                const campaignMember = campaignMembersById.get(userId);
+                const username = campaignMember?.userId?.username || participant.userId?.username || "";
+                const profileImageUrl = campaignMember?.userId?.profileImageUrl || participant.userId?.profileImageUrl || "";
+                const role = participant.role || campaignMember?.role || "Player";
+                return {
+                    userId,
+                    username,
+                    profileImageUrl,
+                    role,
+                    initial: username.slice(0, 1).toUpperCase() || (role === "DM" ? "D" : "?"),
+                };
+            })
+            .filter((participant) => participant.userId);
+    }, [campaignMembersById, currentSession?.participants]);
+    const players = sessionParticipants
+        .filter((participant) => participant.role === "Player")
         .map((member) => {
-            const username = member.userId?.username || "";
+            const username = member.username || "";
             return {
                 username,
                 initial: username.slice(0, 1).toUpperCase() || "",
@@ -497,7 +531,7 @@ function SessionDMView() {
         <div className={collapseClassName}>
             <SessionTopBar
                 campaignName={campaignName}
-                players={players}
+                players={sessionParticipants}
                 sceneName={sceneName}
                 sessionName={sessionName}
                 isCombatState={isCombatState}

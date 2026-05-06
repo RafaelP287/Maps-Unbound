@@ -112,6 +112,16 @@ function SessionLobby() {
   }, [sessionId, token, isDM, lobbyNotice]);
 
   useEffect(() => {
+    if (!session?.startedAt || isDM || lobbyNotice) return;
+
+    const query = new URLSearchParams();
+    if (campaignId) query.set("campaignId", campaignId);
+    if (sessionId) query.set("sessionId", sessionId);
+    query.set("sessionName", session.title || sessionName);
+    navigate(`/session/player?${query.toString()}`);
+  }, [campaignId, isDM, lobbyNotice, navigate, session, sessionId, sessionName]);
+
+  useEffect(() => {
     return () => {
       if (bootTimeoutRef.current) window.clearTimeout(bootTimeoutRef.current);
     };
@@ -141,7 +151,7 @@ function SessionLobby() {
     }
   };
 
-  const handleEnterDm = async () => {
+  const handleStartSession = async () => {
     if (!sessionId || !token) return;
     const nextSessionName = sessionName.trim() || "Session Name";
     const data = await runSessionAction("dm", () =>
@@ -153,6 +163,7 @@ function SessionLobby() {
         },
         body: JSON.stringify({
           title: nextSessionName,
+          startedAt: session?.startedAt || new Date().toISOString(),
         }),
       })
     );
@@ -338,10 +349,10 @@ function SessionLobby() {
                   <button
                     type="button"
                     className="session-lobby__button"
-                    onClick={handleEnterDm}
+                    onClick={handleStartSession}
                     disabled={Boolean(actionPending) || isClosed}
                   >
-                    {actionPending === "dm" ? "Opening..." : "Open DM Table"}
+                    {actionPending === "dm" ? "Starting..." : "Start Session"}
                   </button>
                   <button
                     type="button"

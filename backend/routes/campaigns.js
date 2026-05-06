@@ -1,6 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import Campaign from "../models/Campaign.js";
+import Session from "../models/Session.js";
 import User from "../models/User.js";
 
 const router = express.Router();
@@ -182,12 +183,52 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
+// Get active sessions for campaigns where the logged-in user is a member
+router.get("/active-sessions", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title description image playStyle maxPlayers startDate status members createdAt updatedAt")
+      .lean();
+    const campaignIds = campaigns.map((campaign) => campaign._id);
+    if (campaignIds.length === 0) {
+      return res.json([]);
+    }
+
+    const sessions = await Session.find({
+      campaignId: { $in: campaignIds },
+      status: "In Progress",
+    })
+      .select("campaignId title sessionNumber status scheduledFor startedAt endedAt summary participants tags createdAt updatedAt")
+      .sort({ startedAt: -1, createdAt: -1 })
+      .lean();
+
+    const campaignById = new Map(campaigns.map((campaign) => [campaign._id.toString(), campaign]));
+    const seenCampaignIds = new Set();
+    const activeCampaigns = [];
+
+    for (const session of sessions) {
+      const campaignId = session.campaignId?.toString();
+      if (!campaignId || seenCampaignIds.has(campaignId)) continue;
+
+      const campaign = campaignById.get(campaignId);
+      if (!campaign) continue;
+
+      seenCampaignIds.add(campaignId);
+      activeCampaigns.push({ campaign, session });
+    }
+
+    res.json(activeCampaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Get a campaign by ID — only if the user is a member
 router.get("/:id", verifyToken, async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id).populate(
       "members.userId",
-      "username email"
+      "username email profileImageUrl"
     ).lean();
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 

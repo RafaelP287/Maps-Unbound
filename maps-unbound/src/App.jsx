@@ -10,6 +10,7 @@ import MapsPage from "./features/maps/MapsPage.jsx";
 
 import Session from "./features/session/Session.jsx";
 import SessionDMView from "./features/session/SessionDMView.jsx";
+import SessionPlayerView from "./features/session/SessionPlayerView.jsx";
 
 import Campaigns from "./features/campaigns/CampaignsPage.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
@@ -312,6 +313,7 @@ function App() {
         <Route path="session" element={<SessionLayout />}>
           <Route index element={<Session />} />
           <Route path="dm" element={<SessionDMView />} />
+          <Route path="player" element={<SessionPlayerView />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
