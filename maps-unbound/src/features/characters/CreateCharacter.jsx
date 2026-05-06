@@ -1,577 +1,781 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { createElement, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Check,
+  HeartPulse,
+  Plus,
+  Save,
+  Shield,
+  Sparkles,
+  Swords,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
-import Button from "../../shared/Button.jsx";
+import Gate from "../../shared/Gate.jsx";
+import { clearCachePrefix } from "../../shared/dataCache.js";
+import {
+  ABILITY_FIELDS,
+  ALIGNMENT_OPTIONS,
+  BACKGROUND_OPTIONS,
+  CLASS_OPTIONS,
+  DEFAULT_ATTACK,
+  DEFAULT_CHARACTER_FORM,
+  RACE_OPTIONS,
+  SKILL_FIELDS,
+  abilityModifier,
+  buildCharacterPayload,
+  formatModifier,
+  getCharacterImage,
+  optionName,
+  proficiencyBonus,
+  suggestedHitDice,
+} from "./characterFormData.js";
 
-// Leveling utility (client-side version)
-const getStartingAbilityScores = (race) => {
-  const raceAbilityMods = {
-    Human: { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 0 },
-    Elf: { STR: 0, DEX: 2, CON: 0, INT: 0, WIS: 0, CHA: 0 },
-    Dwarf: { STR: 0, DEX: 0, CON: 2, INT: 0, WIS: 0, CHA: 0 },
-    Halfling: { STR: 0, DEX: 2, CON: 0, INT: 0, WIS: 0, CHA: 0 },
-    Dragonborn: { STR: 2, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 1 },
-    Gnome: { STR: 0, DEX: 0, CON: 0, INT: 2, WIS: 0, CHA: 0 },
-    'Half-Elf': { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 2 },
-    'Half-Orc': { STR: 2, DEX: 0, CON: 1, INT: 0, WIS: 0, CHA: 0 },
-    Tiefling: { STR: 0, DEX: 0, CON: 0, INT: 0, WIS: 0, CHA: 2 },
-  };
+const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 
-  const baseScores = { STR: 15, DEX: 14, CON: 13, INT: 12, WIS: 10, CHA: 8 };
-  const mods = raceAbilityMods[race] || {};
+const steps = [
+  { label: "Origin", icon: UserRound },
+  { label: "Abilities", icon: Sparkles },
+  { label: "Combat", icon: Shield },
+  { label: "Training", icon: BookOpen },
+  { label: "Story", icon: Swords },
+];
 
-  return {
-    STR: Math.min(20, Math.max(1, baseScores.STR + (mods.STR || 0))),
-    DEX: Math.min(20, Math.max(1, baseScores.DEX + (mods.DEX || 0))),
-    CON: Math.min(20, Math.max(1, baseScores.CON + (mods.CON || 0))),
-    INT: Math.min(20, Math.max(1, baseScores.INT + (mods.INT || 0))),
-    WIS: Math.min(20, Math.max(1, baseScores.WIS + (mods.WIS || 0))),
-    CHA: Math.min(20, Math.max(1, baseScores.CHA + (mods.CHA || 0))),
-  };
-};
-
-const getClassSpells = (charClass, level) => {
-  const spellData = {
-    Wizard: ['Magic Missile', 'Mage Armor', 'Identify', ...(level >= 5 ? ['Fireball'] : [])],
-    Cleric: ['Cure Wounds', 'Bless', 'Guiding Bolt', ...(level >= 3 ? ['Lesser Restoration'] : [])],
-    Warlock: ['Eldritch Blast', 'Hex', ...(level >= 3 ? ['Darkness'] : [])],
-    Sorcerer: ['Fire Bolt', 'Mage Armor', ...(level >= 5 ? ['Fireball'] : [])],
-    Bard: ['Vicious Mockery', 'Healing Word', 'Tasha\'s Hideous Laughter', ...(level >= 3 ? ['Suggestion'] : [])],
-    Druid: ['Druidcraft', 'Goodberry', 'Thunderwave', ...(level >= 5 ? ['Call Lightning'] : [])],
-    Ranger: ['Hunter\'s Mark', 'Goodberry', ...(level >= 5 ? ['Pass Without Trace'] : [])],
-    Paladin: [...(level >= 2 ? ['Bless', 'Cure Wounds'] : []), ...(level >= 5 ? ['Lesser Restoration'] : [])],
-  };
-  return spellData[charClass] || [];
-};
-
-const getProficiencyBonus = (level) => {
-  const profTable = { 1: 2, 2: 2, 3: 2, 4: 2, 5: 3, 6: 3, 7: 3, 8: 3, 9: 4, 10: 4,
-    11: 4, 12: 4, 13: 5, 14: 5, 15: 5, 16: 5, 17: 6, 18: 6, 19: 6, 20: 6 };
-  return profTable[Math.min(level, 20)] || 2;
-};
-
-const CreateCharacter = () => {
+function CreateCharacter() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { token } = useAuth();
-  const selectedCharacterId = searchParams.get("characterId") || "";
-  const [formData, setFormData] = useState({
-    name: "",
-    class: "",
-    race: "",
-    level: 1,
-    abilityScores: {
-      strength: 15,
-      dexterity: 14,
-      constitution: 13,
-      intelligence: 12,
-      wisdom: 10,
-      charisma: 8,
-    },
-    inspiration: 0,
-    personalityTraits: "",
-    ideals: "",
-    bonds: "",
-    flaws: "",
-  });
-  const [showPreview, setShowPreview] = useState(false);
-  const [preview, setPreview] = useState(null);
-  const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
-  const [loadingCharacter, setLoadingCharacter] = useState(Boolean(selectedCharacterId));
-  const [loading, setLoading] = useState(false);
+  const { user, token, isLoggedIn, loading: authLoading } = useAuth();
+  const [step, setStep] = useState(0);
+  const [formData, setFormData] = useState(DEFAULT_CHARACTER_FORM);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
-  const applyCharacterToForm = (character) => {
-    if (!character) {
-      return;
-    }
-    setFormData({
-      name: character.name || "",
-      class: character.class || "",
-      race: character.race || "",
-      level: character.level || 1,
-      abilityScores: character.abilityScores || {
-        strength: 15,
-        dexterity: 14,
-        constitution: 13,
-        intelligence: 12,
-        wisdom: 10,
-        charisma: 8,
-      },
-      inspiration: character.inspiration || 0,
-      personalityTraits: character.personalityTraits || "",
-      ideals: character.ideals || "",
-      bonds: character.bonds || "",
-      flaws: character.flaws || "",
-    });
+  const className = optionName(CLASS_OPTIONS, formData.characterClass);
+  const raceName = optionName(RACE_OPTIONS, formData.race);
+  const backgroundName = optionName(BACKGROUND_OPTIONS, formData.background);
+  const armorClass = Number(formData.armorClass) || 10;
+  const maxHp = Number(formData.hp.max) || 1;
+  const passivePerception = Number(formData.passivePerception) || 10;
+
+  const selectedSkillCount = useMemo(
+    () => formData.skillProficiencies.length,
+    [formData.skillProficiencies],
+  );
+
+  if (authLoading) {
+    return <div className="character-status">Loading your character vault...</div>;
+  }
+
+  if (!isLoggedIn) {
+    return <Gate>Sign in to access your characters.</Gate>;
+  }
+
+  const updateField = (name, value) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  useEffect(() => {
-    const fetchCharacter = async () => {
-      if (!selectedCharacterId || !token) {
-        setLoadingCharacter(false);
-        return;
-      }
-
-      try {
-        setLoadingCharacter(true);
-        const response = await fetch(`http://localhost:5001/api/characters/${selectedCharacterId}`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load character");
-        }
-
-        const data = await response.json();
-        applyCharacterToForm(data);
-      } catch (err) {
-        setError(err.message || "Failed to load character");
-      } finally {
-        setLoadingCharacter(false);
-      }
-    };
-
-    fetchCharacter();
-  }, [token, selectedCharacterId]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+  const updateNestedField = (section, name, value) => {
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [section]: {
+        ...prev[section],
+        [name]: value,
+      },
     }));
-    setShowPreview(false);
   };
 
-  const generatePreview = () => {
-    if (!formData.class || !formData.race) {
-      setError("Please select both class and race");
+  const updateAbility = (ability, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      attributes: {
+        ...prev.attributes,
+        [ability]: value,
+      },
+      passivePerception:
+        ability === "wis"
+          ? 10 +
+            abilityModifier(value) +
+            (prev.skillProficiencies.includes("perception") ? proficiencyBonus(prev.level) : 0)
+          : prev.passivePerception,
+    }));
+  };
+
+  const updateClass = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      characterClass: value,
+      hitDice: suggestedHitDice(value, prev.level),
+    }));
+  };
+
+  const updateLevel = (value) => {
+    setFormData((prev) => ({
+      ...prev,
+      level: value,
+      hitDice: suggestedHitDice(prev.characterClass, value),
+    }));
+  };
+
+  const toggleSkill = (skillIndex) => {
+    setFormData((prev) => {
+      const hasSkill = prev.skillProficiencies.includes(skillIndex);
+      const nextSkills = hasSkill
+        ? prev.skillProficiencies.filter((skill) => skill !== skillIndex)
+        : [...prev.skillProficiencies, skillIndex];
+
+      return {
+        ...prev,
+        skillProficiencies: nextSkills,
+        passivePerception:
+          skillIndex === "perception"
+            ? 10 +
+              abilityModifier(prev.attributes.wis) +
+              (!hasSkill ? proficiencyBonus(prev.level) : 0)
+            : prev.passivePerception,
+      };
+    });
+  };
+
+  const updateAttack = (index, name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      attacks: prev.attacks.map((attack, attackIndex) =>
+        attackIndex === index ? { ...attack, [name]: value } : attack,
+      ),
+    }));
+  };
+
+  const addAttack = () => {
+    setFormData((prev) => ({
+      ...prev,
+      attacks: [...prev.attacks, { ...DEFAULT_ATTACK }],
+    }));
+  };
+
+  const removeAttack = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      attacks: prev.attacks.length === 1 ? [{ ...DEFAULT_ATTACK }] : prev.attacks.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitError("");
+
+    if (step < steps.length - 1) {
+      setStep((current) => current + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    const abilityScores = getStartingAbilityScores(formData.race);
-    const profBonus = getProficiencyBonus(formData.level);
-    const dexMod = Math.floor((abilityScores.DEX - 10) / 2);
-    const spells = getClassSpells(formData.class, formData.level);
-    
-    setPreview({
-      abilityScores,
-      proficiencyBonus: profBonus,
-      ac: 10 + dexMod,
-      spells,
-    });
-    setShowPreview(true);
-  };
+    const payload = buildCharacterPayload(formData, user?.username || "");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setStatus("");
-    setLoading(true);
+    if (payload.name.length < 2) {
+      setSubmitError("Character name must be at least 2 characters.");
+      setStep(0);
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      const endpoint = selectedCharacterId
-        ? `http://localhost:5001/api/characters/${selectedCharacterId}`
-        : "http://localhost:5001/api/characters";
-
-      // Prepare full character data with auto-generated stats
-      const abilityScores = getStartingAbilityScores(formData.race);
-      const profBonus = getProficiencyBonus(formData.level);
-      const dexMod = Math.floor((abilityScores.DEX - 10) / 2);
-      const charData = {
-        ...formData,
-        abilityScores,
-        proficiencyBonus: profBonus,
-        armorClass: 10 + dexMod,
-        spellcasting: {
-          canCastSpells: ['Wizard', 'Cleric', 'Warlock', 'Sorcerer', 'Bard', 'Druid', 'Ranger', 'Paladin'].includes(formData.class),
-          spellsKnown: getClassSpells(formData.class, formData.level),
-        },
-      };
-
-      const response = await fetch(endpoint, {
-        method: selectedCharacterId ? "PUT" : "POST",
+      const response = await fetch(`${API_SERVER}/api/characters`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify(charData)
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create character");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || errorData.message || "Failed to save character.");
       }
 
-      const data = await response.json();
-
-      if (selectedCharacterId) {
-        setStatus("Character updated successfully.");
-      } else {
-        setStatus("Character created successfully.");
-        const savedCharacter = data.character;
-        if (savedCharacter) applyCharacterToForm(savedCharacter);
-      }
-
-      navigate("/characters");
-    } catch (err) {
-      console.error("Character creation error:", err);
-      setError(err.message || "Failed to save character. Please try again.");
+      clearCachePrefix("characters:list:");
+      navigate("/characters", { replace: true });
+    } catch (error) {
+      setSubmitError(error.message);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  const goBack = () => {
+    if (step === 0) {
+      navigate("/characters");
+      return;
+    }
+
+    setStep((current) => current - 1);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <div style={styles.container}>
-      <h1 style={styles.title}>{selectedCharacterId ? "Edit Character" : "Create Character"}</h1>
-      {loadingCharacter && <p style={styles.loadingText}>Loading character...</p>}
-      {error && <div style={styles.error}>{error}</div>}
-      {status && <div style={styles.success}>{status}</div>}
-      <form onSubmit={handleSubmit} style={styles.form}>
-        <div style={styles.field}>
-          <label style={styles.label}>Character Name</label>
-          <input
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            style={styles.input}
-            placeholder="Enter character name"
-            required
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Class</label>
-          <select
-            name="class"
-            value={formData.class}
-            onChange={handleChange}
-            style={styles.input}
-            required
-          >
-            <option value="">Select a class</option>
-            <option value="Barbarian">Barbarian</option>
-            <option value="Bard">Bard</option>
-            <option value="Cleric">Cleric</option>
-            <option value="Druid">Druid</option>
-            <option value="Fighter">Fighter</option>
-            <option value="Monk">Monk</option>
-            <option value="Paladin">Paladin</option>
-            <option value="Ranger">Ranger</option>
-            <option value="Rogue">Rogue</option>
-            <option value="Sorcerer">Sorcerer</option>
-            <option value="Warlock">Warlock</option>
-            <option value="Wizard">Wizard</option>
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Race</label>
-          <select
-            name="race"
-            value={formData.race}
-            onChange={handleChange}
-            style={styles.input}
-            required
-          >
-            <option value="">Select a race</option>
-            <option value="Human">Human</option>
-            <option value="Elf">Elf</option>
-            <option value="Dwarf">Dwarf</option>
-            <option value="Halfling">Halfling</option>
-            <option value="Dragonborn">Dragonborn</option>
-            <option value="Gnome">Gnome</option>
-            <option value="Half-Elf">Half-Elf</option>
-            <option value="Half-Orc">Half-Orc</option>
-            <option value="Tiefling">Tiefling</option>
-          </select>
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Starting Level</label>
-          <input
-            type="number"
-            name="level"
-            value={formData.level}
-            onChange={handleChange}
-            style={styles.input}
-            min="1"
-            max="20"
-            required
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Inspiration Points</label>
-          <input
-            type="number"
-            name="inspiration"
-            value={formData.inspiration}
-            onChange={handleChange}
-            style={styles.input}
-            min="0"
-            max="10"
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Personality Traits</label>
-          <textarea
-            name="personalityTraits"
-            value={formData.personalityTraits}
-            onChange={handleChange}
-            style={{...styles.input, minHeight: "80px"}}
-            placeholder="Describe your character's personality traits..."
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Ideals</label>
-          <textarea
-            name="ideals"
-            value={formData.ideals}
-            onChange={handleChange}
-            style={{...styles.input, minHeight: "80px"}}
-            placeholder="What ideals does your character hold dear?"
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Bonds</label>
-          <textarea
-            name="bonds"
-            value={formData.bonds}
-            onChange={handleChange}
-            style={{...styles.input, minHeight: "80px"}}
-            placeholder="Describe your character's bonds..."
-          />
-        </div>
-
-        <div style={styles.field}>
-          <label style={styles.label}>Flaws</label>
-          <textarea
-            name="flaws"
-            value={formData.flaws}
-            onChange={handleChange}
-            style={{...styles.input, minHeight: "80px"}}
-            placeholder="What flaws or weaknesses does your character have?"
-          />
-        </div>
-
-        {!selectedCharacterId && (
-          <button type="button" onClick={generatePreview} style={styles.previewBtn}>
-            Preview Auto-Generated Stats
-          </button>
-        )}
-
-        {showPreview && preview && (
-          <div style={styles.previewPanel}>
-            <h3 style={styles.previewTitle}>Character Preview</h3>
-            <div style={styles.abilityGrid}>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>STR</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.STR}</span>
-              </div>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>DEX</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.DEX}</span>
-              </div>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>CON</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.CON}</span>
-              </div>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>INT</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.INT}</span>
-              </div>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>WIS</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.WIS}</span>
-              </div>
-              <div style={styles.abilityBox}>
-                <span style={styles.abilityLabel}>CHA</span>
-                <span style={styles.abilityScore}>{preview.abilityScores.CHA}</span>
-              </div>
-            </div>
-            <div style={styles.previewStats}>
-              <div>AC: <strong>{preview.ac}</strong></div>
-              <div>Proficiency Bonus: <strong>+{preview.proficiencyBonus}</strong></div>
-            </div>
-            {preview.spells.length > 0 && (
-              <div style={styles.spellsPreview}>
-                <strong>Spells Known:</strong>
-                <ul style={styles.spellsList}>
-                  {preview.spells.map((spell) => (
-                    <li key={spell}>{spell}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+    <div className="character-page">
+      <div className="character-shell">
+        <header className="character-header">
+          <div className="character-header-copy">
+            <p className="character-eyebrow">Character Forge</p>
+            <h1 className="character-title">Create a Character</h1>
+            <p className="character-subtitle">
+              Build the sheet in order: concept, abilities, combat, proficiencies, and story.
+            </p>
           </div>
-        )}
 
-        <div style={styles.buttons}>
-          <button type="button" onClick={() => navigate("/characters")} style={styles.cancelBtn}>
-            Cancel
-          </button>
-          <Button type="submit" disabled={loading}>
-            {loading
-              ? (selectedCharacterId ? "Saving..." : "Creating...")
-              : (selectedCharacterId ? "Save Updates" : "Create Character")}
-          </Button>
+          <Link to="/characters" className="character-btn-link character-btn-secondary">
+            <ArrowLeft aria-hidden="true" />
+            My Characters
+          </Link>
+        </header>
+
+        <div className="character-form-layout">
+          <aside className="character-preview-panel" aria-label="Character preview">
+            <div
+              className="character-preview-art"
+            >
+              <img className="character-preview-img" src={getCharacterImage(formData.characterClass)} alt="" />
+            </div>
+            <div className="character-preview-body">
+              <h2 className="character-preview-name">{formData.name || "Unnamed Hero"}</h2>
+              <p className="character-preview-meta">
+                Level {formData.level || 1} {raceName} {className}
+              </p>
+              <div className="character-preview-stats">
+                <div className="character-preview-stat">
+                  <span>Armor</span>
+                  <strong>{armorClass}</strong>
+                </div>
+                <div className="character-preview-stat">
+                  <span>Hit Points</span>
+                  <strong>{maxHp}</strong>
+                </div>
+                <div className="character-preview-stat">
+                  <span>Passive</span>
+                  <strong>{passivePerception}</strong>
+                </div>
+                <div className="character-preview-stat">
+                  <span>Prof.</span>
+                  <strong>+{proficiencyBonus(formData.level)}</strong>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <form className="character-form-panel" onSubmit={handleSubmit}>
+            <nav className="character-stepper" aria-label="Character creation steps">
+              {steps.map((item, index) => (
+                <div
+                  className={`character-step-pill ${index === step ? "is-active" : ""} ${
+                    index < step ? "is-complete" : ""
+                  }`}
+                  key={item.label}
+                >
+                  <span className="character-step-number">{index < step ? <Check aria-hidden="true" /> : index + 1}</span>
+                  <span className="character-step-label">{item.label}</span>
+                </div>
+              ))}
+            </nav>
+
+            {submitError && <div className="character-error">{submitError}</div>}
+
+            {step === 0 && (
+              <section className="character-section">
+                <SectionHeader
+                  icon={UserRound}
+                  title="Origin"
+                  subtitle="Name the hero and set the foundation of the sheet."
+                />
+
+                <div className="character-field-grid">
+                  <label className="character-field span-2">
+                    <span className="character-label">Character Name</span>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(event) => updateField("name", event.target.value)}
+                      placeholder="Seraphina Emberfall"
+                      minLength={2}
+                      maxLength={30}
+                      required
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Class</span>
+                    <select
+                      value={formData.characterClass}
+                      onChange={(event) => updateClass(event.target.value)}
+                      required
+                    >
+                      {CLASS_OPTIONS.map((option) => (
+                        <option key={option.index} value={option.index}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Level</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={formData.level}
+                      onChange={(event) => updateLevel(event.target.value)}
+                      required
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Race</span>
+                    <select value={formData.race} onChange={(event) => updateField("race", event.target.value)}>
+                      {RACE_OPTIONS.map((option) => (
+                        <option key={option.index} value={option.index}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Background</span>
+                    <select
+                      value={formData.background}
+                      onChange={(event) => updateField("background", event.target.value)}
+                    >
+                      {BACKGROUND_OPTIONS.map((option) => (
+                        <option key={option.index} value={option.index}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Alignment</span>
+                    <select
+                      value={formData.alignment}
+                      onChange={(event) => updateField("alignment", event.target.value)}
+                    >
+                      {ALIGNMENT_OPTIONS.map((option) => (
+                        <option key={option.index} value={option.index}>
+                          {option.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Experience</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.experience}
+                      onChange={(event) => updateField("experience", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-checkbox-row span-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.inspiration}
+                      onChange={(event) => updateField("inspiration", event.target.checked)}
+                    />
+                    Inspiration
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {step === 1 && (
+              <section className="character-section">
+                <SectionHeader
+                  icon={Sparkles}
+                  title="Ability Scores"
+                  subtitle="Set the six core abilities and review their modifiers."
+                />
+
+                <div className="character-ability-grid">
+                  {ABILITY_FIELDS.map((ability) => (
+                    <div className="character-ability-card" key={ability.key}>
+                      <label htmlFor={`ability-${ability.key}`}>{ability.short}</label>
+                      <input
+                        id={`ability-${ability.key}`}
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={formData.attributes[ability.key]}
+                        onChange={(event) => updateAbility(ability.key, event.target.value)}
+                        required
+                      />
+                      <span className="character-ability-mod">{formatModifier(formData.attributes[ability.key])}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {step === 2 && (
+              <section className="character-section">
+                <SectionHeader
+                  icon={HeartPulse}
+                  title="Combat"
+                  subtitle="Add the quick-reference values used most often at the table."
+                />
+
+                <div className="character-field-grid three">
+                  <label className="character-field">
+                    <span className="character-label">Armor Class</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.armorClass}
+                      onChange={(event) => updateField("armorClass", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Initiative</span>
+                    <input
+                      type="number"
+                      value={formData.initiative}
+                      onChange={(event) => updateField("initiative", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Speed</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.speed}
+                      onChange={(event) => updateField("speed", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Current HP</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.hp.current}
+                      onChange={(event) => updateNestedField("hp", "current", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Max HP</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.hp.max}
+                      onChange={(event) => updateNestedField("hp", "max", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Temp HP</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.temporaryHp}
+                      onChange={(event) => updateField("temporaryHp", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Hit Dice</span>
+                    <input
+                      type="text"
+                      value={formData.hitDice}
+                      onChange={(event) => updateField("hitDice", event.target.value)}
+                      placeholder="1d10"
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Passive Perception</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={formData.passivePerception}
+                      onChange={(event) => updateField("passivePerception", event.target.value)}
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Death Saves</span>
+                    <div className="character-field-grid">
+                      <input
+                        aria-label="Death save successes"
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={formData.deathSaves.successes}
+                        onChange={(event) => updateNestedField("deathSaves", "successes", event.target.value)}
+                        placeholder="Successes"
+                      />
+                      <input
+                        aria-label="Death save failures"
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={formData.deathSaves.failures}
+                        onChange={(event) => updateNestedField("deathSaves", "failures", event.target.value)}
+                        placeholder="Failures"
+                      />
+                    </div>
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {step === 3 && (
+              <section className="character-section">
+                <SectionHeader
+                  icon={BookOpen}
+                  title="Training"
+                  subtitle="Track skill proficiencies, languages, tools, armor, and weapons."
+                />
+
+                <div>
+                  <span className="character-label">Skill Proficiencies</span>
+                  <p className="character-helper">{selectedSkillCount} selected</p>
+                  <div className="character-skill-grid">
+                    {SKILL_FIELDS.map((skill) => (
+                      <label className="character-skill-toggle" key={skill.index}>
+                        <input
+                          type="checkbox"
+                          checked={formData.skillProficiencies.includes(skill.index)}
+                          onChange={() => toggleSkill(skill.index)}
+                        />
+                        <span className="character-skill-name">{skill.name}</span>
+                        <span className="character-skill-ability">{skill.ability}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="character-field-grid">
+                  <label className="character-field">
+                    <span className="character-label">Languages</span>
+                    <textarea
+                      rows="4"
+                      value={formData.languages}
+                      onChange={(event) => updateField("languages", event.target.value)}
+                      placeholder="Common"
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Tools</span>
+                    <textarea
+                      rows="4"
+                      value={formData.toolProficiencies}
+                      onChange={(event) => updateField("toolProficiencies", event.target.value)}
+                      placeholder="Thieves' tools"
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Weapons</span>
+                    <textarea
+                      rows="4"
+                      value={formData.weaponProficiencies}
+                      onChange={(event) => updateField("weaponProficiencies", event.target.value)}
+                      placeholder="Simple weapons"
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Armor</span>
+                    <textarea
+                      rows="4"
+                      value={formData.armorProficiencies}
+                      onChange={(event) => updateField("armorProficiencies", event.target.value)}
+                      placeholder="Light armor"
+                    />
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {step === 4 && (
+              <section className="character-section">
+                <SectionHeader
+                  icon={Swords}
+                  title="Story and Actions"
+                  subtitle="Round out the roleplay notes and the attacks panel."
+                />
+
+                <div className="character-field-grid">
+                  <label className="character-field">
+                    <span className="character-label">Personality Traits</span>
+                    <textarea
+                      rows="4"
+                      value={formData.personalityTraits}
+                      onChange={(event) => updateField("personalityTraits", event.target.value)}
+                      placeholder="Quiet until the blades come out."
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Ideals</span>
+                    <textarea
+                      rows="4"
+                      value={formData.ideals}
+                      onChange={(event) => updateField("ideals", event.target.value)}
+                      placeholder="Freedom, honor, discovery..."
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Bonds</span>
+                    <textarea
+                      rows="4"
+                      value={formData.bonds}
+                      onChange={(event) => updateField("bonds", event.target.value)}
+                      placeholder="A lost mentor, a family oath..."
+                    />
+                  </label>
+
+                  <label className="character-field">
+                    <span className="character-label">Flaws</span>
+                    <textarea
+                      rows="4"
+                      value={formData.flaws}
+                      onChange={(event) => updateField("flaws", event.target.value)}
+                      placeholder="Too curious for locked doors."
+                    />
+                  </label>
+
+                  <label className="character-field span-2">
+                    <span className="character-label">Features and Traits</span>
+                    <textarea
+                      rows="5"
+                      value={formData.featuresAndTraits}
+                      onChange={(event) => updateField("featuresAndTraits", event.target.value)}
+                      placeholder="Second Wind, Darkvision, Sneak Attack..."
+                    />
+                  </label>
+                </div>
+
+                <div className="character-attack-list">
+                  <div className="character-editor-toolbar">
+                    <div>
+                      <span className="character-label">Attacks and Spellcasting</span>
+                      <p className="character-helper">Quick attacks, cantrips, or signature actions.</p>
+                    </div>
+                    <button type="button" className="character-button character-btn-secondary" onClick={addAttack}>
+                      <Plus aria-hidden="true" />
+                      Add
+                    </button>
+                  </div>
+
+                  {formData.attacks.map((attack, index) => (
+                    <div className="character-attack-row" key={`attack-${index}`}>
+                      <label className="character-field">
+                        <span className="character-label">Name</span>
+                        <input
+                          type="text"
+                          value={attack.name}
+                          onChange={(event) => updateAttack(index, "name", event.target.value)}
+                          placeholder="Longsword"
+                        />
+                      </label>
+                      <label className="character-field">
+                        <span className="character-label">Bonus</span>
+                        <input
+                          type="text"
+                          value={attack.attackBonus}
+                          onChange={(event) => updateAttack(index, "attackBonus", event.target.value)}
+                          placeholder="+5"
+                        />
+                      </label>
+                      <label className="character-field">
+                        <span className="character-label">Damage</span>
+                        <input
+                          type="text"
+                          value={attack.damageAndType}
+                          onChange={(event) => updateAttack(index, "damageAndType", event.target.value)}
+                          placeholder="1d8+3 slashing"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="character-icon-button character-btn-danger"
+                        onClick={() => removeAttack(index)}
+                        aria-label="Remove attack"
+                      >
+                        <Trash2 aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="character-review-grid">
+                  <ReviewItem label="Origin" value={`${raceName} ${className}`} />
+                  <ReviewItem label="Background" value={backgroundName} />
+                  <ReviewItem label="Proficiency" value={`+${proficiencyBonus(formData.level)}`} />
+                </div>
+              </section>
+            )}
+
+            <div className="character-form-actions">
+              <button type="button" className="character-button character-btn-secondary" onClick={goBack} disabled={isSubmitting}>
+                <ArrowLeft aria-hidden="true" />
+                {step === 0 ? "Cancel" : "Back"}
+              </button>
+
+              <button type="submit" className="character-button character-btn-save" disabled={isSubmitting}>
+                {step < steps.length - 1 ? (
+                  <>
+                    Next
+                    <ArrowRight aria-hidden="true" />
+                  </>
+                ) : (
+                  <>
+                    <Save aria-hidden="true" />
+                    {isSubmitting ? "Saving..." : "Create Character"}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
-};
+}
 
-const styles = {
-  container: {
-    maxWidth: "600px",
-    margin: "0 auto",
-    padding: "20px"
-  },
-  title: {
-    textAlign: "center",
-    color: "var(--gold-light)",
-    marginBottom: "30px"
-  },
-  error: {
-    backgroundColor: "#ff4444",
-    color: "#fff",
-    padding: "12px",
-    borderRadius: "6px",
-    marginBottom: "20px",
-    fontSize: "14px"
-  },
-  success: {
-    backgroundColor: "rgba(76, 175, 130, 0.2)",
-    border: "1px solid rgba(76, 175, 130, 0.55)",
-    color: "#d2ffea",
-    padding: "12px",
-    borderRadius: "6px",
-    marginBottom: "20px",
-    fontSize: "14px"
-  },
-  loadingText: {
-    color: "#d4c5a9",
-    marginBottom: "14px",
-    textAlign: "center"
-  },
-  form: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px"
-  },
-  field: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px"
-  },
-  label: {
-    color: "#fff",
-    fontSize: "16px",
-    fontWeight: "500"
-  },
-  input: {
-    padding: "10px",
-    fontSize: "16px",
-    borderRadius: "6px",
-    border: "1px solid #333",
-    backgroundColor: "#222",
-    color: "#fff"
-  },
-  previewBtn: {
-    padding: "12px",
-    fontSize: "14px",
-    borderRadius: "6px",
-    border: "1px solid rgba(201, 168, 76, 0.5)",
-    backgroundColor: "rgba(201, 168, 76, 0.1)",
-    color: "var(--gold-light)",
-    cursor: "pointer",
-    fontWeight: "600",
-    transition: "all 0.2s ease",
-  },
-  previewPanel: {
-    padding: "20px",
-    borderRadius: "12px",
-    border: "1px solid rgba(201, 168, 76, 0.3)",
-    backgroundColor: "rgba(201, 168, 76, 0.05)",
-    marginTop: "10px",
-  },
-  previewTitle: {
-    color: "var(--gold-light)",
-    marginTop: 0,
-    marginBottom: "15px",
-    fontSize: "16px",
-  },
-  abilityGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "10px",
-    marginBottom: "15px",
-  },
-  abilityBox: {
-    padding: "12px",
-    borderRadius: "8px",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
-    border: "1px solid rgba(201, 168, 76, 0.2)",
-    textAlign: "center",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-  },
-  abilityLabel: {
-    fontSize: "12px",
-    color: "var(--text-muted)",
-    textTransform: "uppercase",
-    fontWeight: "600",
-  },
-  abilityScore: {
-    fontSize: "18px",
-    color: "var(--gold-light)",
-    fontWeight: "700",
-  },
-  previewStats: {
-    display: "flex",
-    gap: "20px",
-    padding: "12px 0",
-    borderTop: "1px solid rgba(201, 168, 76, 0.2)",
-    borderBottom: "1px solid rgba(201, 168, 76, 0.2)",
-    color: "#fff",
-    marginBottom: "15px",
-  },
-  spellsPreview: {
-    marginTop: "15px",
-  },
-  spellsList: {
-    listStyle: "none",
-    padding: "10px 0",
-    margin: 0,
-    color: "#d4c5a9",
-    fontSize: "14px",
-  },
-  buttons: {
-    display: "flex",
-    gap: "10px",
-    justifyContent: "center",
-    marginTop: "20px"
-  },
-  cancelBtn: {
-    padding: "10px 20px",
-    fontSize: "16px",
-    borderRadius: "6px",
-    border: "1px solid #666",
-    backgroundColor: "#333",
-    color: "#fff",
-    cursor: "pointer"
-  }
-};
+function SectionHeader({ icon, title, subtitle }) {
+  return (
+    <header className="character-section-head">
+      <span className="character-section-icon">
+        {createElement(icon, { "aria-hidden": "true" })}
+      </span>
+      <div>
+        <h2 className="character-section-title">{title}</h2>
+        <p className="character-section-subtitle">{subtitle}</p>
+      </div>
+    </header>
+  );
+}
+
+function ReviewItem({ label, value }) {
+  return (
+    <div className="character-review-item">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
 
 export default CreateCharacter;

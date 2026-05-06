@@ -1,0 +1,427 @@
+.campaign-journal-content {
+  padding-top: 2.5rem;
+}
+
+.campaign-journal-header {
+  padding-top: 1.5rem;
+}
+
+.campaign-journal-subheader {
+  margin: 0;
+  color: #d8c4a5;
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+.campaign-journal-eyebrow,
+.campaign-journal-callout-label {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-journal-title {
+  margin: 0;
+  color: #f4e0ad;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.campaign-journal-text,
+.campaign-journal-callout-text {
+  margin: 0;
+  color: #deccb0;
+  line-height: 1.6;
+}
+
+.campaign-journal-hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.campaign-journal-hero-copy,
+.campaign-journal-callout,
+.campaign-journal-placeholder {
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  background: rgba(0, 0, 0, 0.28);
+  padding: 1.35rem 1.45rem;
+}
+
+.campaign-journal-hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.campaign-journal-callout {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.12) 0%, rgba(201, 168, 76, 0.02) 48%),
+    rgba(0, 0, 0, 0.34);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.campaign-journal-placeholder {
+  margin-top: 0.75rem;
+}
+
+.campaign-journal-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+.campaign-journal-stat {
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.campaign-journal-stat-label {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #a7926f;
+}
+
+.campaign-journal-stat-value {
+  color: #f1dfb6;
+  font-size: 1.2rem;
+}
+
+.campaign-journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  margin-top: 1rem;
+}
+
+.campaign-journal-entry {
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.08) 0%, rgba(201, 168, 76, 0.01) 35%),
+    rgba(0, 0, 0, 0.26);
+  padding: 1rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.campaign-journal-entry-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.campaign-journal-entry-type {
+  display: inline-block;
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.3rem;
+}
+
+.campaign-journal-entry-title {
+  margin: 0;
+  color: #f3dfac;
+  font-size: 1.1rem;
+}
+
+.campaign-journal-entry-status {
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  color: #ecd7a0;
+  background: rgba(201, 168, 76, 0.1);
+}
+
+.campaign-journal-entry-date,
+.campaign-journal-entry-meta {
+  margin: 0;
+  color: #a7926f;
+  font-size: 0.88rem;
+}
+
+.campaign-journal-entry-summary {
+  margin: 0.1rem 0 0;
+  color: #ddcaae;
+  line-height: 1.6;
+}
+
+.campaign-journal-entry-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.campaign-journal-expand {
+  align-self: flex-start;
+  margin-top: 0.25rem;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(201, 168, 76, 0.08);
+  color: #ecd7a0;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  font-family: var(--font-heading);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.campaign-journal-expand:hover {
+  border-color: rgba(201, 168, 76, 0.55);
+  background: rgba(201, 168, 76, 0.14);
+  transform: translateY(-1px);
+}
+
+.campaign-journal-summary-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.35rem;
+}
+
+.campaign-journal-editor-label {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-journal-editor-input {
+  min-height: 7.5rem;
+  resize: vertical;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  color: #ecd7a0;
+  padding: 0.85rem 0.95rem;
+  line-height: 1.6;
+}
+
+.campaign-journal-editor-input--single-line {
+  min-height: 0;
+  height: 2.8rem;
+  resize: none;
+}
+
+.campaign-journal-editor-error {
+  margin: 0;
+}
+
+.campaign-journal-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 0.55rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.12);
+}
+
+.campaign-journal-note {
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.14);
+  background: rgba(0, 0, 0, 0.24);
+  padding: 0.85rem 0.95rem;
+}
+
+.campaign-journal-encounter-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  color: inherit;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.campaign-journal-encounter-card:hover {
+  border-color: rgba(201, 168, 76, 0.32);
+  background: rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+
+.campaign-journal-encounter-card.is-expanded {
+  border-color: rgba(201, 168, 76, 0.3);
+  background:
+    radial-gradient(circle at top left, rgba(201, 168, 76, 0.08) 0%, rgba(201, 168, 76, 0.01) 42%),
+    rgba(0, 0, 0, 0.3);
+}
+
+.campaign-journal-note-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.campaign-journal-note-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.campaign-journal-note-role {
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-journal-note-date {
+  color: #9b8767;
+  font-size: 0.82rem;
+}
+
+.campaign-journal-note-visibility-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.18);
+  background: rgba(201, 168, 76, 0.07);
+  font-size: 0.62rem;
+  color: #e7d3a8;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.campaign-journal-note-visibility-toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.7rem;
+  height: 0.95rem;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  background: rgba(0, 0, 0, 0.34);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.campaign-journal-note-visibility-toggle input::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0.16rem;
+  width: 0.52rem;
+  height: 0.52rem;
+  border-radius: 50%;
+  background: #f7edd1;
+  transform: translateY(-50%);
+  transition: transform 0.2s ease;
+}
+
+.campaign-journal-note-visibility-toggle input:checked {
+  background: linear-gradient(135deg, rgba(201, 168, 76, 0.95), rgba(255, 228, 171, 0.92));
+  border-color: rgba(255, 229, 168, 0.85);
+}
+
+.campaign-journal-note-visibility-toggle input:checked::after {
+  transform: translate(0.72rem, -50%);
+  background: #1d1409;
+}
+
+.campaign-journal-note-visibility-toggle:hover {
+  border-color: rgba(201, 168, 76, 0.35);
+  background: rgba(201, 168, 76, 0.11);
+  transform: translateY(-1px);
+}
+
+.campaign-journal-note-visibility-toggle span {
+  font-family: var(--font-heading);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.campaign-journal-note-visibility-toggle input:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.campaign-journal-note-visibility-error {
+  margin: 0.45rem 0 0;
+}
+
+.campaign-journal-note-content {
+  margin: 0.55rem 0 0;
+  color: #e1cfb4;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.campaign-journal-encounter-detail {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(201, 168, 76, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.campaign-journal-encounter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.campaign-journal-encounter-combatant {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(201, 168, 76, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  color: #deccb0;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 900px) {
+  .campaign-journal-hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-journal-overview {
+    grid-template-columns: 1fr;
+  }
+}

@@ -8,14 +8,6 @@ const memberSchema = new mongoose.Schema({
   joinedAt: { type: Date, default: Date.now },
 });
 
-// Sub-schema for join requests
-const joinRequestSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-  characterId: { type: mongoose.Schema.Types.ObjectId, ref: "Character", default: null },
-  status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
-  requestedAt: { type: Date, default: Date.now },
-});
-
 const currentQuestSchema = new mongoose.Schema({
   title: { type: String, trim: true, maxlength: 120 },
   objective: { type: String, trim: true, maxlength: 500 },
@@ -28,6 +20,12 @@ const currentQuestSchema = new mongoose.Schema({
 }, { _id: false });
 
 const npcSchema = new mongoose.Schema({
+  name: { type: String, trim: true, maxlength: 80, required: true },
+  role: { type: String, trim: true, maxlength: 120 },
+  notes: { type: String, trim: true, maxlength: 400 },
+}, { _id: false });
+
+const enemySchema = new mongoose.Schema({
   name: { type: String, trim: true, maxlength: 80, required: true },
   role: { type: String, trim: true, maxlength: 120 },
   notes: { type: String, trim: true, maxlength: 400 },
@@ -65,6 +63,7 @@ const encounterTokenSchema = new mongoose.Schema({
   initiative: { type: Number, min: -99, max: 999, default: 0 },
   movementSpeed: { type: Number, min: 0, max: 120, default: 30 },
   characterId: { type: mongoose.Schema.Types.ObjectId, ref: "Character", default: null },
+  characterStats: { type: mongoose.Schema.Types.Mixed, default: null },
   movementRemaining: { type: Number, min: 0, max: 120, default: 30 },
   actionAvailable: { type: Boolean, default: true },
   bonusActionAvailable: { type: Boolean, default: false },
@@ -88,35 +87,32 @@ const campaignSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 80 },
   description: { type: String, trim: true, maxlength: 500 },
   image: { type: String },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   isPublic: { type: Boolean, default: true },
   isHosting: { type: Boolean, default: false },
   accessCode: { type: String, default: null },
-  maxPlayers: { type: Number, min: 1, max: 12, default: 5 },
-  minLevel: { type: Number, default: 1 },
-  maxLevel: { type: Number, default: 20 },
-  campaignType: { type: String, default: "D&D" }, // D&D, Pathfinder, etc.
   playStyle: {
     type: String,
     enum: ["Online", "In Person", "Hybrid"],
     default: "Online",
   },
+  maxPlayers: { type: Number, min: 1, max: 12, default: 5 },
   startDate: { type: Date },
   status: {
     type: String,
-    enum: ["active", "inactive", "archived", "Planning", "Active", "On Hold", "Completed"],
+    enum: ["Planning", "Active", "On Hold", "Completed"],
     default: "Planning",
   },
   currentQuest: { type: currentQuestSchema, default: null },
   npcs: { type: [npcSchema], default: [] },
+  enemies: { type: [enemySchema], default: [] },
   loot: { type: [lootSchema], default: [] },
   members: [memberSchema],
-  joinRequests: [joinRequestSchema],
-  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  sessionIds: { type: [mongoose.Schema.Types.ObjectId], ref: "Session", default: [] },
   encounter: { type: encounterStateSchema, default: () => ({}) },
-}, {
-  timestamps: true,
-});
+}, {timestamps: true});
+
+campaignSchema.index({ "members.userId": 1, updatedAt: -1 });
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 

@@ -1,451 +1,510 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
-import Button from "../../shared/Button.jsx";
-import { useNavigate } from "react-router-dom";
-import "./partyfinder.css";
+import Gate from "../../shared/Gate.jsx";
 
-function PartyFinder() {
-  const { token, user } = useAuth();
-  const navigate = useNavigate();
-  const [mode, setMode] = useState("browse"); // "browse" or "host"
-  const [campaigns, setCampaigns] = useState([]);
-  const [myHostableCampaigns, setMyHostableCampaigns] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [notification, setNotification] = useState({ message: "", type: "" });
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [accessCode, setAccessCode] = useState("");
-  const [userCharacters, setUserCharacters] = useState([]);
-  const [selectedCharacterId, setSelectedCharacterId] = useState("");
-  const [blockUserChecked, setBlockUserChecked] = useState({});
+const apiServer = import.meta.env.VITE_API_SERVER;
 
-  // Fetch available campaigns (hosted ones)
-  const fetchAvailableCampaigns = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const response = await fetch("http://localhost:5001/api/campaigns/finder/available", {
-        method: "GET"
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch campaigns");
-      const data = await response.json();
-      setCampaigns(data);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch user's campaigns to host
-  const fetchMyHostableCampaigns = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      const response = await fetch("http://localhost:5001/api/campaigns", {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) throw new Error("Failed to fetch campaigns");
-      const data = await response.json();
-      const dmCampaigns = (data || []).filter((campaign) => {
-        const createdById = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
-        // IMPORTANT: "Your Campaigns" host tab should only show user-owned campaigns.
-        return createdById === user?._id?.toString?.();
-      });
-      setMyHostableCampaigns(dmCampaigns);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch user's characters for join modal
-  const fetchUserCharacters = async () => {
-    try {
-      const response = await fetch("http://localhost:5001/api/characters", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUserCharacters(data);
-        if (data.length > 0) {
-          setSelectedCharacterId(data[0]._id);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching characters:", err);
-    }
-  };
+const LobbyTimer = ({ createdAt }) => {
+  const [timeLeft, setTimeLeft] = useState("");
 
   useEffect(() => {
-    if (mode === "browse") {
-      fetchAvailableCampaigns();
-      if (userCharacters.length === 0) {
-        fetchUserCharacters();
+    const expiresAt = new Date(createdAt).getTime() + 7200 * 1000;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const distance = expiresAt - now;
+
+      if (distance <= 0) {
+        setTimeLeft("Expired");
+        return;
       }
-    } else if (mode === "host") {
-      fetchMyHostableCampaigns();
-    }
-  }, [mode, user?._id]);
 
-  const handleJoinRequest = async (campaignId) => {
-    if (!selectedCharacterId) {
-      setError("Please select a character");
-      return;
-    }
+      const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
+      setTimeLeft(
+        `${hours > 0 ? hours + "h " : ""}${minutes}m ${seconds < 10 ? "0" : ""}${seconds}s`
+      );
+    };
+
+    updateTimer(); 
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  return <span style={styles.timerText}>Disbands in: {timeLeft}</span>;
+};
+
+function PartyFinder() {
+  const { user, token, isLoggedIn } = useAuth();
+  const [parties, setParties] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [toast, setToast] = useState({ message: "", type: "", visible: false, isExiting: false });
+  const [isLeaving, setIsLeaving] = useState(false);
+  
+  const toastTimerRef = useRef(null);
+  const toastExitTimerRef = useRef(null);
+  const partyExitCleanupSentRef = useRef(false);
+  const partyExitCleanupRef = useRef(null);
+
+  const [lobbyCodeInput, setLobbyCodeInput] = useState("");
+  const [newPartyConfig, setNewPartyConfig] = useState({
+    partyName: "",
+    isPublic: true,
+    maxPlayers: 4,
+  });
+
+  const showToast = useCallback((message, type = "success") => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    if (toastExitTimerRef.current) clearTimeout(toastExitTimerRef.current);
+
+    setToast({ message, type, visible: true, isExiting: false });
+
+    toastTimerRef.current = setTimeout(() => {
+      setToast((prev) => ({ ...prev, isExiting: true })); 
+      
+      toastExitTimerRef.current = setTimeout(() => {
+        setToast((prev) => ({ ...prev, visible: false, isExiting: false })); 
+      }, 300); 
+    }, 4000);
+  }, []);
+
+  const fetchParties = useCallback(async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request`, {
+      const response = await fetch(`${apiServer}/api/parties/public`);
+      if (!response.ok) throw new Error("Failed to fetch parties.");
+      const data = await response.json();
+      setParties(data);
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchParties();
+    }
+  }, [isLoggedIn, fetchParties]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const cleanup = partyExitCleanupRef.current;
+      if (cleanup?.shouldLeaveOnExit) {
+        if (partyExitCleanupSentRef.current) return;
+        partyExitCleanupSentRef.current = true;
+        const payload = JSON.stringify({ username: cleanup.username });
+        const blob = new Blob([payload], { type: "application/json" });
+        navigator.sendBeacon(cleanup.leaveUrl, blob);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleUnload);
+    window.addEventListener("pagehide", handleUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleUnload);
+      window.removeEventListener("pagehide", handleUnload);
+      handleUnload();
+    };
+  }, []);
+
+  const handleCreateParty = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${apiServer}/api/parties/create`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ 
-          characterId: selectedCharacterId,
-          accessCode 
-        })
+        body: JSON.stringify({
+          owner: user.username,
+          partyName: newPartyConfig.partyName.trim() || `${user.username}'s Party`,
+          isPublic: newPartyConfig.isPublic,
+          maxPlayers: newPartyConfig.maxPlayers,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to create party");
+      
+      showToast(`Party created! Lobby Code: ${data.lobbyCode}`, "success");
+      
+      setNewPartyConfig(prev => ({ ...prev, partyName: "" }));
+      fetchParties();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
+
+  const joinLobby = async (codeToJoin) => {
+    if (!codeToJoin || codeToJoin.length !== 6) return;
+
+    try {
+      const response = await fetch(`${apiServer}/api/parties/join`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lobbyCode: codeToJoin,
+          username: user.username,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Failed to join party");
+
+      showToast(`Successfully joined!`, "success");
+      setLobbyCodeInput(""); 
+      fetchParties();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  };
+
+  const handleJoinSubmit = (e) => {
+    e.preventDefault();
+    joinLobby(lobbyCodeInput);
+  };
+
+  const handleLeaveParty = async () => {
+    setIsLeaving(true); 
+    try {
+      const response = await fetch(`${apiServer}/api/parties/leave`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: user.username }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to send join request");
+        const data = await response.json();
+        throw new Error(data.message || "Failed to leave party");
       }
 
-      setError("");
-      setNotification({ message: "Join request sent successfully!", type: "success" });
-      setTimeout(() => setNotification({ message: "", type: "" }), 3000);
-      setAccessCode("");
-      setSelectedCampaign(null);
-      setSelectedCharacterId("");
-      fetchAvailableCampaigns();
+      showToast("You have left the party.", "success");
+      // Use async/await to guarantee the fresh data arrives BEFORE resetting the animation
+      setTimeout(async () => {
+        await fetchParties();
+        setIsLeaving(false);
+      }, 600); 
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setIsLeaving(false); 
+      showToast(err.message, "error");
     }
   };
 
-  const handleToggleHosting = async (campaignId, isCurrentlyHosting) => {
+  const handleDeleteParty = async (partyId) => {
+    setIsLeaving(true); 
     try {
-      setLoading(true);
-      const endpoint = isCurrentlyHosting ? 'stop-hosting' : 'start-hosting';
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/${endpoint}`, {
-        method: "PUT",
+      const response = await fetch(`${apiServer}/api/parties/${partyId}`, {
+        method: "DELETE",
         headers: {
-          "Authorization": `Bearer ${token}`
-        }
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ username: user.username }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update hosting status");
+        const data = await response.json();
+        throw new Error(data.message || "Failed to delete party");
       }
-
-      await fetchMyHostableCampaigns();
-      setError("");
+      
+      showToast("Party disbanded.", "success");
+      // Use async/await to guarantee the fresh data arrives before resetting the animation
+      setTimeout(async () => {
+        await fetchParties();
+        setIsLeaving(false);
+      }, 600);
     } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
+      setIsLeaving(false);
+      showToast(err.message, "error");
     }
   };
 
-  const approveJoinRequest = async (campaignId, requestId) => {
-    try {
-      setLoading(true);
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request/${requestId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ action: "approve" })
-      });
+  const username = user?.username || "";
+  const ownedParty = parties.find((p) => p.owner === username);
+  const otherParties = parties.filter((p) => p.owner !== username);
+  const joinedParty = otherParties.find((p) => p.players.includes(username));
 
-      if (!response.ok) throw new Error("Failed to approve request");
-      await fetchMyHostableCampaigns();
-      setError("");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isCurrentlyInParty = !!(ownedParty || joinedParty);
+  const isExpanded = isCurrentlyInParty && !isLeaving;
 
-  const rejectJoinRequest = async (campaignId, requestId) => {
-    try {
-      setLoading(true);
-      const shouldBlock = blockUserChecked[`${campaignId}-${requestId}`] || false;
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request/${requestId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ action: "reject", blockUser: shouldBlock })
-      });
+  useEffect(() => {
+    partyExitCleanupRef.current = {
+      leaveUrl: `${apiServer}/api/parties/leave`,
+      shouldLeaveOnExit: Boolean(isLoggedIn && user?.username && isCurrentlyInParty),
+      username: user?.username || "",
+    };
+  }, [isCurrentlyInParty, isLoggedIn, user?.username]);
 
-      if (!response.ok) throw new Error("Failed to reject request");
-      await fetchMyHostableCampaigns();
-      setBlockUserChecked({});
-      setError("");
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!isLoggedIn) {
+    return <Gate>Sign in to find adventuring parties.</Gate>;
+  }
 
   return (
-    <div className="pf-page">
-      <div className="pf-shell">
-      <header className="section-page-header">
-        <div className="section-header-divider" />
-        <div className="section-header-row">
-          <span className="section-header-rune">✦</span>
-          <h1 className="section-page-title">Party Finder</h1>
-          <span className="section-header-rune">✦</span>
-        </div>
-        <div className="section-header-divider" />
-      </header>
+    <div style={styles.container}>
+      <style>
+        {`
+          @keyframes toastFadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes toastFadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+          }
+        `}
+      </style>
 
-      <div className="pf-mode-selector">
-        <button
-          onClick={() => setMode("browse")}
-          className={mode === "browse" ? "pf-mode-btn is-active" : "pf-mode-btn"}
-        >
-          Browse Hosting Campaigns
-        </button>
-        <button
-          onClick={() => setMode("host")}
-          className={mode === "host" ? "pf-mode-btn is-active" : "pf-mode-btn"}
-        >
-          Host Your Campaigns
-        </button>
+      <h1 style={styles.pageTitle}>Party Finder</h1>
+
+      {/* PINNED CURRENT LOBBY SECTION */}
+      <div style={{
+        ...styles.animatedWrapper,
+        gridTemplateRows: isExpanded ? "1fr" : "0fr",
+        opacity: isExpanded ? 1 : 0,
+      }}>
+        <div style={styles.animatedInner}>
+          <div>
+            <div style={styles.partyList}>
+              {ownedParty && (
+                <div style={{ ...styles.partyCard, ...styles.highlightedCard }}>
+                  <div style={styles.cardHeader}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>
+                        {ownedParty.partyName || `${ownedParty.owner}'s Party`} (Code: {ownedParty.lobbyCode})
+                      </h3>
+                      <LobbyTimer createdAt={ownedParty.createdAt} />
+                    </div>
+                    <span style={styles.badge}>Owner</span>
+                  </div>
+                  <p>Players: {ownedParty.players.length} / {ownedParty.maxPlayers}</p>
+                  <p style={styles.playerList}>Roster: {ownedParty.players.join(", ")}</p>
+                  <button onClick={() => handleDeleteParty(ownedParty._id)} style={styles.dangerBtn}>
+                    Disband Party
+                  </button>
+                </div>
+              )}
+
+              {joinedParty && !ownedParty && (
+                <div style={{ ...styles.partyCard, ...styles.highlightedCard }}>
+                  <div style={styles.cardHeader}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>
+                        {joinedParty.partyName || `${joinedParty.owner}'s Party`}
+                      </h3>
+                      <LobbyTimer createdAt={joinedParty.createdAt} />
+                    </div>
+                    <span style={styles.badge}>Joined</span>
+                  </div>
+                  <p>Players: {joinedParty.players.length} / {joinedParty.maxPlayers}</p>
+                  <p style={styles.playerList}>Roster: {joinedParty.players.join(", ")}</p>
+                  <button onClick={handleLeaveParty} style={styles.dangerBtn}>
+                    Leave Party
+                  </button>
+                </div>
+              )}
+            </div>
+            <hr style={{...styles.divider, marginTop: "2rem", marginBottom: "2rem"}} />
+          </div>
+        </div>
       </div>
 
-      {error && <div className="pf-alert pf-alert-error">{error}</div>}
-      {notification.message && (
-        <div className={`pf-alert ${notification.type === "success" ? "pf-alert-success" : "pf-alert-warn"}`}>
-          {notification.message}
+      {/* CREATE & JOIN CONTROLS */}
+      <div style={styles.controlsGrid}>
+        <div style={styles.panel}>
+          <h3>Create a Party</h3>
+          <form onSubmit={handleCreateParty} style={styles.formGroup}>
+            <label style={styles.label}>
+              Party Name:
+              <input
+                type="text"
+                placeholder={`${user.username}'s Party`}
+                maxLength={40}
+                value={newPartyConfig.partyName}
+                onChange={(e) =>
+                  setNewPartyConfig({ ...newPartyConfig, partyName: e.target.value })
+                }
+                style={{ marginTop: "5px" }}
+              />
+            </label>
+            <label style={styles.label}>
+              Max Players:
+              <input
+                type="number"
+                min="1"
+                max="12"
+                value={newPartyConfig.maxPlayers}
+                onChange={(e) =>
+                  setNewPartyConfig({ ...newPartyConfig, maxPlayers: parseInt(e.target.value) })
+                }
+                style={{ marginTop: "5px" }}
+              />
+            </label>
+            <label style={styles.label}>
+              Visibility:
+              <select
+                value={newPartyConfig.isPublic}
+                onChange={(e) =>
+                  setNewPartyConfig({ ...newPartyConfig, isPublic: e.target.value === "true" })
+                }
+                style={{ ...styles.selectInput, marginTop: "5px" }}
+              >
+                <option value="true" style={styles.option}>Public</option>
+                <option value="false" style={styles.option}>Private</option>
+              </select>
+            </label>
+            <div 
+              title={isCurrentlyInParty ? "You must leave your current party first." : ""}
+              style={{ display: "flex", cursor: isCurrentlyInParty ? "not-allowed" : "default", marginTop: "10px" }}
+            >
+              <button 
+                type="submit" 
+                disabled={isCurrentlyInParty}
+                style={{ flex: 1, pointerEvents: isCurrentlyInParty ? "none" : "auto" }}
+              >
+                Open Lobby
+              </button>
+            </div>
+          </form>
         </div>
-      )}
-      {loading && <p className="pf-loading">Loading campaigns...</p>}
 
-      {mode === "browse" && !loading && (
-        <div className="pf-campaign-list">
-          <h2>Currently Hosting Campaigns</h2>
-          {campaigns.length === 0 ? (
-            <p className="pf-empty">No campaigns currently hosting</p>
-          ) : (
-            campaigns.map((campaign) => {
-              // Find the current user's join request in this campaign (if any)
-              // Handle both populated (userId._id) and unpopulated (userId) references
-              const userRequest = campaign.joinRequests?.find(r => 
-                r.userId?._id?.toString() === user?._id?.toString() || 
-                r.userId?.toString() === user?._id?.toString()
-              );
-              const requestStatus = userRequest?.status; // 'pending', 'approved', or 'rejected'
-              
-              // Check if user is already a member of the campaign
-              // Members array is populated when join request is approved
-              // This handles cases where joinRequest may have been removed after approval
-              const isMember = campaign.members?.some(m => 
-                m.userId?._id?.toString() === user?._id?.toString() || 
-                m.userId?.toString() === user?._id?.toString()
-              );
-              
+        <div style={styles.panel}>
+          <h3>Join via Code</h3>
+          <form onSubmit={handleJoinSubmit} style={styles.formGroup}>
+            <input
+              type="text"
+              placeholder="Enter 6-character code"
+              value={lobbyCodeInput}
+              onChange={(e) => setLobbyCodeInput(e.target.value.toUpperCase())}
+              maxLength={6}
+            />
+            <div 
+              title={isCurrentlyInParty ? "You are already in a party." : ""}
+              style={{ display: "flex", cursor: isCurrentlyInParty ? "not-allowed" : "default" }}
+            >
+              <button 
+                type="submit" 
+                disabled={!lobbyCodeInput || lobbyCodeInput.length !== 6 || isCurrentlyInParty}
+                style={{ flex: 1, pointerEvents: isCurrentlyInParty ? "none" : "auto" }}
+              >
+                Join Party
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <hr style={styles.divider} />
+
+      {/* ACTIVE PUBLIC LOBBIES */}
+      <h2>Active Lobbies</h2>
+      {isLoading ? (
+        <p>Scrying for active parties...</p>
+      ) : (
+        <div style={styles.partyList}>
+          {otherParties.length > 0 ? (
+            otherParties.map((party) => {
+              const isFull = party.players.length >= party.maxPlayers;
+              const tooltipText = isCurrentlyInParty 
+                ? "You are already in a party." 
+                : isFull 
+                  ? "This party is full." 
+                  : "";
+
               return (
-                <div key={campaign._id} className="pf-campaign-card">
-                  <h3>{campaign.title}</h3>
-                  <p>{campaign.description}</p>
-                  <div className="pf-campaign-info">
-                    <span>Type: {campaign.campaignType}</span>
-                    <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
-                    <span>DM: {campaign.createdBy?.username || "Unknown"}</span>
-                  </div>
-                  {/* Display status notification if user has made a join request */}
-                  {requestStatus && (
-                    <div className={`pf-request-status pf-request-status-${requestStatus}`}>
-                      <span>
-                        {requestStatus === 'approved' ? '✓ Approved' : requestStatus === 'pending' ? '⏳ Pending' : '❌ Rejected'}
-                      </span>
+                <div key={party._id} style={styles.partyCard}>
+                  <div style={styles.cardHeader}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>
+                        {party.partyName || `${party.owner}'s Party`}
+                      </h3>
+                      <LobbyTimer createdAt={party.createdAt} />
                     </div>
-                  )}
-                  {/* Show "Enter Lobby" button if user is approved OR already a member */}
-                  {/* isMember check is critical for users whose joinRequest was removed after approval */}
-                  {(requestStatus === 'approved' || isMember) && (
-                    <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)}>
-                      Enter Lobby
-                    </Button>
-                  )}
-                  {/* Show "Request to Join" button if user is not a member and has no pending/approved request */}
-                  {!isMember && requestStatus !== 'approved' && requestStatus !== 'pending' && (
-                    <Button onClick={() => {
-                      setSelectedCampaign(campaign._id);
-                      if (userCharacters.length === 0) {
-                        fetchUserCharacters();
-                      }
-                    }}>
-                      {requestStatus === 'rejected' ? 'Send Another Request' : 'Request to Join'}
-                    </Button>
-                  )}
+                  </div>
+                  <p>Players: {party.players.length} / {party.maxPlayers}</p>
+                  <p style={styles.playerList}>Roster: {party.players.join(", ")}</p>
+                  
+                  <div 
+                    title={tooltipText}
+                    style={{ cursor: (isCurrentlyInParty || isFull) ? "not-allowed" : "default", display: "flex", marginTop: "10px" }}
+                  >
+                    <button 
+                      onClick={() => joinLobby(party.lobbyCode)}
+                      disabled={isFull || isCurrentlyInParty}
+                      style={{ flex: 1, pointerEvents: (isFull || isCurrentlyInParty) ? "none" : "auto" }}
+                    >
+                      Join
+                    </button>
+                  </div>
                 </div>
               );
             })
-          )}
-        </div>
-      )}
-
-      {mode === "host" && !loading && (
-        <div className="pf-campaign-list">
-          <h2>Your Campaigns</h2>
-          {myHostableCampaigns.length === 0 ? (
-            <p className="pf-empty">No campaigns yet. Create one to get started!</p>
           ) : (
-            myHostableCampaigns.map((campaign) => (
-              <div key={campaign._id} className="pf-campaign-card">
-                <h3>{campaign.title}</h3>
-                <p>{campaign.description}</p>
-                <div className="pf-campaign-info">
-                  <span>Type: {campaign.campaignType}</span>
-                  <span>Status: {campaign.isHosting ? "🟢 Hosting" : "⚪ Not Hosting"}</span>
-                  <span>Players: {campaign.members.length}/{campaign.maxPlayers}</span>
-                </div>
-                <div className="pf-campaign-info">
-                  <span>Min Level: {campaign.minLevel}</span>
-                  <span>Visibility: {campaign.isPublic ? "Public" : "Private"}</span>
-                  {!campaign.isPublic && campaign.accessCode && (
-                    <span>Access Code: {campaign.accessCode}</span>
-                  )}
-                </div>
-                {campaign.joinRequests && campaign.joinRequests.length > 0 && (
-                  <div className="pf-join-requests">
-                    <p><strong>Pending Requests: {campaign.joinRequests.filter(r => r.status === "pending").length}</strong></p>
-                    {campaign.joinRequests.filter(r => r.status === "pending").map(req => (
-                      <div key={req._id} className="pf-request-item">
-                        <div>
-                          <span><strong>{req.userId?.username || "Unknown User"}</strong> requested to join</span>
-                          <div className="pf-request-checkbox-wrap">
-                            <label className="pf-request-checkbox-label">
-                              <input
-                                type="checkbox"
-                                checked={blockUserChecked[`${campaign._id}-${req._id}`] || false}
-                                onChange={(e) => setBlockUserChecked({
-                                  ...blockUserChecked,
-                                  [`${campaign._id}-${req._id}`]: e.target.checked
-                                })}
-                              />
-                              Block this user
-                            </label>
-                          </div>
-                        </div>
-                        <div className="pf-request-actions">
-                          <button
-                            onClick={() => approveJoinRequest(campaign._id, req._id)}
-                            className="pf-approve-btn"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => rejectJoinRequest(campaign._id, req._id)}
-                            className="pf-reject-btn"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button
-                  onClick={() => handleToggleHosting(campaign._id, campaign.isHosting)}
-                  className={campaign.isHosting ? "pf-host-toggle-btn is-stop" : "pf-host-toggle-btn is-start"}
-                  disabled={loading}
-                >
-                  {campaign.isHosting ? "Stop Hosting" : "Start Hosting"}
-                </button>
-                {campaign.isHosting && (
-                  <div className="pf-enter-lobby-wrap">
-                    <Button onClick={() => navigate(`/campaign/${campaign._id}/lobby`)}>
-                    Enter Lobby
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))
+            <p style={styles.emptyText}>The tavern is quiet. Consider starting your own party!</p>
           )}
         </div>
       )}
 
-      {selectedCampaign && mode === "browse" && (
-        <div className="pf-modal">
-          <div className="pf-modal-content">
-            <h3>Request to Join Campaign</h3>
-            
-            <label className="pf-label">
-              Select Character:
-              <select
-                value={selectedCharacterId}
-                onChange={(e) => setSelectedCharacterId(e.target.value)}
-                className="pf-input"
-              >
-                <option value="">Choose a character...</option>
-                {userCharacters.map(char => (
-                  <option key={char._id} value={char._id}>
-                    {char.name} (Level {char.level} {char.class})
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {/* Show access code input for private campaigns */}
-            {campaigns.find(c => c._id === selectedCampaign)?.accessCode && (
-              <label className="pf-label">
-                Access Code:
-                <input
-                  type="password"
-                  value={accessCode}
-                  onChange={(e) => setAccessCode(e.target.value)}
-                  placeholder="Enter access code"
-                  className="pf-input"
-                />
-              </label>
-            )}
-
-            <div className="pf-modal-buttons">
-              <Button
-                onClick={() => handleJoinRequest(selectedCampaign)}
-                disabled={loading || !selectedCharacterId}
-              >
-                {loading ? "Sending..." : "Send Request"}
-              </Button>
-              <button
-                onClick={() => {
-                  setSelectedCampaign(null);
-                  setAccessCode("");
-                  setSelectedCharacterId("");
-                }}
-                className="pf-cancel-btn"
-              >
-                Cancel
-              </button>
-            </div>
+      {/* FLOATING TOAST NOTIFICATION */}
+      {toast.visible && (
+        <div style={styles.toastWrapper}>
+          <div style={{
+            ...styles.toastContent,
+            ...(toast.type === "error" ? styles.toastError : styles.toastSuccess),
+            animation: toast.isExiting 
+              ? "toastFadeOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards" 
+              : "toastFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards"
+          }}>
+            {toast.message}
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 }
+
+const styles = {
+  container: { maxWidth: "900px", margin: "0 auto", padding: "2rem", position: "relative" },
+  pageTitle: { textAlign: "center", marginBottom: "2rem" },
+  animatedWrapper: { display: "grid", transition: "grid-template-rows 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)" },
+  animatedInner: { overflow: "hidden", minHeight: 0 },
+  controlsGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "2rem", marginBottom: "2rem" },
+  panel: { backgroundColor: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-lg)", padding: "1.5rem" },
+  formGroup: { display: "flex", flexDirection: "column", gap: "1rem" },
+  label: { display: "flex", flexDirection: "column", color: "var(--text-base)", fontSize: "0.9rem" },
+  selectInput: {
+    appearance: "none",
+    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c9a84c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat", backgroundPosition: "right 0.7rem top 50%", backgroundSize: "1.2rem auto", paddingRight: "2.5rem",
+    backgroundColor: "rgba(0, 0, 0, 0.45)", border: "1px solid var(--border)", color: "#e8dcca", padding: "0.65rem 0.9rem", borderRadius: "var(--radius)", fontFamily: "var(--font-body)", fontSize: "1rem"
+  },
+  option: { backgroundColor: "var(--bg-deep)", color: "var(--text-base)" },
+  divider: { border: "none", height: "1px", backgroundColor: "var(--border)", margin: "2rem 0" },
+  partyList: { display: "grid", gridTemplateColumns: "1fr", gap: "1rem" },
+  partyCard: { backgroundColor: "var(--panel-bg)", border: "1px solid rgba(201, 168, 76, 0.2)", borderRadius: "var(--radius)", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "0.5rem", transition: "border-color 0.2s" },
+  highlightedCard: { borderColor: "var(--gold)", boxShadow: "0 0 15px rgba(201, 168, 76, 0.15)" },
+  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start" },
+  badge: { backgroundColor: "var(--gold)", color: "var(--bg-deep)", padding: "0.2rem 0.6rem", borderRadius: "var(--radius-sm)", fontSize: "0.75rem", fontWeight: "bold", textTransform: "uppercase", marginTop: "0.25rem" },
+  playerList: { color: "var(--text-muted)", fontSize: "0.9rem", fontStyle: "italic", marginBottom: "0.5rem" },
+  dangerBtn: { background: "var(--danger)", color: "#fff", alignSelf: "flex-start" },
+  emptyText: { color: "var(--text-faint)", textAlign: "center", fontStyle: "italic", marginTop: "2rem" },
+  toastWrapper: { position: "fixed", top: "40px", left: "50%", transform: "translateX(-50%)", zIndex: 9999 },
+  toastContent: { padding: "1rem 2rem", borderRadius: "var(--radius)", boxShadow: "0 8px 32px rgba(0, 0, 0, 0.6)", fontFamily: "var(--font-heading)", fontSize: "1rem", letterSpacing: "0.05em", textAlign: "center", minWidth: "300px" },
+  toastSuccess: { backgroundColor: "rgba(20, 15, 8, 0.95)", borderBottom: "3px solid var(--success)", color: "var(--gold-light)" },
+  toastError: { backgroundColor: "rgba(20, 15, 8, 0.95)", borderBottom: "3px solid var(--danger)", color: "#fca5a5" },
+  timerText: { fontSize: "0.85rem", color: "var(--text-faint)", fontStyle: "italic", display: "block", marginTop: "0.2rem" }
+};
 
 export default PartyFinder;

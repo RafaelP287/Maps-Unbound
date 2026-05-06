@@ -311,6 +311,67 @@
   white-space: nowrap;
 }
 
+.campaign-journal-cta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  padding: 1.25rem 1.4rem;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 168, 76, 0.55);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.22) 0%, rgba(201, 168, 76, 0.02) 42%),
+    linear-gradient(135deg, rgba(44, 27, 10, 0.88), rgba(21, 16, 10, 0.94));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 233, 178, 0.06),
+    0 14px 36px rgba(0, 0, 0, 0.24);
+}
+
+.campaign-journal-cta-copy {
+  flex: 1 1 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.campaign-journal-cta-eyebrow {
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-journal-cta-title {
+  margin: 0;
+  color: #f4e0ad;
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+.campaign-journal-cta-title {
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+}
+
+.campaign-journal-cta-text {
+  margin: 0;
+  color: #deccb0;
+  line-height: 1.6;
+}
+
+.campaign-journal-cta-actions {
+  flex: 0 1 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.campaign-journal-cta-helper {
+  max-width: 32rem;
+}
+
 .campaign-session-cta {
   border: 1px solid rgba(201, 168, 76, 0.45);
   background:
@@ -322,6 +383,35 @@
   flex-direction: column;
   align-items: center;
   gap: 0.55rem;
+}
+
+.campaign-player-lobby-panel {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(201, 168, 76, 0.36);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.18), transparent 38%),
+    rgba(10, 8, 5, 0.52);
+}
+
+.campaign-player-lobby-panel h2,
+.campaign-player-lobby-panel p {
+  margin: 0;
+}
+
+.campaign-player-lobby-panel h2 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.campaign-player-lobby-panel p:not(.campaign-index-eyebrow) {
+  color: var(--text-muted);
 }
 
 .btn-start-session {
@@ -353,6 +443,11 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
+  text-align: center;
+}
+
+.campaign-dm-panel .campaign-btn-row {
+  justify-content: center;
 }
 
 .campaign-sections-stack {
@@ -381,10 +476,54 @@
   padding: 1.25rem 1.5rem;
 }
 
+.campaign-section-panel-bounded {
+  display: flex;
+  flex-direction: column;
+  min-height: 20.5rem;
+}
+
+.campaign-section-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.campaign-card-frame {
+  position: relative;
+  margin-top: 0.8rem;
+  min-height: 11.5rem;
+}
+
+.campaign-card-frame::before,
+.campaign-card-frame::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.campaign-card-frame::before {
+  top: 0;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.45), transparent);
+}
+
+.campaign-card-frame::after {
+  bottom: 0;
+  background: linear-gradient(to right, transparent, rgba(201, 168, 76, 0.45), transparent);
+}
+
+.campaign-card-scroll {
+  height: 11.5rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
 .campaign-quest-panel {
   border-color: rgba(201, 168, 76, 0.4);
   background:
-    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.1) 0%, rgba(0, 0, 0, 0) 45%),
+    radial-gradient(circle at 50% 0%, rgba(201, 168, 76, 0.15) 0%, rgba(0, 0, 0, 0) 48%),
     rgba(0, 0, 0, 0.34);
   box-shadow: inset 0 0 0 1px rgba(201, 168, 76, 0.08);
 }
@@ -392,21 +531,27 @@
 .campaign-quest-content {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 0.7rem;
+  text-align: center;
+  max-width: 46rem;
+  margin: 0 auto;
 }
 
 .campaign-quest-title-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
 }
 
 .campaign-quest-title {
   margin: 0;
   color: #f3dfac;
   letter-spacing: 0.02em;
+  font-size: clamp(1.2rem, 2vw, 1.7rem);
+  text-align: center;
 }
 
 .campaign-quest-status {
@@ -442,6 +587,7 @@
   margin: 0;
   color: #d8c4a5;
   line-height: 1.5;
+  max-width: 40rem;
 }
 
 textarea.campaign-quest-objective {
@@ -451,10 +597,29 @@ textarea.campaign-quest-objective {
 
 .campaign-quest-empty {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 0.75rem;
-  flex-wrap: wrap;
+  text-align: center;
+}
+
+.campaign-quest-panel .campaign-details-header {
+  justify-content: center;
+}
+
+.campaign-quest-panel .campaign-helper-text {
+  text-align: center;
+}
+
+.campaign-quest-actions {
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.campaign-quest-actions .campaign-btn-link {
+  margin: 0 auto;
 }
 
 .campaign-resource-list {
@@ -467,6 +632,21 @@ textarea.campaign-quest-objective {
   border: 1px solid rgba(201, 168, 76, 0.2);
   background: rgba(201, 168, 76, 0.04);
   border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+
+.campaign-resource-item-button {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.2);
   padding: 0.75rem 0.9rem;
 }
 
@@ -489,6 +669,32 @@ textarea.campaign-quest-objective {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
+}
+
+.campaign-session-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.campaign-session-detail-title {
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.campaign-session-summary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.campaign-session-detail-summary {
+  margin-top: 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
 }
 
 .campaign-resource-holder,
@@ -524,12 +730,33 @@ textarea.campaign-quest-objective {
 .campaign-section-placeholder,
 .campaign-map-placeholder,
 .campaign-timeline-item {
-  margin-top: 0.8rem;
   border: 1px dashed rgba(201, 168, 76, 0.25);
   border-radius: 8px;
   padding: 0.95rem;
   background: rgba(201, 168, 76, 0.04);
 }
+
+.campaign-card-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 999px;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.campaign-card-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.5);
+  background-clip: padding-box;
+}
+
 
 .campaign-section-actions {
   display: flex;
@@ -634,6 +861,20 @@ textarea.campaign-quest-objective {
   box-shadow: 0 2px 16px rgba(201, 168, 76, 0.25);
 }
 
+.btn-journal-primary {
+  background: linear-gradient(135deg, #f0ca72, #ffe4ab);
+  color: #1a1209;
+  border: 1px solid rgba(255, 229, 168, 0.9) !important;
+  box-shadow:
+    0 8px 26px rgba(201, 168, 76, 0.38),
+    0 0 0 1px rgba(255, 239, 200, 0.12) inset;
+}
+
+.btn-journal-primary:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
 .btn-submit {
   background: linear-gradient(135deg, var(--gold), var(--gold-light));
   color: var(--bg-deep);
@@ -694,7 +935,14 @@ textarea.campaign-quest-objective {
 .campaign-footer {
   display: flex;
   justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
   padding-top: 0.5rem;
+}
+
+.campaign-footer-split {
+  justify-content: space-between;
 }
 
 /* Full Center */
@@ -757,23 +1005,109 @@ textarea.campaign-quest-objective {
   line-height: 1.6;
 }
 
-/* Empty State */
-.campaign-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 3rem 2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  max-width: 420px;
-  margin: 2rem auto;
+/* Start Session Overlay */
+.campaign-session-modal {
+  border-color: rgba(201, 168, 76, 0.45);
+  max-width: 520px;
+  text-align: left;
 }
 
-.campaign-empty-icon {
-  font-size: 2.5rem;
+.campaign-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.campaign-session-close {
+  padding: 0.35rem 0.85rem;
+}
+
+.campaign-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.campaign-session-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  background: rgba(12, 9, 5, 0.7);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  color: var(--text-base);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.campaign-session-item:hover {
+  border-color: rgba(201, 168, 76, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+}
+
+.campaign-session-title {
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--gold-light);
+  letter-spacing: 0.04em;
+}
+
+.campaign-session-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.campaign-session-action {
+  font-family: var(--font-heading);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.campaign-session-empty {
+  padding: 1rem;
+  border-radius: 10px;
+  background: rgba(12, 9, 5, 0.6);
+  border: 1px dashed rgba(201, 168, 76, 0.3);
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.campaign-session-delete-list {
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  background: rgba(12, 9, 5, 0.55);
+}
+
+/* Empty State */
+.campaign-empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  min-height: 180px;
+  padding: 2rem;
+  border: 1px dashed rgba(201, 168, 76, 0.28);
+  border-radius: 8px;
+  background: rgba(201, 168, 76, 0.05);
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.campaign-empty-svg {
+  width: 30px;
+  height: 30px;
+  color: var(--gold);
 }
 
 .campaign-empty-title {
@@ -793,10 +1127,169 @@ textarea.campaign-quest-objective {
 
 /* Campaign List */
 .campaign-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.campaign-list .campaign-card {
+  width: 100%;
+}
+
+.campaign-index-header {
   display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.campaign-index-header-copy {
+  min-width: 0;
+}
+
+.campaign-index-eyebrow {
+  margin: 0 0 0.35rem;
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.campaign-index-title {
+  margin: 0;
+}
+
+.campaign-index-subtitle {
+  max-width: 760px;
+  margin: 0.25rem 0 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.campaign-index-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
   flex-wrap: wrap;
+}
+
+.campaign-index-start {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: 0.45rem;
+  min-height: 40px;
+  white-space: nowrap;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--gold);
+  border: 1px solid rgba(201, 168, 76, 0.55);
+}
+
+.campaign-index-start svg,
+.campaign-index-actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+.campaign-active-panel {
+  border: 1px solid rgba(201, 168, 76, 0.32);
+  border-radius: 8px;
+  padding: 1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.16), transparent 36%),
+    rgba(10, 8, 5, 0.52);
+  display: grid;
+  grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.campaign-active-panel-copy h2 {
+  margin: 0;
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+}
+
+.campaign-active-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.campaign-active-item {
+  min-height: 64px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 8px;
+  background: rgba(6, 5, 4, 0.52);
+  color: var(--text-base);
+  text-align: left;
+  cursor: pointer;
+}
+
+.campaign-active-item:hover {
+  border-color: rgba(201, 168, 76, 0.58);
+  background: rgba(201, 168, 76, 0.1);
+}
+
+.campaign-active-item span:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.campaign-active-item strong {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+}
+
+.campaign-active-item small,
+.campaign-active-empty {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.campaign-active-action {
+  flex: 0 0 auto;
+  color: var(--gold);
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.campaign-index-divider {
+  width: 100%;
+  height: 1px;
+  margin: 1.25rem 0 1.6rem;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+}
+
+@media (max-width: 780px) {
+  .campaign-index-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .campaign-index-actions {
+    justify-content: flex-start;
+  }
+
+  .campaign-active-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-active-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 /* Campaign Form */
@@ -857,5 +1350,13 @@ textarea.campaign-quest-objective {
 
   .campaign-field-grid {
     grid-template-columns: 1fr;
+  }
+
+  .campaign-journal-cta-actions {
+    flex-basis: 100%;
+  }
+
+  .campaign-footer-split {
+    justify-content: center;
   }
 }

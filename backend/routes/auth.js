@@ -71,6 +71,7 @@ router.post('/signup', async (req, res) => {
         _id: user._id,  // Using _id to match MongoDB field naming
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
       },
       token,
     });
@@ -135,6 +136,7 @@ router.post('/login', async (req, res) => {
         _id: user._id,  // Using _id to match MongoDB field naming
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
       },
       token,
     });

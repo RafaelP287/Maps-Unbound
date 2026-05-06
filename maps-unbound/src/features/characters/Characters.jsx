@@ -1,152 +1,110 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
-import CharacterCard from "./CharacterCard";
-import Button from "../../shared/Button.jsx";
-import "./characters.css";
+import Gate from "../../shared/Gate.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
+import CharacterCard from "./CharacterCard.jsx";
+import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 
-const Characters = () => {
-  const { token } = useAuth();
+const API_SERVER = import.meta.env.VITE_API_SERVER || "";
+
+function Characters() {
+  const { user, isLoggedIn, loading: authLoading } = useAuth();
   const [characters, setCharacters] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState("");
-  const [viewCharacter, setViewCharacter] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!isLoggedIn || !user?.username) {
+      setIsLoading(false);
+      return;
+    }
+
+    const cacheKey = `characters:list:${user.username}`;
+    const cachedCharacters = getCachedValue(cacheKey);
+    const hasCachedCharacters = Boolean(cachedCharacters);
+    if (cachedCharacters) {
+      setCharacters(cachedCharacters);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     const fetchCharacters = async () => {
+      setError("");
+
       try {
-        setLoading(true);
-        const response = await fetch("http://localhost:5001/api/characters", {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
+        const response = await fetch(`${API_SERVER}/api/users/${user.username}/characters`);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch characters");
+          throw new Error("Failed to fetch characters.");
         }
 
         const data = await response.json();
-        setCharacters(data);
-        setError("");
+        const nextCharacters = Array.isArray(data.characters) ? data.characters : [];
+        setCharacters(nextCharacters);
+        setCachedValue(cacheKey, nextCharacters);
       } catch (err) {
-        console.error("Error fetching characters:", err);
-        setError("Failed to load characters");
+        if (!hasCachedCharacters) {
+          setError(err.message || "Could not load your characters.");
+          setCharacters([]);
+        }
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    if (token) {
-      fetchCharacters();
-    }
-  }, [token]);
+    fetchCharacters();
+  }, [isLoggedIn, user?.username]);
 
-  const handleDeleteCharacter = async (characterId) => {
-    const confirmed = window.confirm("Delete this character? This action cannot be undone.");
-    if (!confirmed) return;
+  if (authLoading) {
+    return (
+      <div className="character-page">
+        <LoadingPage>Loading your character vault...</LoadingPage>
+      </div>
+    );
+  }
 
-    try {
-      setDeletingId(characterId);
-      setError("");
-
-      const response = await fetch(`http://localhost:5001/api/characters/${characterId}`, {
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete character");
-      }
-
-      setCharacters((prev) => prev.filter((character) => character._id !== characterId));
-      if (viewCharacter?._id === characterId) {
-        setViewCharacter(null);
-      }
-    } catch (err) {
-      setError(err.message || "Failed to delete character");
-    } finally {
-      setDeletingId("");
-    }
-  };
-
-  if (loading) {
-    return <div className="characters-loading">Loading characters...</div>;
+  if (!isLoggedIn) {
+    return <Gate>Sign in to access your characters.</Gate>;
   }
 
   return (
-    <div className="characters-page">
-      <div className="characters-shell">
-        <header className="section-page-header">
-          <div className="section-header-divider" />
-          <div className="section-header-row">
-            <span className="section-header-rune">✦</span>
-            <h1 className="section-page-title">My Characters</h1>
-            <span className="section-header-rune">✦</span>
+    <div className="character-page">
+      <div className="character-shell">
+        <header className="character-header">
+          <div className="character-header-copy">
+            <p className="character-eyebrow">Adventurer Roster</p>
+            <h1 className="character-title">My Characters</h1>
+            <p className="character-subtitle">Open a sheet to edit stats, story notes, proficiencies, and combat details.</p>
           </div>
-          <div className="section-header-divider" />
-          <Link to="/create-character" className="section-header-cta">
-            <Button>Create Character</Button>
+
+          <Link to="/create-character" className="character-btn-link">
+            <Plus aria-hidden="true" />
+            Create Character
           </Link>
         </header>
-      {error && <div className="characters-error">{error}</div>}
-      <div className="characters-list">
-        {characters.length > 0 ? (
-          characters.map((character) => (
-            <div key={character._id} className="characters-item">
-              <CharacterCard character={character} />
-              <div className="characters-actions-row">
-                <button
-                  type="button"
-                  className="characters-action-btn"
-                  onClick={() => setViewCharacter(character)}
-                >
-                  View
-                </button>
-                <Link to={`/create-character?characterId=${character._id}`}>
-                  <button type="button" className="characters-action-btn">Edit</button>
-                </Link>
-                <button
-                  type="button"
-                  className="characters-action-btn is-danger"
-                  onClick={() => handleDeleteCharacter(character._id)}
-                  disabled={deletingId === character._id}
-                >
-                  {deletingId === character._id ? "Deleting..." : "Delete"}
-                </button>
+
+        <div className="character-divider" />
+
+        {isLoading && <LoadingPage>Loading your heroes...</LoadingPage>}
+        {error && <div className="character-error">{error}</div>}
+
+        {!isLoading && !error && (
+          <div className="character-list-grid">
+            {characters.length === 0 ? (
+              <div className="character-empty-state">
+                <ScrollText aria-hidden="true" />
+                <p>You have not created any characters yet.</p>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="characters-empty">
-            <h2>No characters yet</h2>
-            <p>Create your first character to get started!</p>
+            ) : (
+              characters.map((character) => (
+                <CharacterCard key={character._id || character.characterId} character={character} />
+              ))
+            )}
           </div>
         )}
-      </div>
-      {viewCharacter && (
-        <div className="characters-modal">
-          <div className="characters-modal-card">
-            <h2>{viewCharacter.name}</h2>
-            <p><strong>Class:</strong> {viewCharacter.class}</p>
-            <p><strong>Race:</strong> {viewCharacter.race}</p>
-            <p><strong>Level:</strong> {viewCharacter.level}</p>
-            <div className="characters-modal-actions">
-              <Link to={`/create-character?characterId=${viewCharacter._id}`}>
-                <button type="button" className="characters-action-btn">Edit</button>
-              </Link>
-              <button type="button" className="characters-action-btn" onClick={() => setViewCharacter(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

@@ -367,10 +367,20 @@ textarea::placeholder {
   position: relative;
   background-size: cover;
   background-position: center;
+  background-color: rgba(12, 9, 5, 0.9);
   border: 1px solid rgba(201, 168, 76, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+
+.campaign-card-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .campaign-card::before {
@@ -389,7 +399,7 @@ textarea::placeholder {
   pointer-events: none;
 }
 
-.campaign-card > * {
+.campaign-card > :not(.campaign-card-image) {
   position: relative;
   z-index: 2;
 }
@@ -398,6 +408,34 @@ textarea::placeholder {
   transform: translateY(-5px);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(201, 168, 76, 0.4);
   border-color: rgba(201, 168, 76, 0.5);
+}
+
+.campaign-card:hover .card-overlay {
+  background: linear-gradient(to top, rgba(8, 6, 3, 0.97) 0%, rgba(8, 6, 3, 0.6) 55%, transparent 100%);
+}
+
+/* 5e Compendium — stack list above article on narrow screens */
+@media (max-width: 800px) {
+  .ruleset-split {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ruleset-split aside {
+    max-height: min(40vh, 360px);
+  }
+}
+
+/* Compendium result rows: strip OS / browser focus rings (often a white rounded rect on macOS) */
+.ruleset-split button.ruleset-list-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ruleset-split button.ruleset-list-btn:focus,
+.ruleset-split button.ruleset-list-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* ════════════════════════════════════════════

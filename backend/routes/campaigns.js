@@ -1,23 +1,26 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import Campaign from "../models/Campaign.js";
+import Session from "../models/Session.js";
 import User from "../models/User.js";
-import { verifyToken } from "../middleware/auth.js";
 
 const router = express.Router();
 const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
-const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed", "active", "inactive", "archived"]);
+const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
 const QUEST_STATUSES = new Set(["In Progress", "Blocked", "Completed"]);
 
 const normalizeCurrentQuest = (input) => {
   if (!input) return null;
+
   const title = input.title?.trim?.() || "";
   const objective = input.objective?.trim?.() || "";
   if (!title && !objective) return null;
 
+  const status = QUEST_STATUSES.has(input.status) ? input.status : "In Progress";
   return {
     title,
     objective,
-    status: QUEST_STATUSES.has(input.status) ? input.status : "In Progress",
+    status,
     updatedAt: new Date(),
   };
 };
@@ -31,6 +34,18 @@ const normalizeNpcs = (input) => {
       notes: npc?.notes?.trim?.() || "",
     }))
     .filter((npc) => npc.name)
+    .slice(0, 100);
+};
+
+const normalizeEnemies = (input) => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((enemy) => ({
+      name: enemy?.name?.trim?.() || "",
+      role: enemy?.role?.trim?.() || "",
+      notes: enemy?.notes?.trim?.() || "",
+    }))
+    .filter((enemy) => enemy.name)
     .slice(0, 100);
 };
 
@@ -51,6 +66,23 @@ const normalizeLoot = (input) => {
     .slice(0, 150);
 };
 
+// --- Auth Middleware ---
+// May need to move this to another file for reuse in maps and character.
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+  const token = authHeader.split(" ")[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // contains { userId, username }
+    next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+};
+
 // Search users by username (for adding players)
 router.get("/users/search", verifyToken, async (req, res) => {
   try {
@@ -61,7 +93,7 @@ router.get("/users/search", verifyToken, async (req, res) => {
 
     const users = await User.find({
       username: { $regex: username.trim(), $options: "i" },
-      _id: { $ne: req.userId },
+      _id: { $ne: req.user.userId }, // exclude the searching user
     })
       .select("_id username")
       .limit(10);
@@ -80,19 +112,24 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(400).json({ error: "Title must be at least 3 characters" });
     }
 
+    const memberIds = Array.isArray(req.body.members) ? req.body.members : [];
+    const uniquePlayerIds = new Set();
+    for (const member of memberIds) {
+      const id = member?.userId?.toString();
+      if (!id || id === req.user.userId) continue;
+      uniquePlayerIds.add(id);
+    }
+
     const maxPlayersValue = Number(req.body.maxPlayers);
     const maxPlayers = Number.isFinite(maxPlayersValue) ? Math.trunc(maxPlayersValue) : 5;
     if (maxPlayers < 1 || maxPlayers > 12) {
       return res.status(400).json({ error: "Max players must be between 1 and 12" });
     }
 
-    const memberIds = Array.isArray(req.body.members) ? req.body.members : [];
-    const uniquePlayerIds = new Set();
-    for (const member of memberIds) {
-      const id = member?.userId?.toString();
-      if (!id || id === req.userId) continue;
-      uniquePlayerIds.add(id);
-    }
+    const members = [
+      { userId: req.user.userId, role: "DM" },
+      ...Array.from(uniquePlayerIds).map((id) => ({ userId: id, role: "Player" })),
+    ];
     if (uniquePlayerIds.size > maxPlayers) {
       return res.status(400).json({ error: "Party size exceeds max players" });
     }
@@ -116,130 +153,87 @@ router.post("/", verifyToken, async (req, res) => {
       title,
       description: req.body.description?.trim(),
       image: req.body.image,
-      createdBy: req.userId,
+      createdBy: req.user.userId,
       playStyle,
       maxPlayers,
-      minLevel: req.body.minLevel,
-      maxLevel: req.body.maxLevel,
-      campaignType: req.body.campaignType || "D&D",
       startDate,
       status,
-      isPublic: req.body.isPublic ?? true,
-      accessCode: req.body.accessCode || null,
       currentQuest: normalizeCurrentQuest(req.body.currentQuest),
       npcs: normalizeNpcs(req.body.npcs),
+      enemies: normalizeEnemies(req.body.enemies),
       loot: normalizeLoot(req.body.loot),
-      members: [
-        { userId: req.userId, role: "DM" },
-        ...Array.from(uniquePlayerIds).map((id) => ({ userId: id, role: "Player" })),
-      ],
+      members,
     });
-
     await campaign.save();
-    res.status(201).json({ message: "Campaign created successfully", campaign });
+    res.status(201).json(campaign);
   } catch (err) {
-    console.error("Campaign creation error:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
-// PARTY FINDER ROUTES
-router.get("/finder/available", async (req, res) => {
+// Get all campaigns where the logged-in user is a member
+router.get("/", verifyToken, async (req, res) => {
   try {
-    const { campaignType, minLevel, maxLevel } = req.query;
-
-    const filter = { isPublic: true, isHosting: true };
-    if (campaignType) filter.campaignType = campaignType;
-    if (minLevel) filter.minLevel = { $lte: Number(minLevel) };
-    if (maxLevel) filter.maxLevel = { $gte: Number(maxLevel) };
-
-    const campaigns = await Campaign.find(filter)
-      .select("title description campaignType minLevel maxPlayers members isHosting joinRequests createdBy")
-      .populate("createdBy", "username")
-      .sort({ createdAt: -1 });
-
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title description image playStyle maxPlayers startDate status members createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(campaigns);
   } catch (err) {
-    console.error("Error fetching available campaigns:", err);
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
-router.get("/finder/joinable", verifyToken, async (req, res) => {
+// Get active sessions for campaigns where the logged-in user is a member
+router.get("/active-sessions", verifyToken, async (req, res) => {
   try {
-    const campaigns = await Campaign.find({
-      $and: [{ isPublic: true }, { "members.userId": { $ne: req.userId } }],
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title status members")
+      .lean();
+    const campaignIds = campaigns.map((campaign) => campaign._id);
+    if (campaignIds.length === 0) {
+      return res.json([]);
+    }
+
+    const sessions = await Session.find({
+      campaignId: { $in: campaignIds },
+      status: "In Progress",
     })
-      .select("title description campaignType status members isHosting joinRequests createdBy")
-      .populate("createdBy", "username")
-      .sort({ createdAt: -1 });
+      .select("campaignId title status startedAt createdAt")
+      .sort({ startedAt: -1, createdAt: -1 })
+      .lean();
 
-    res.json(campaigns);
+    const campaignById = new Map(campaigns.map((campaign) => [campaign._id.toString(), campaign]));
+    const seenCampaignIds = new Set();
+    const activeCampaigns = [];
+
+    for (const session of sessions) {
+      const campaignId = session.campaignId?.toString();
+      if (!campaignId || seenCampaignIds.has(campaignId)) continue;
+
+      const campaign = campaignById.get(campaignId);
+      if (!campaign) continue;
+
+      seenCampaignIds.add(campaignId);
+      activeCampaigns.push({
+        campaign: {
+          _id: campaign._id,
+          title: campaign.title,
+          status: campaign.status,
+        },
+        session: {
+          _id: session._id,
+          title: session.title,
+          status: session.status,
+          startedAt: session.startedAt,
+          createdAt: session.createdAt,
+        },
+      });
+    }
+
+    res.json(activeCampaigns);
   } catch (err) {
-    console.error("Error fetching joinable campaigns:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id/start-hosting", verifyToken, async (req, res) => {
-  try {
-    const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
-
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ message: "Only the DM can start hosting" });
-
-    campaign.isHosting = true;
-    campaign.status = "active";
-    const saved = await campaign.save();
-    res.json({ message: "Campaign is now hosting", campaign: saved });
-  } catch (err) {
-    console.error("Start hosting error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id/stop-hosting", verifyToken, async (req, res) => {
-  try {
-    const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
-
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ message: "Only the DM can stop hosting" });
-
-    campaign.isHosting = false;
-    campaign.status = "inactive";
-    const saved = await campaign.save();
-    res.json({ message: "Campaign is no longer hosting", campaign: saved });
-  } catch (err) {
-    console.error("Stop hosting error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id/access-settings", verifyToken, async (req, res) => {
-  try {
-    const { isPublic, accessCode, maxPlayers, minLevel, maxLevel } = req.body;
-    const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
-
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ message: "Only the DM can update access settings" });
-
-    if (isPublic !== undefined) campaign.isPublic = isPublic;
-    if (accessCode !== undefined) campaign.accessCode = accessCode;
-    if (maxPlayers !== undefined) campaign.maxPlayers = maxPlayers;
-    if (minLevel !== undefined) campaign.minLevel = minLevel;
-    if (maxLevel !== undefined) campaign.maxLevel = maxLevel;
-
-    await campaign.save();
-    res.json({ message: "Access settings updated successfully", campaign });
-  } catch (err) {
-    console.error("Access settings error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -248,13 +242,13 @@ router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    // IMPORTANT: readiness can only be toggled by DM/creator.
-    if (!isDM) return res.status(403).json({ message: "Only the DM can change encounter readiness" });
+    const isDM = campaign.createdBy?.toString() === req.user.userId ||
+      campaign.members.some((m) => m.userId.toString() === req.user.userId && m.role === "DM");
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can change encounter readiness" });
+    }
 
     if (!campaign.encounter) campaign.encounter = {};
-    // IMPORTANT: readiness state used by socket layer to allow/deny player entry.
     campaign.encounter.isReady = Boolean(req.body?.isReady);
     campaign.markModified("encounter");
     await campaign.save();
@@ -264,135 +258,49 @@ router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
       isReady: campaign.encounter.isReady,
     });
   } catch (err) {
-    console.error("Encounter readiness update error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post("/:id/join-request", verifyToken, async (req, res) => {
-  try {
-    const { accessCode, characterId } = req.body;
-    const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
-
-    const isMember = campaign.members.some((m) => m.userId.toString() === req.userId);
-    if (isMember) return res.status(400).json({ message: "You are already a member of this campaign" });
-
-    if (campaign.blockedUsers?.some((u) => u.toString() === req.userId)) {
-      return res.status(403).json({ message: "You are blocked from joining this campaign" });
-    }
-
-    if (campaign.accessCode && campaign.accessCode !== accessCode) {
-      return res.status(403).json({ message: "Invalid access code" });
-    }
-
-    const existingRequest = campaign.joinRequests.find((r) => r.userId.toString() === req.userId);
-    if (existingRequest && existingRequest.status === "pending") {
-      return res.status(400).json({ message: "You already have a pending request for this campaign" });
-    }
-    if (existingRequest && existingRequest.status === "rejected") {
-      campaign.joinRequests = campaign.joinRequests.filter((r) => r._id.toString() !== existingRequest._id.toString());
-    }
-
-    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
-    if (playerCount >= campaign.maxPlayers) {
-      return res.status(400).json({ message: "Campaign is full" });
-    }
-
-    campaign.joinRequests.push({ userId: req.userId, characterId: characterId || null, status: "pending" });
-    await campaign.save();
-    res.json({ message: "Join request sent successfully", campaign });
-  } catch (err) {
-    console.error("Join request error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.put("/:id/join-request/:requestId", verifyToken, async (req, res) => {
-  try {
-    const { action, blockUser } = req.body;
-    const campaign = await Campaign.findById(req.params.id);
-    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
-
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ message: "Only the DM can approve join requests" });
-
-    const joinRequest = campaign.joinRequests.find((r) => r._id.toString() === req.params.requestId);
-    if (!joinRequest) return res.status(404).json({ error: "Join request not found" });
-
-    if (action === "approve") {
-      joinRequest.status = "approved";
-      const alreadyMember = campaign.members.some((m) => m.userId.toString() === joinRequest.userId.toString());
-      if (!alreadyMember) {
-        campaign.members.push({ userId: joinRequest.userId, characterId: joinRequest.characterId, role: "Player" });
-      }
-    } else if (action === "reject") {
-      joinRequest.status = "rejected";
-      if (blockUser) {
-        if (!campaign.blockedUsers) campaign.blockedUsers = [];
-        if (!campaign.blockedUsers.some((u) => u.toString() === joinRequest.userId.toString())) {
-          campaign.blockedUsers.push(joinRequest.userId);
-        }
-      }
-    } else {
-      return res.status(400).json({ message: "Invalid action" });
-    }
-
-    await campaign.save();
-    res.json({ message: `Join request ${action}ed successfully`, campaign });
-  } catch (err) {
-    console.error("Join request action error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// List campaigns where user is a member or creator
-router.get("/", verifyToken, async (req, res) => {
-  try {
-    const campaigns = await Campaign.find({
-      $or: [
-        { createdBy: req.userId },
-        { "members.userId": req.userId },
-      ],
-    }).sort({ createdAt: -1 });
-    res.json(campaigns);
-  } catch (err) {
-    console.error("Campaign fetch error:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
+// Get a campaign by ID — only if the user is a member
 router.get("/:id", verifyToken, async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id).populate("members.userId", "username email");
+    const campaign = await Campaign.findById(req.params.id).populate(
+      "members.userId",
+      "username email profileImageUrl"
+    ).lean();
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isMember = campaign.createdBy?.toString() === req.userId || campaign.members.some((m) => {
-      const memberId = m.userId?._id?.toString?.() || m.userId?.toString?.();
-      return memberId === req.userId;
-    });
-    if (!isMember) return res.status(403).json({ error: "Access denied" });
+    const isMember = campaign.members.some(
+      (m) => m.userId._id.toString() === req.user.userId
+    );
+    if (!isMember) {
+      return res.status(403).json({ error: "Access denied" });
+    }
 
     res.json(campaign);
   } catch (err) {
-    console.error("Campaign fetch error:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
+// Update a campaign — only the DM can update
 router.put("/:id", verifyToken, async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ error: "Only the DM can update this campaign" });
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can update this campaign" });
+    }
 
     if (req.body.playStyle && !PLAY_STYLES.has(req.body.playStyle)) {
       return res.status(400).json({ error: "Invalid play style" });
     }
+
     if (req.body.status && !STATUSES.has(req.body.status)) {
       return res.status(400).json({ error: "Invalid campaign status" });
     }
@@ -402,6 +310,9 @@ router.put("/:id", verifyToken, async (req, res) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, "npcs")) {
       req.body.npcs = normalizeNpcs(req.body.npcs);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "enemies")) {
+      req.body.enemies = normalizeEnemies(req.body.enemies);
     }
     if (Object.prototype.hasOwnProperty.call(req.body, "loot")) {
       req.body.loot = normalizeLoot(req.body.loot);
@@ -418,30 +329,33 @@ router.put("/:id", verifyToken, async (req, res) => {
       return res.status(400).json({ error: "Party size exceeds max players" });
     }
 
-    const updatedCampaign = await Campaign.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    res.json({ message: "Campaign updated successfully", campaign: updatedCampaign });
+    const updatedCampaign = await Campaign.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    res.json(updatedCampaign);
   } catch (err) {
-    console.error("Campaign update error:", err);
     res.status(400).json({ error: err.message });
   }
 });
 
+// Delete a campaign — only the DM can delete
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isDM = campaign.createdBy?.toString() === req.userId ||
-      campaign.members.some((m) => m.userId.toString() === req.userId && m.role === "DM");
-    if (!isDM) return res.status(403).json({ error: "Only the DM can delete this campaign" });
+    const isDM = campaign.members.some(
+      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    );
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can delete this campaign" });
+    }
 
     await Campaign.findByIdAndDelete(req.params.id);
-    res.json({ message: "Campaign deleted successfully" });
+    res.json({ message: "Campaign deleted" });
   } catch (err) {
-    console.error("Campaign delete error:", err);
     res.status(400).json({ error: err.message });
   }
 });

@@ -1,9 +1,7 @@
-import EncounterAssistantBoard from "./EncounterAssistantBoard.jsx";
+import SessionLobby from "./SessionLobby.jsx";
 
 function Session() {
-    return (
-        <EncounterAssistantBoard />
-    )
+  return <SessionLobby />;
 }
 
 export default Session;

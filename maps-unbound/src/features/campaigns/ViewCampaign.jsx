@@ -5,11 +5,12 @@ import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "./use-campaign.js";
 import CampaignDMView from "./CampaignDMView.jsx";
 import CampaignPlayerView from "./CampaignPlayerView.jsx";
+import "./campaign.css";
 
 function ViewCampaignPage() {
   const { id } = useParams();
   const { user, loading: authLoading } = useAuth();
-  const { campaign, loading, error, refetch } = useCampaign(id);
+  const { campaign, setCampaign, loading, error } = useCampaign(id);
 
   if (loading || authLoading) {
     return <LoadingPage>Unravelling the scroll...</LoadingPage>;
@@ -42,7 +43,7 @@ function ViewCampaignPage() {
 
   // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
   return isDM
-    ? <CampaignDMView campaign={campaign} refetch={refetch} />
+    ? <CampaignDMView campaign={campaign} setCampaign={setCampaign} />
     : <CampaignPlayerView campaign={campaign} user={user} />;
 }
 

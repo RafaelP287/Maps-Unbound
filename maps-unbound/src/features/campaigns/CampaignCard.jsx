@@ -3,7 +3,10 @@ import placeholderImage from "./images/DnD.jpg";
 
 const CampaignCard = ({ campaign, currentUser }) => {
   // Determine user's role in the campaign and total members
-  const member = campaign.members.find((m) => m.userId === currentUser);
+  const member = campaign.members.find((m) => {
+    const memberUserId = typeof m.userId === "object" ? m.userId?._id || m.userId?.id : m.userId;
+    return String(memberUserId) === String(currentUser);
+  });
   const isDM = member && member.role === "DM";
   // Card count reflects everyone in campaign (DM + players).
   const totalPlayers = campaign.members.length;
@@ -13,8 +16,15 @@ const CampaignCard = ({ campaign, currentUser }) => {
     <Link
       to={`/campaigns/${campaign._id}`}
       className="campaign-card"
-      style={{ backgroundImage: `url(${campaign.image || placeholderImage})` }}
     >
+      <img
+        className="campaign-card-image"
+        src={campaign.image || placeholderImage}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        aria-hidden="true"
+      />
       {/* Role badge */}
       {member && (
         <div style={isDM ? dmBadgeStyle : playerBadgeStyle}>

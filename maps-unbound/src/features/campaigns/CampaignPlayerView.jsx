@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { useEffect } from "react";
 
 import placeholderImage from "./images/DnD.jpg";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
+import useCampaignSessions from "./use-campaign-sessions.js";
 
 function CampaignPlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -10,6 +12,28 @@ function CampaignPlayerView({ campaign, user }) {
   // Player-facing roster excludes the DM for party-size displays.
   const players = campaign.members.filter((m) => m.role === "Player");
   const backgroundImage = campaign.image || placeholderImage;
+  const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaign._id);
+  const openLobby = [...sessions]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .find((session) => session.status === "In Progress" && !session.startedAt && !session.endedAt);
+
+  useEffect(() => {
+    if (!campaign._id) return;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      refetchSessions();
+    }, 15000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refetchSessions();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [campaign._id, refetchSessions]);
 
   return (
     <div className="campaign-page">
@@ -23,10 +47,33 @@ function CampaignPlayerView({ campaign, user }) {
         <CampaignHero campaign={campaign} />
 
         <div className="campaign-card-panel">
-          <CampaignSections campaign={campaign} dm={dm} players={players} user={user} />
+          {openLobby && (
+            <section className="campaign-player-lobby-panel">
+              <div>
+                <p className="campaign-index-eyebrow">Open Lobby</p>
+                <h2>{openLobby.title || "Session Lobby"}</h2>
+                <p>The DM has opened the table lobby for this campaign.</p>
+              </div>
+              <Link
+                to={`/session?campaignId=${campaign._id}&sessionId=${openLobby._id}&sessionName=${encodeURIComponent(openLobby.title || "Session")}`}
+                className="campaign-btn-link btn-primary"
+              >
+                Join Lobby
+              </Link>
+            </section>
+          )}
+
+          <CampaignSections
+            campaign={campaign}
+            dm={dm}
+            players={players}
+            sessions={sessions}
+            sessionsLoading={sessionsLoading}
+            user={user}
+          />
 
           {/* Footer */}
-          <div className="campaign-footer">
+          <div className="campaign-footer campaign-footer-split">
             <Link to="/campaigns" className="btn-ghost campaign-btn-link">← Back to Campaigns</Link>
           </div>
         </div>
