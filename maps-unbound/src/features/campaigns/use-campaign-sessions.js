@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 
@@ -9,7 +9,7 @@ function useCampaignSessions(campaignId, options = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!token || !campaignId) return;
     const cacheKey = `campaign:sessions:${user?.id || "current"}:${campaignId}:${includeNotes ? "notes" : "summary"}`;
     const cachedSessions = getCachedValue(cacheKey);
@@ -41,12 +41,11 @@ function useCampaignSessions(campaignId, options = {}) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, includeNotes, token, user?.id]);
 
   useEffect(() => {
     fetchSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, token, user?.id, includeNotes]);
+  }, [fetchSessions]);
 
   return { sessions, loading, error, refetch: fetchSessions };
 }

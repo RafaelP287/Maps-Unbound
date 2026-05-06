@@ -267,8 +267,12 @@ function SessionLobby() {
         </header>
 
         {lobbyNotice && (
-          <div className="session-lobby__notice" role="status">
-            {lobbyNotice}
+          <div className="session-boot-overlay" role="status" aria-live="assertive">
+            <div className="session-boot-overlay__card">
+              <p className="session-lobby__eyebrow">Session Closed</p>
+              <h2>Returning to Campaign</h2>
+              <p>{lobbyNotice}</p>
+            </div>
           </div>
         )}
 

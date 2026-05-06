@@ -97,8 +97,12 @@ function SessionPlayerView() {
         </header>
 
         {notice && (
-          <div className="session-lobby__notice" role="status">
-            {notice}
+          <div className="session-boot-overlay" role="status" aria-live="assertive">
+            <div className="session-boot-overlay__card">
+              <p className="session-lobby__eyebrow">Session Closed</p>
+              <h2>Returning to Campaign</h2>
+              <p>{notice}</p>
+            </div>
           </div>
         )}
 

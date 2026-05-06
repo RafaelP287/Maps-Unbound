@@ -385,6 +385,35 @@
   gap: 0.55rem;
 }
 
+.campaign-player-lobby-panel {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(201, 168, 76, 0.36);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(201, 168, 76, 0.18), transparent 38%),
+    rgba(10, 8, 5, 0.52);
+}
+
+.campaign-player-lobby-panel h2,
+.campaign-player-lobby-panel p {
+  margin: 0;
+}
+
+.campaign-player-lobby-panel h2 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+}
+
+.campaign-player-lobby-panel p:not(.campaign-index-eyebrow) {
+  color: var(--text-muted);
+}
+
 .btn-start-session {
   width: 100%;
   max-width: 360px;

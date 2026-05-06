@@ -146,15 +146,6 @@
   background: rgba(255, 255, 255, 0.06);
 }
 
-.session-lobby__notice {
-  border: 1px solid rgba(210, 78, 78, 0.45);
-  border-radius: var(--radius-sm);
-  padding: 0.85rem 1rem;
-  color: #ffd7d7;
-  background: rgba(90, 22, 22, 0.32);
-  font-size: 0.98rem;
-}
-
 .session-lobby__grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -328,6 +319,47 @@
   margin-top: 0.8rem;
   color: #ff9b9b;
   font-size: 0.92rem;
+}
+
+.session-boot-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(6, 5, 4, 0.78);
+  backdrop-filter: blur(3px);
+}
+
+.session-boot-overlay__card {
+  width: min(520px, 100%);
+  border: 1px solid rgba(210, 78, 78, 0.5);
+  border-radius: var(--radius);
+  padding: 1.3rem 1.4rem;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(210, 78, 78, 0.18), transparent 42%),
+    linear-gradient(145deg, rgba(16, 12, 8, 0.98), rgba(10, 8, 5, 0.98));
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.72);
+  text-align: center;
+}
+
+.session-boot-overlay__card h2,
+.session-boot-overlay__card p {
+  margin: 0;
+}
+
+.session-boot-overlay__card h2 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.session-boot-overlay__card p:last-child {
+  margin-top: 0.65rem;
+  color: #ffd7d7;
 }
 
 .session-player {
