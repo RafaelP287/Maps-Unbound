@@ -5,6 +5,7 @@ import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "./use-campaign.js";
 import CampaignDMView from "./CampaignDMView.jsx";
 import CampaignPlayerView from "./CampaignPlayerView.jsx";
+import "./campaign.css";
 
 function ViewCampaignPage() {
   const { id } = useParams();

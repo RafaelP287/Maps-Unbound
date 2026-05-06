@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useEffect } from "react";
 
 import placeholderImage from "./images/DnD.jpg";
-import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
@@ -22,8 +21,9 @@ function CampaignPlayerView({ campaign, user }) {
     if (!campaign._id) return;
 
     const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
       refetchSessions();
-    }, 5000);
+    }, 15000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") refetchSessions();
     };
@@ -34,10 +34,6 @@ function CampaignPlayerView({ campaign, user }) {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [campaign._id, refetchSessions]);
-
-  if (sessionsLoading) {
-    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
-  }
 
   return (
     <div className="campaign-page">

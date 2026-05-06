@@ -367,10 +367,20 @@ textarea::placeholder {
   position: relative;
   background-size: cover;
   background-position: center;
+  background-color: rgba(12, 9, 5, 0.9);
   border: 1px solid rgba(201, 168, 76, 0.2);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   cursor: pointer;
   transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+}
+
+.campaign-card-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .campaign-card::before {
@@ -389,7 +399,7 @@ textarea::placeholder {
   pointer-events: none;
 }
 
-.campaign-card > * {
+.campaign-card > :not(.campaign-card-image) {
   position: relative;
   z-index: 2;
 }

@@ -7,6 +7,7 @@ import CampaignCard from "./CampaignCard.jsx";
 import Gate from "../../shared/Gate.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
 import { clearCachePrefix, removeCachedValue, setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import "./campaign.css";
 
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
@@ -74,6 +75,7 @@ function CampaignsPage() {
     }
 
     const fetchCampaigns = async () => {
+      void fetchActiveCampaigns();
       try {
         const res = await fetch("/api/campaigns", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -93,12 +95,10 @@ function CampaignsPage() {
         }
         setCampaigns(nextCampaigns);
         setCachedValue(cacheKey, nextCampaigns);
-        void fetchActiveCampaigns();
 
       } catch (err) {
         console.error("Error fetching campaigns:", err);
         if (!hasCachedCampaigns) setCampaigns([]); // Reset to empty array on cold network error
-        void fetchActiveCampaigns();
       } finally { setLoading(false); }
     };
     fetchCampaigns();
@@ -108,9 +108,10 @@ function CampaignsPage() {
     if (!isLoggedIn || campaigns.length === 0) return;
 
     const refreshActiveCampaigns = () => {
+      if (document.visibilityState !== "visible") return;
       fetchActiveCampaigns({ showLoading: false });
     };
-    const intervalId = window.setInterval(refreshActiveCampaigns, 5000);
+    const intervalId = window.setInterval(refreshActiveCampaigns, 15000);
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") refreshActiveCampaigns();
     };

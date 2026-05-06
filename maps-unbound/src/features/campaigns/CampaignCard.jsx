@@ -16,8 +16,15 @@ const CampaignCard = ({ campaign, currentUser }) => {
     <Link
       to={`/campaigns/${campaign._id}`}
       className="campaign-card"
-      style={{ backgroundImage: `url(${campaign.image || placeholderImage})` }}
     >
+      <img
+        className="campaign-card-image"
+        src={campaign.image || placeholderImage}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        aria-hidden="true"
+      />
       {/* Role badge */}
       {member && (
         <div style={isDM ? dmBadgeStyle : playerBadgeStyle}>

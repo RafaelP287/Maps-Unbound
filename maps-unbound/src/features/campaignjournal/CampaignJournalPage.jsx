@@ -6,6 +6,7 @@ import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "../campaigns/use-campaign.js";
 import { clearCachePrefix, getCachedValue, setCachedValue } from "../../shared/dataCache.js";
 import placeholderImage from "../campaigns/images/DnD.jpg";
+import "../campaigns/campaign.css";
 import "./campaignjournal.css";
 
 const formatTimelineDate = (value) => {

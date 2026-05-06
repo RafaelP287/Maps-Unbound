@@ -1,34 +1,35 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { ThreeDDice } from "dddice-js";
+import React, { Suspense, lazy, useState, useRef, useCallback, useEffect } from "react";
 import AppLayout from "./layout/AppLayout.jsx";
 import SessionLayout from "./layout/SessionLayout.jsx";
 
-import Home from "./features/home/Home.jsx";
-import Maps from "./features/maps/Maps.jsx";
-import MapsPage from "./features/maps/MapsPage.jsx";
+import LoadingPage from "./shared/Loading.jsx";
 
-import Session from "./features/session/Session.jsx";
-import SessionDMView from "./features/session/SessionDMView.jsx";
-import SessionPlayerView from "./features/session/SessionPlayerView.jsx";
+const Home = lazy(() => import("./features/home/Home.jsx"));
+const Maps = lazy(() => import("./features/maps/Maps.jsx"));
+const MapsPage = lazy(() => import("./features/maps/MapsPage.jsx"));
 
-import Campaigns from "./features/campaigns/CampaignsPage.jsx";
-import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
-import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
-import CampaignJournalPage from "./features/campaignjournal/CampaignJournalPage.jsx";
+const Session = lazy(() => import("./features/session/Session.jsx"));
+const SessionDMView = lazy(() => import("./features/session/SessionDMView.jsx"));
+const SessionPlayerView = lazy(() => import("./features/session/SessionPlayerView.jsx"));
 
-import Characters from "./features/characters/Characters.jsx";
-import CreateCharacter from "./features/characters/CreateCharacter.jsx";
-import CharacterEditor from "./features/characters/CharacterEditor.jsx";
-import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+const Campaigns = lazy(() => import("./features/campaigns/CampaignsPage.jsx"));
+const CreateCampaign = lazy(() => import("./features/campaigns/CreateCampaign.jsx"));
+const ViewCampaign = lazy(() => import("./features/campaigns/ViewCampaign.jsx"));
+const CampaignJournalPage = lazy(() => import("./features/campaignjournal/CampaignJournalPage.jsx"));
 
-import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
+const Characters = lazy(() => import("./features/characters/Characters.jsx"));
+const CreateCharacter = lazy(() => import("./features/characters/CreateCharacter.jsx"));
+const CharacterEditor = lazy(() => import("./features/characters/CharacterEditor.jsx"));
+const PartyFinder = lazy(() => import("./features/partyfinder/PartyFinder.jsx"));
 
-import RulesetReader from "./features/ruleset/RulesetReader.jsx";
+const AssetFinder = lazy(() => import("./features/assetfinder/AssetFinder.jsx"));
 
-import Profile from "./features/profile/Profile.jsx";
-import Signup from "./features/auth/Signup.jsx";
-import Login from "./features/auth/Login.jsx";
+const RulesetReader = lazy(() => import("./features/ruleset/RulesetReader.jsx"));
+
+const Profile = lazy(() => import("./features/profile/Profile.jsx"));
+const Signup = lazy(() => import("./features/auth/Signup.jsx"));
+const Login = lazy(() => import("./features/auth/Login.jsx"));
 
 const DDDICE_API_KEY = import.meta.env.VITE_DDDICE_API_KEY;
 
@@ -65,12 +66,18 @@ function App() {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${DDDICE_API_KEY}` },
             });
-        } catch (e) { /* best-effort */ }
+        } catch {
+            return;
+        }
     }, []);
 
     const stopRenderer = useCallback(async () => {
         if (dddiceRef.current) {
-            try { dddiceRef.current.stop(); } catch (_) {}
+            try {
+                dddiceRef.current.stop();
+            } catch {
+                console.warn("[dddice] Failed to stop renderer cleanly");
+            }
             dddiceRef.current = null;
             await sleep(50);
         }
@@ -155,6 +162,7 @@ function App() {
     const startRenderer = useCallback(async (canvasElement) => {
         if (!canvasElement) return;
         await stopRenderer();
+        const { ThreeDDice } = await import("dddice-js");
         canvasRef.current = canvasElement;
         dddiceRef.current = new ThreeDDice(canvasElement, DDDICE_API_KEY);
         dddiceRef.current.start();
@@ -309,70 +317,69 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="session" element={<SessionLayout />}>
-          <Route index element={<Session />} />
-          <Route path="dm" element={<SessionDMView />} />
-          <Route path="player" element={<SessionPlayerView />} />
-        </Route>
-        <Route path="/" element={<AppLayout />}>
-          {/* Home route */}
-          <Route index element={<Home />} />
-
-          {/* Profile route */}
-          <Route path="profile" element={<Profile />} />
-          
-          {/* Map routes */}
-          <Route path="maps">
-            <Route index element={<MapsPage />} />
-            <Route
-              path="create"
-              element={
-                <Maps
-                  initializeDice={initializeDice}
-                  cleanupDice={cleanupDice}
-                  retryDice={retryDice}
-                  resizeDice={resizeDice}
-                  rollDice={rollDice}
-                  isDiceReady={isDiceReady}
-                  diceError={diceError}
-                  pixelRatio={PIXEL_RATIO}
-                  rollNotifs={rollNotifs}
-                />
-              }
-            />
+      <Suspense fallback={<LoadingPage>Loading...</LoadingPage>}>
+        <Routes>
+          <Route path="session" element={<SessionLayout />}>
+            <Route index element={<Session />} />
+            <Route path="dm" element={<SessionDMView />} />
+            <Route path="player" element={<SessionPlayerView />} />
           </Route>
-          {/* Character Routes */}
-          <Route path="characters" element={<Characters />} />
-          <Route path="characters/:id/edit" element={<CharacterEditor />} />
-          <Route path="create-character" element={<CreateCharacter />} />
+          <Route path="/" element={<AppLayout />}>
+            {/* Home route */}
+            <Route index element={<Home />} />
+
+            {/* Profile route */}
+            <Route path="profile" element={<Profile />} />
+            
+            {/* Map routes */}
+            <Route path="maps">
+              <Route index element={<MapsPage />} />
+              <Route
+                path="create"
+                element={
+                  <Maps
+                    initializeDice={initializeDice}
+                    cleanupDice={cleanupDice}
+                    retryDice={retryDice}
+                    resizeDice={resizeDice}
+                    rollDice={rollDice}
+                    isDiceReady={isDiceReady}
+                    diceError={diceError}
+                    pixelRatio={PIXEL_RATIO}
+                    rollNotifs={rollNotifs}
+                  />
+                }
+              />
+            </Route>
+            {/* Character Routes */}
+            <Route path="characters" element={<Characters />} />
+            <Route path="characters/:id/edit" element={<CharacterEditor />} />
+            <Route path="create-character" element={<CreateCharacter />} />
 
 
-          {/* Campaign routes */}
-          <Route path="campaigns">
-            <Route index element={<Campaigns />} />
-            <Route path="new" element={<CreateCampaign />} />
-            <Route path=":id" element={<ViewCampaign />} />
-            <Route path=":id/journal" element={<CampaignJournalPage />} />
+            {/* Campaign routes */}
+            <Route path="campaigns">
+              <Route index element={<Campaigns />} />
+              <Route path="new" element={<CreateCampaign />} />
+              <Route path=":id" element={<ViewCampaign />} />
+              <Route path=":id/journal" element={<CampaignJournalPage />} />
+            </Route>
+
+            {/* Party Finder route */}
+            <Route path="party-finder" element={<PartyFinder />} />
+
+            {/* Asset Finder route */}
+            <Route path="asset-finder" element={<AssetFinder />} />
+
+            {/* Ruleset Reader route */}
+            <Route path="ruleset" element={<RulesetReader />} />
+
+            {/* Auth routes */}
+            <Route path="signup" element={<Signup />} />
+            <Route path="login" element={<Login />} />
           </Route>
-
-          {/* Party Finder route */}
-          <Route path="party-finder" element={<PartyFinder />} />
-
-          {/* Asset Finder route */}
-          <Route path="asset-finder" element={<AssetFinder />} />
-
-          {/* Ruleset Reader route */}
-          <Route path="ruleset" element={<RulesetReader />} />
-
-          {/* Profile route */}
-          <Route path="profile" element={<Profile />} />
-
-          {/* Auth routes */}
-          <Route path="signup" element={<Signup />} />
-          <Route path="login" element={<Login />} />
-        </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

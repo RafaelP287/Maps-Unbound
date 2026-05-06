@@ -187,7 +187,7 @@ router.get("/", verifyToken, async (req, res) => {
 router.get("/active-sessions", verifyToken, async (req, res) => {
   try {
     const campaigns = await Campaign.find({ "members.userId": req.user.userId })
-      .select("title description image playStyle maxPlayers startDate status members createdAt updatedAt")
+      .select("title status members")
       .lean();
     const campaignIds = campaigns.map((campaign) => campaign._id);
     if (campaignIds.length === 0) {
@@ -198,7 +198,7 @@ router.get("/active-sessions", verifyToken, async (req, res) => {
       campaignId: { $in: campaignIds },
       status: "In Progress",
     })
-      .select("campaignId title sessionNumber status scheduledFor startedAt endedAt summary participants tags createdAt updatedAt")
+      .select("campaignId title status startedAt createdAt")
       .sort({ startedAt: -1, createdAt: -1 })
       .lean();
 
@@ -214,7 +214,20 @@ router.get("/active-sessions", verifyToken, async (req, res) => {
       if (!campaign) continue;
 
       seenCampaignIds.add(campaignId);
-      activeCampaigns.push({ campaign, session });
+      activeCampaigns.push({
+        campaign: {
+          _id: campaign._id,
+          title: campaign.title,
+          status: campaign.status,
+        },
+        session: {
+          _id: session._id,
+          title: session.title,
+          status: session.status,
+          startedAt: session.startedAt,
+          createdAt: session.createdAt,
+        },
+      });
     }
 
     res.json(activeCampaigns);
