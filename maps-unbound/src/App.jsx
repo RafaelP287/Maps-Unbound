@@ -22,6 +22,7 @@ const Characters = lazy(() => import("./features/characters/Characters.jsx"));
 const CreateCharacter = lazy(() => import("./features/characters/CreateCharacter.jsx"));
 const CharacterEditor = lazy(() => import("./features/characters/CharacterEditor.jsx"));
 const PartyFinder = lazy(() => import("./features/partyfinder/PartyFinder.jsx"));
+const Lobby = lazy(() => import("./features/player/Lobby.jsx"));
 
 const AssetFinder = lazy(() => import("./features/assetfinder/AssetFinder.jsx"));
 
@@ -367,6 +368,7 @@ function App() {
 
             {/* Party Finder route */}
             <Route path="party-finder" element={<PartyFinder />} />
+            <Route path="campaign/:campaignId/lobby" element={<Lobby />} />
 
             {/* Asset Finder route */}
             <Route path="asset-finder" element={<AssetFinder />} />

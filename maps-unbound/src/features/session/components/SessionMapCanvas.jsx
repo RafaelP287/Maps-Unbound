@@ -22,6 +22,7 @@ const MAP_OPTIONS = Object.entries(
 function SessionMapCanvas({
     turns = [],
     round = 0,
+    readOnly = false,
     onAdvanceTurn,
     onCombatStateChange,
     onCombatStart,
@@ -38,6 +39,7 @@ function SessionMapCanvas({
     const [draftParticipants, setDraftParticipants] = useState([]);
     const [selectedMap, setSelectedMap] = useState(null);
     const rowIdRef = useRef(0);
+    const isLiveCombatState = isCombatState || (readOnly && turns.length > 0);
 
     const nextRowId = () => {
         rowIdRef.current += 1;
@@ -278,7 +280,7 @@ function SessionMapCanvas({
     };
 
     return (
-        <main className={["session-dm__map", isCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
+        <main className={["session-dm__map", isLiveCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
             {selectedMap && (
                 <img
                     className="session-dm__map-image"
@@ -289,76 +291,82 @@ function SessionMapCanvas({
             {!selectedMap && (
                 <div className="session-dm__map-overlay">
                     <div>
-                        <h2>{isCombatState ? "Combat State" : "Map Canvas"}</h2>
+                        <h2>{isLiveCombatState ? "Combat State" : "Map Canvas"}</h2>
                         <p>
-                            {isCombatState
+                            {isLiveCombatState
                                 ? "Initiative is live. Keep turns visible and track movement."
                                 : "Choose a map to fill the canvas."}
                         </p>
                     </div>
                 </div>
             )}
-            {isCombatState && (
+            {isLiveCombatState && (
                 <TurnRecord turns={turns} round={round} onAdvanceTurn={onAdvanceTurn} />
             )}
             <div className="session-dm__map-controls" aria-label="Map quick tools">
-                <button
-                    type="button"
-                    className="session-dm__map-btn"
-                    onClick={() => setIsMapPickerOpen(true)}
-                >
-                    Maps
-                </button>
+                {!readOnly && (
+                    <button
+                        type="button"
+                        className="session-dm__map-btn"
+                        onClick={() => setIsMapPickerOpen(true)}
+                    >
+                        Maps
+                    </button>
+                )}
                 <button type="button" className="session-dm__map-btn">Roll Dice</button>
                 <button type="button" className="session-dm__map-btn">Ping</button>
-                <button type="button" className="session-dm__map-btn">Hitbox</button>
-                <button
-                    type="button"
-                    className={[
-                        "session-dm__map-btn",
-                        isCombatState ? "session-dm__map-btn--danger" : "",
-                    ].filter(Boolean).join(" ")}
-                    onClick={() => {
-                        if (isCombatState) {
-                            if (onCombatEnd) {
-                                onCombatEnd({
-                                    turns,
-                                    round: turns.length > 0 ? round + 1 : 0,
-                                    mapName: selectedMap?.name || "",
-                                });
+                {!readOnly && <button type="button" className="session-dm__map-btn">Hitbox</button>}
+                {!readOnly && (
+                    <button
+                        type="button"
+                        className={[
+                            "session-dm__map-btn",
+                            isCombatState ? "session-dm__map-btn--danger" : "",
+                        ].filter(Boolean).join(" ")}
+                        onClick={() => {
+                            if (isCombatState) {
+                                if (onCombatEnd) {
+                                    onCombatEnd({
+                                        turns,
+                                        round: turns.length > 0 ? round + 1 : 0,
+                                        mapName: selectedMap?.name || "",
+                                    });
+                                }
+                                setIsCombatState(false);
+                                if (onTurnsChange) {
+                                    onTurnsChange([]);
+                                }
+                                if (onCombatStateChange) {
+                                    onCombatStateChange(false);
+                                }
+                                return;
                             }
-                            setIsCombatState(false);
-                            if (onTurnsChange) {
-                                onTurnsChange([]);
-                            }
-                            if (onCombatStateChange) {
-                                onCombatStateChange(false);
-                            }
-                            return;
-                        }
-                        openCombatSetup();
-                    }}
-                    aria-pressed={isCombatState}
-                >
-                    {isCombatState ? "End Combat" : "Start Combat"}
-                </button>
+                            openCombatSetup();
+                        }}
+                        aria-pressed={isCombatState}
+                    >
+                        {isCombatState ? "End Combat" : "Start Combat"}
+                    </button>
+                )}
             </div>
-            <EncounterOverlay
-                isOpen={isCombatSetupOpen}
-                draftParticipants={draftParticipants}
-                combatSetupError={combatSetupError}
-                onClose={() => setIsCombatSetupOpen(false)}
-                onAddCustomEntity={addCustomEntity}
-                onAddParticipantFromPool={addParticipantFromPool}
-                entityPool={combatEntityPool}
-                onKindChange={updateParticipantKind}
-                onNameChange={updateParticipantName}
-                onInitiativeChange={updateParticipantInitiative}
-                onHpChange={updateParticipantHp}
-                onRemove={removeParticipant}
-                onApply={applyCombatSetup}
-            />
-            {isMapPickerOpen && (
+            {!readOnly && (
+                <EncounterOverlay
+                    isOpen={isCombatSetupOpen}
+                    draftParticipants={draftParticipants}
+                    combatSetupError={combatSetupError}
+                    onClose={() => setIsCombatSetupOpen(false)}
+                    onAddCustomEntity={addCustomEntity}
+                    onAddParticipantFromPool={addParticipantFromPool}
+                    entityPool={combatEntityPool}
+                    onKindChange={updateParticipantKind}
+                    onNameChange={updateParticipantName}
+                    onInitiativeChange={updateParticipantInitiative}
+                    onHpChange={updateParticipantHp}
+                    onRemove={removeParticipant}
+                    onApply={applyCombatSetup}
+                />
+            )}
+            {!readOnly && isMapPickerOpen && (
                 <div className="session-dm__map-picker-backdrop" role="dialog" aria-modal="true" aria-label="Choose map">
                     <div className="session-dm__map-picker">
                         <div className="session-dm__map-picker-header">

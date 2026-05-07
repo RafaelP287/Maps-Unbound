@@ -56,7 +56,8 @@ function CreateCampaignPage() {
 
     setLoading(true);
     // API expects a unified members array; include creator first as canonical DM entry.
-    const members = [{ userId: user.id, role: "DM" }, ...players.map((p) => ({ userId: p.userId, role: "Player" }))];
+    const currentUserId = user?._id || user?.id;
+    const members = [{ userId: currentUserId, role: "DM" }, ...players.map((p) => ({ userId: p.userId, role: "Player" }))];
     try {
       const response = await fetch("/api/campaigns", {
         method: "POST",

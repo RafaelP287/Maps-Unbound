@@ -1,0 +1,270 @@
+.pf-page {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 20% 0%, var(--bg-warm) 0%, var(--bg-deep) 60%);
+  padding: 2.5rem 1.2rem 4rem;
+}
+
+.pf-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.8rem;
+}
+
+.section-header-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  margin: 0.7rem 0;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.section-header-rune {
+  color: var(--gold);
+  font-size: 1.15rem;
+  opacity: 0.72;
+}
+
+.section-page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  color: var(--gold-light);
+  margin: 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 30px rgba(201, 168, 76, 0.25);
+  text-align: center;
+}
+
+.pf-mode-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.3rem;
+}
+
+.pf-mode-btn {
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.pf-mode-btn.is-active {
+  color: var(--bg-deep);
+  border-color: transparent;
+}
+
+.pf-alert {
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  margin: 0 auto 1rem;
+  max-width: 760px;
+  border: 1px solid;
+}
+
+.pf-alert-error {
+  background: rgba(192, 57, 43, 0.12);
+  border-color: rgba(192, 57, 43, 0.5);
+  color: #f0c6be;
+}
+
+.pf-alert-success {
+  background: rgba(76, 175, 130, 0.14);
+  border-color: rgba(76, 175, 130, 0.45);
+  color: #c6e7d7;
+}
+
+.pf-alert-warn {
+  background: rgba(201, 168, 76, 0.14);
+  border-color: rgba(201, 168, 76, 0.45);
+  color: #ebdebc;
+}
+
+.pf-loading,
+.pf-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 1rem;
+}
+
+.pf-campaign-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-campaign-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pf-campaign-card p {
+  margin: 0;
+}
+
+.pf-campaign-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+}
+
+.pf-request-status {
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-weight: 600;
+}
+
+.pf-request-status-approved {
+  background: rgba(76, 175, 130, 0.16);
+  color: #9fd8be;
+  border: 1px solid rgba(76, 175, 130, 0.3);
+}
+
+.pf-request-status-pending {
+  background: rgba(201, 168, 76, 0.16);
+  color: #e8d9ae;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+.pf-request-status-rejected {
+  background: rgba(192, 57, 43, 0.16);
+  color: #e8b0a8;
+  border: 1px solid rgba(192, 57, 43, 0.3);
+}
+
+.pf-join-requests {
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.26);
+  padding: 0.8rem;
+}
+
+.pf-request-item {
+  margin-top: 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.pf-request-checkbox-wrap {
+  margin-top: 0.4rem;
+}
+
+.pf-request-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.pf-request-checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+
+.pf-request-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.pf-approve-btn,
+.pf-reject-btn,
+.pf-host-toggle-btn,
+.pf-cancel-btn {
+  font-size: 0.68rem;
+  padding: 0.5rem 0.8rem;
+}
+
+.pf-approve-btn {
+  background: linear-gradient(135deg, #4caf82, #7dd1aa);
+  color: #0d0b08;
+}
+
+.pf-reject-btn {
+  background: linear-gradient(135deg, #c0392b, #df6659);
+  color: #fff;
+}
+
+.pf-host-toggle-btn {
+  margin-top: 0.35rem;
+}
+
+.pf-host-toggle-btn.is-start {
+  background: linear-gradient(135deg, #4caf82, #6ac996);
+  color: #0d0b08;
+}
+
+.pf-host-toggle-btn.is-stop {
+  background: linear-gradient(135deg, #b9862f, #e2b255);
+  color: #0d0b08;
+}
+
+.pf-enter-lobby-wrap {
+  margin-top: 0.45rem;
+}
+
+.pf-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 3, 2, 0.7);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 1rem;
+}
+
+.pf-modal-content {
+  width: min(460px, 100%);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.pf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.8rem 0;
+  color: var(--text-muted);
+}
+
+.pf-input {
+  margin-top: 0.15rem;
+}
+
+.pf-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.pf-cancel-btn {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-base);
+  border: 1px solid var(--border);
+}

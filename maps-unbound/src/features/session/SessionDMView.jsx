@@ -7,12 +7,15 @@ import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { io } from "socket.io-client";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
 import useCampaignSessions from "../campaigns/use-campaign-sessions";
 import LoadingPage from "../../shared/Loading.jsx";
 import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
+
+const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 const getUserId = (value) => {
     if (!value) return "";
@@ -46,6 +49,11 @@ function SessionDMView() {
     const [notesSaving, setNotesSaving] = useState(false);
     const [notesError, setNotesError] = useState("");
     const [notesStatus, setNotesStatus] = useState("");
+    const [socketConnected, setSocketConnected] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState("");
+    const [chatError, setChatError] = useState("");
+    const socketRef = useRef(null);
     const allowSessionExitRef = useRef(false);
     const sessionExitCleanupSentRef = useRef(false);
     const sessionExitCleanupRef = useRef(null);
@@ -53,6 +61,7 @@ function SessionDMView() {
     const campaignId = searchParams.get("campaignId");
     const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
+    const userId = user?._id || user?.id || "";
     const { campaign, loading } = useCampaign(campaignId);
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId, { includeNotes: true });
 
@@ -79,6 +88,97 @@ function SessionDMView() {
         setEncounterSequence(existingEncounterCount);
         setActiveEncounterNumber(null);
     }, [currentSession?._id, existingEncounterCount]);
+
+    useEffect(() => {
+        if (!campaignId || !userId) {
+            setSocketConnected(false);
+            return;
+        }
+
+        const socket = io(SOCKET_SERVER, {
+            transports: ["websocket"],
+            withCredentials: true,
+        });
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+            setSocketConnected(true);
+            setChatError("");
+            socket.emit("join-room", { campaignId, userId });
+            if (sessionId) {
+                socket.emit("session:state-load", { campaignId, sessionId, userId });
+            }
+        });
+
+        socket.on("room-joined", () => {
+            setChatError("");
+        });
+
+        socket.on("player-joined", (payload) => {
+            if (payload?.userId === userId) return;
+            setCombatEvents((prev) => [
+                ...prev,
+                createCombatEvent("Player Connected", "A player joined the live session room.", "highlight", "note"),
+            ]);
+        });
+
+        socket.on("chat-message", (payload) => {
+            const createdAt = payload?.timestamp || new Date().toISOString();
+            setChatMessages((prev) => [
+                ...prev,
+                {
+                    id: `${createdAt}-${payload?.userId || "system"}-${Math.random()}`,
+                    userId: payload?.userId || "",
+                    username: payload?.username || "Table",
+                    message: payload?.message || "",
+                    timestamp: new Date(createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+                },
+            ].slice(-120));
+        });
+
+        socket.on("room-error", (payload) => {
+            setChatError(payload?.message || "Unable to join live session room.");
+        });
+
+        socket.on("connect_error", (err) => {
+            setChatError(err.message || "Unable to connect to live session chat.");
+        });
+
+        socket.on("disconnect", () => {
+            setSocketConnected(false);
+        });
+
+        return () => {
+            socket.off("connect");
+            socket.off("room-joined");
+            socket.off("player-joined");
+            socket.off("chat-message");
+            socket.off("room-error");
+            socket.off("connect_error");
+            socket.off("disconnect");
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, [campaignId, sessionId, userId]);
+
+    useEffect(() => {
+        if (!socketRef.current || !socketConnected || !campaignId || !sessionId || !userId) {
+            return;
+        }
+
+        socketRef.current.emit("session:state-update", {
+            campaignId,
+            sessionId,
+            userId,
+            state: {
+                sceneName,
+                isCombatState,
+                combatRound,
+                turns,
+                events: combatEvents,
+            },
+        });
+    }, [campaignId, combatEvents, combatRound, isCombatState, sceneName, sessionId, socketConnected, turns, userId]);
 
     const previousSessionNotes = useMemo(() => {
         if (!sessionId) {
@@ -642,6 +742,30 @@ function SessionDMView() {
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}
                 onToggle={() => setIsBottomCollapsed((prev) => !prev)}
+                chatMessages={chatError ? [
+                    {
+                        id: "chat-error",
+                        username: "Live Chat",
+                        message: chatError,
+                        timestamp: "",
+                    },
+                    ...chatMessages,
+                ] : chatMessages}
+                chatInput={chatInput}
+                onChatInputChange={setChatInput}
+                onSendChat={(event) => {
+                    event.preventDefault();
+                    const message = chatInput.trim();
+                    if (!message || !socketRef.current || !campaignId || !userId) return;
+                    socketRef.current.emit("send-message", {
+                        campaignId,
+                        userId,
+                        username: user?.username || "DM",
+                        message,
+                    });
+                    setChatInput("");
+                }}
+                chatConnected={socketConnected}
                 notesDraft={notesDraft}
                 onNotesDraftChange={(value) => {
                     setNotesDraft(value);

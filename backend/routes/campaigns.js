@@ -153,6 +153,7 @@ router.post("/", verifyToken, async (req, res) => {
       title,
       description: req.body.description?.trim(),
       image: req.body.image,
+      createdBy: req.user.userId,
       playStyle,
       maxPlayers,
       startDate,
@@ -231,6 +232,31 @@ router.get("/active-sessions", verifyToken, async (req, res) => {
     }
 
     res.json(activeCampaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.createdBy?.toString() === req.user.userId ||
+      campaign.members.some((m) => m.userId.toString() === req.user.userId && m.role === "DM");
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can change encounter readiness" });
+    }
+
+    if (!campaign.encounter) campaign.encounter = {};
+    campaign.encounter.isReady = Boolean(req.body?.isReady);
+    campaign.markModified("encounter");
+    await campaign.save();
+
+    res.json({
+      message: campaign.encounter.isReady ? "Encounter opened to players" : "Encounter locked for DM prep",
+      isReady: campaign.encounter.isReady,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
