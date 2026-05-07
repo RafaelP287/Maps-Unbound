@@ -316,6 +316,26 @@ io.on("connection", (socket) => {
     io.to(`campaign:${campaignId}`).emit("session:state", nextState);
   });
 
+  socket.on("session:lobby-joined", ({ campaignId, sessionId, userId }) => {
+    if (!campaignId || !sessionId || !userId) return;
+    io.to(`campaign:${campaignId}`).emit("session:lobby-updated", {
+      campaignId,
+      sessionId,
+      userId,
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
+  socket.on("session:notes-updated", ({ campaignId, sessionId, userId }) => {
+    if (!campaignId || !sessionId || !userId) return;
+    io.to(`campaign:${campaignId}`).emit("session:notes-updated", {
+      campaignId,
+      sessionId,
+      userId,
+      updatedAt: new Date().toISOString(),
+    });
+  });
+
   socket.on("encounter:load", async ({ campaignId, userId }) => {
     try {
       const campaign = await getCampaignForUser(campaignId, userId);

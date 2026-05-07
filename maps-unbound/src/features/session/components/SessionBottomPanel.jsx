@@ -160,7 +160,7 @@ function SessionBottomPanel({
                                 </button>
                             )}
                         </div>
-                        {!isPlayerMode && <div className="session-dm__tabs session-dm__tabs--full session-dm__notes-tabs">
+                        <div className="session-dm__tabs session-dm__tabs--full session-dm__notes-tabs">
                             <button
                                 type="button"
                                 className={[
@@ -191,7 +191,7 @@ function SessionBottomPanel({
                             >
                                 Past Notes
                             </button>
-                        </div>}
+                        </div>
                         {activeNotesTab === "write" && (
                             <>
                                 <textarea
@@ -209,7 +209,7 @@ function SessionBottomPanel({
                                 )}
                             </>
                         )}
-                        {!isPlayerMode && activeNotesTab === "current" && (
+                        {activeNotesTab === "current" && (
                             <div className="session-dm__notes-history">
                                 <div className="session-dm__notes-history-head">
                                     <p className="session-dm__section-title">Saved In This Session</p>
@@ -236,7 +236,7 @@ function SessionBottomPanel({
                                 </div>
                             </div>
                         )}
-                        {!isPlayerMode && activeNotesTab === "past" && (
+                        {activeNotesTab === "past" && (
                             <div className="session-dm__notes-history">
                                 <div className="session-dm__notes-history-head">
                                     <p className="session-dm__section-title">Previous Session Notes</p>

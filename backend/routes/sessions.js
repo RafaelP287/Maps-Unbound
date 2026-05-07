@@ -8,14 +8,18 @@ const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
 const NOTE_ROLES = new Set(["DM", "Player"]);
 
-const sanitizeSessionNotesForViewer = (notes, isDM) =>
+const getNoteAuthorId = (note) => note?.authorId?.toString?.() || note?.authorId || "";
+
+const sanitizeSessionNotesForViewer = (notes, isDM, viewerId) =>
   (Array.isArray(notes) ? notes : []).filter((note) =>
-    isDM || note?.authorRole !== "DM" || Boolean(note?.visibleToPlayers)
+    isDM ||
+    getNoteAuthorId(note) === viewerId ||
+    (note?.authorRole === "DM" && Boolean(note?.visibleToPlayers))
   );
 
-const serializeSessionForViewer = (sessionDoc, isDM) => {
+const serializeSessionForViewer = (sessionDoc, isDM, viewerId) => {
   const session = typeof sessionDoc?.toObject === "function" ? sessionDoc.toObject() : { ...sessionDoc };
-  session.notes = sanitizeSessionNotesForViewer(session.notes, isDM);
+  session.notes = sanitizeSessionNotesForViewer(session.notes, isDM, viewerId);
   return session;
 };
 
@@ -143,10 +147,17 @@ router.put("/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    const isDM = campaign.members.some(
-      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    const membership = getCampaignMembership(campaign, req.user.userId);
+    if (!membership) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const isDM = membership.role === "DM";
+    const hasSessionNoteContent = Object.prototype.hasOwnProperty.call(req.body, "sessionNoteContent");
+    const requestedFields = Object.keys(req.body || {});
+    const noteOnlyUpdate = requestedFields.every((field) =>
+      ["sessionNoteContent", "sessionNoteVisibleToPlayers"].includes(field)
     );
-    if (!isDM) {
+    if (!isDM && (!hasSessionNoteContent || !noteOnlyUpdate)) {
       return res.status(403).json({ error: "Only the DM can update this session" });
     }
 
@@ -203,15 +214,18 @@ router.put("/:id", verifyToken, async (req, res) => {
       }
       noteToAppend = {
         authorId: req.user.userId,
-        authorRole: "DM",
+        authorRole: isDM ? "DM" : "Player",
         content,
-        visibleToPlayers: Boolean(req.body.sessionNoteVisibleToPlayers),
+        visibleToPlayers: isDM ? Boolean(req.body.sessionNoteVisibleToPlayers) : true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, "noteVisibilityIndex")) {
+      if (!isDM) {
+        return res.status(403).json({ error: "Only the DM can change note visibility" });
+      }
       const noteIndex = Number(req.body.noteVisibilityIndex);
       if (!Number.isInteger(noteIndex) || noteIndex < 0 || noteIndex >= session.notes.length) {
         return res.status(400).json({ error: "Invalid noteVisibilityIndex" });
@@ -220,7 +234,7 @@ router.put("/:id", verifyToken, async (req, res) => {
       session.notes[noteIndex].visibleToPlayers = Boolean(req.body.noteVisibleToPlayers);
       session.notes[noteIndex].updatedAt = new Date();
       await session.save();
-      return res.json(serializeSessionForViewer(session, true));
+      return res.json(serializeSessionForViewer(session, true, req.user.userId));
     }
 
     const updatePayload = noteToAppend
@@ -233,7 +247,7 @@ router.put("/:id", verifyToken, async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    res.json(updatedSession);
+    res.json(serializeSessionForViewer(updatedSession, isDM, req.user.userId));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -269,7 +283,7 @@ router.get("/", verifyToken, async (req, res) => {
       .select(sessionFields)
       .sort({ sessionNumber: 1, createdAt: 1 })
       .lean();
-    res.json(sessions.map((session) => serializeSessionForViewer(session, isDM)));
+    res.json(sessions.map((session) => serializeSessionForViewer(session, isDM, req.user.userId)));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -310,7 +324,7 @@ router.get("/journal/:campaignId", verifyToken, async (req, res) => {
     }, {});
 
     res.json({
-      sessions: sessions.map((session) => serializeSessionForViewer(session, isDM)),
+      sessions: sessions.map((session) => serializeSessionForViewer(session, isDM, req.user.userId)),
       encountersBySession,
     });
   } catch (err) {
@@ -338,7 +352,7 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
     const isDM = membership.role === "DM";
 
-    res.json(serializeSessionForViewer(session, isDM));
+    res.json(serializeSessionForViewer(session, isDM, req.user.userId));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -377,7 +391,7 @@ router.post("/:id/join", verifyToken, async (req, res) => {
     }
 
     const updatedSession = await Session.findById(session._id).lean();
-    res.json(serializeSessionForViewer(updatedSession, membership.role === "DM"));
+    res.json(serializeSessionForViewer(updatedSession, membership.role === "DM", req.user.userId));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

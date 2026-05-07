@@ -172,13 +172,14 @@ function SessionDMView() {
             userId,
             state: {
                 sceneName,
+                isSessionPaused,
                 isCombatState,
                 combatRound,
                 turns,
                 events: combatEvents,
             },
         });
-    }, [campaignId, combatEvents, combatRound, isCombatState, sceneName, sessionId, socketConnected, turns, userId]);
+    }, [campaignId, combatEvents, combatRound, isCombatState, isSessionPaused, sceneName, sessionId, socketConnected, turns, userId]);
 
     const previousSessionNotes = useMemo(() => {
         if (!sessionId) {
@@ -683,6 +684,7 @@ function SessionDMView() {
                 },
                 body: JSON.stringify({
                     sessionNoteContent: content,
+                    sessionNoteVisibleToPlayers: true,
                 }),
             });
             if (!res.ok) {
@@ -694,6 +696,13 @@ function SessionDMView() {
             clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
             removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
             await refetchSessions();
+            if (socketRef.current && campaignId && sessionId) {
+                socketRef.current.emit("session:notes-updated", {
+                    campaignId,
+                    sessionId,
+                    userId: user?.id || user?._id || "current",
+                });
+            }
         } catch (err) {
             setNotesError(err.message || "Failed to save note.");
         } finally {
@@ -701,7 +710,7 @@ function SessionDMView() {
         }
     };
 
-    if (loading || sessionsLoading) {
+    if (loading || (sessionsLoading && sessions.length === 0)) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
     }
 

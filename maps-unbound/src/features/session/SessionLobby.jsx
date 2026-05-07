@@ -2,11 +2,14 @@
 // shared waiting room layout for campaign members before the DM opens the live table.
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
 import useCampaign from "../campaigns/use-campaign";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 import LoadingPage from "../../shared/Loading.jsx";
+
+const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
 const getUserId = (value) => {
   if (!value) return "";
@@ -40,6 +43,7 @@ function SessionLobby() {
   const [lobbyNotice, setLobbyNotice] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const autoJoinAttemptedRef = useRef(false);
+  const socketRef = useRef(null);
   const bootTimeoutRef = useRef(null);
   const allowLobbyExitRef = useRef(false);
   const lobbyExitCleanupSentRef = useRef(false);
@@ -59,6 +63,34 @@ function SessionLobby() {
   const rosterMembers = [dmMember, ...playerMembers].filter(Boolean);
   const status = session?.status || "In Progress";
   const isClosed = ["Completed", "Archived"].includes(status);
+  const currentUserId = getUserId(user?.id || user?._id);
+
+  useEffect(() => {
+    if (!campaignId || !sessionId || !currentUserId) return;
+
+    const socket = io(SOCKET_SERVER, {
+      transports: ["websocket"],
+      withCredentials: true,
+    });
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      socket.emit("join-room", { campaignId, userId: currentUserId });
+    });
+
+    socket.on("session:lobby-updated", (payload) => {
+      if (payload?.sessionId !== sessionId) return;
+      fetchSession({ showLoading: false });
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("session:lobby-updated");
+      socket.disconnect();
+      socketRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaignId, sessionId, currentUserId]);
 
   useEffect(() => {
     lobbyExitCleanupRef.current = {
@@ -236,7 +268,14 @@ function SessionLobby() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
       })
-    );
+    ).then((data) => {
+      if (!data || !socketRef.current || !campaignId || !currentUserId) return;
+      socketRef.current.emit("session:lobby-joined", {
+        campaignId,
+        sessionId,
+        userId: currentUserId,
+      });
+    });
   };
 
   useEffect(() => {

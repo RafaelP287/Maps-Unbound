@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { io } from "socket.io-client";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign.js";
+import useCampaignSessions from "../campaigns/use-campaign-sessions.js";
 import LoadingPage from "../../shared/Loading.jsx";
 import SessionTopBar from "./components/SessionTopBar.jsx";
 import SessionPlayerCharacterPanel from "./components/SessionPlayerCharacterPanel.jsx";
@@ -32,6 +33,7 @@ function SessionPlayerView() {
   const sessionId = searchParams.get("sessionId");
   const sessionNameParam = searchParams.get("sessionName") || "Session";
   const { campaign, loading: campaignLoading } = useCampaign(campaignId);
+  const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId, { includeNotes: true });
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(Boolean(sessionId));
   const [character, setCharacter] = useState(null);
@@ -48,13 +50,14 @@ function SessionPlayerView() {
   const [liveEncounter, setLiveEncounter] = useState(null);
   const [liveSessionState, setLiveSessionState] = useState(null);
   const [playerNotesDraft, setPlayerNotesDraft] = useState("");
+  const [playerNotesSaving, setPlayerNotesSaving] = useState(false);
+  const [playerNotesError, setPlayerNotesError] = useState("");
   const [playerNotesStatus, setPlayerNotesStatus] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const socketRef = useRef(null);
   const bootTimeoutRef = useRef(null);
   const exitLink = campaignId ? `/campaigns/${campaignId}` : "/campaigns";
-  const playerNotesKey = `session:player-notes:${sessionId || campaignId || "draft"}`;
   const userId = user?._id || user?.id || "";
 
   const liveTurns = (() => {
@@ -87,6 +90,40 @@ function SessionPlayerView() {
   const displayedRound = Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0
     ? liveSessionState.combatRound || 0
     : Math.max(0, Number(liveEncounter?.round || 1) - 1);
+  const orderedSessions = [...sessions].sort((a, b) => {
+    const aNumber = Number.isFinite(a?.sessionNumber) ? a.sessionNumber : Number.POSITIVE_INFINITY;
+    const bNumber = Number.isFinite(b?.sessionNumber) ? b.sessionNumber : Number.POSITIVE_INFINITY;
+    if (aNumber !== bNumber) return aNumber - bNumber;
+    return new Date(a?.createdAt || 0).getTime() - new Date(b?.createdAt || 0).getTime();
+  });
+  const currentSession = sessionId
+    ? orderedSessions.find((entry) => entry?._id === sessionId) || session
+    : session;
+  const currentSessionNotes = (Array.isArray(currentSession?.notes) ? currentSession.notes : [])
+    .map((note, noteIndex) => ({
+      id: `${currentSession?._id || "session"}-current-${note.createdAt || noteIndex}`,
+      sessionTitle: currentSession?.title || `Session ${currentSession?.sessionNumber || "?"}`,
+      content: note.content || "",
+      createdAt: note.createdAt || currentSession?.createdAt,
+      authorRole: note.authorRole || "DM",
+    }))
+    .filter((note) => note.content)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const previousSessionNotes = orderedSessions
+    .filter((entry) => entry?._id !== sessionId)
+    .flatMap((entry) =>
+      (Array.isArray(entry?.notes) ? entry.notes : []).map((note, noteIndex) => ({
+        id: `${entry._id || "session"}-${note.createdAt || noteIndex}`,
+        sessionId: entry._id || "",
+        sessionNumber: entry.sessionNumber,
+        sessionTitle: entry.title || `Session ${entry.sessionNumber || "?"}`,
+        content: note.content || "",
+        createdAt: note.createdAt || entry.createdAt,
+        authorRole: note.authorRole || "DM",
+      }))
+    )
+    .filter((note) => note.content)
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
   const sessionParticipants = (Array.isArray(session?.participants) ? session.participants : []).map((participant) => {
     const userId = getUserId(participant.userId || participant);
@@ -149,11 +186,6 @@ function SessionPlayerView() {
     fetchSession();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, token]);
-
-  useEffect(() => {
-    setPlayerNotesDraft(window.localStorage.getItem(playerNotesKey) || "");
-    setPlayerNotesStatus("");
-  }, [playerNotesKey]);
 
   useEffect(() => {
     if (!campaignId || !userId) {
@@ -235,6 +267,11 @@ function SessionPlayerView() {
       setLiveSessionState(payload || null);
     });
 
+    socket.on("session:notes-updated", (payload) => {
+      if (payload?.sessionId && sessionId && payload.sessionId !== sessionId) return;
+      refetchSessions();
+    });
+
     socket.on("room-error", (payload) => {
       setSocketError(payload?.message || "Unable to join live session room.");
     });
@@ -254,13 +291,14 @@ function SessionPlayerView() {
       socket.off("chat-message");
       socket.off("encounter:state");
       socket.off("session:state");
+      socket.off("session:notes-updated");
       socket.off("room-error");
       socket.off("connect_error");
       socket.off("disconnect");
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [campaignId, sessionId, userId]);
+  }, [campaignId, refetchSessions, sessionId, userId]);
 
   useEffect(() => {
     if (!user?.username) {
@@ -308,7 +346,7 @@ function SessionPlayerView() {
     };
   }, []);
 
-  if (campaignLoading || loadingSession) {
+  if (campaignLoading || loadingSession || (sessionsLoading && sessions.length === 0)) {
     return <LoadingPage>Joining the session...</LoadingPage>;
   }
 
@@ -380,13 +418,60 @@ function SessionPlayerView() {
         notesDraft={playerNotesDraft}
         onNotesDraftChange={(value) => {
           setPlayerNotesDraft(value);
+          if (playerNotesError) setPlayerNotesError("");
           if (playerNotesStatus) setPlayerNotesStatus("");
         }}
-        onSaveNotes={() => {
-          window.localStorage.setItem(playerNotesKey, playerNotesDraft);
-          setPlayerNotesStatus("Notes saved on this device.");
+        onSaveNotes={async () => {
+          const content = playerNotesDraft.trim();
+          if (!content) {
+            setPlayerNotesError("Write a note before saving.");
+            setPlayerNotesStatus("");
+            return;
+          }
+          if (!sessionId || !token) {
+            setPlayerNotesError("Missing session context. Reopen the session and try again.");
+            setPlayerNotesStatus("");
+            return;
+          }
+
+          setPlayerNotesSaving(true);
+          setPlayerNotesError("");
+          setPlayerNotesStatus("");
+          try {
+            const res = await fetch(`/api/sessions/${sessionId}`, {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ sessionNoteContent: content }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(data.error || "Failed to save note.");
+            }
+            setPlayerNotesDraft("");
+            setPlayerNotesStatus("Player note saved.");
+            await refetchSessions();
+            if (socketRef.current && campaignId) {
+              socketRef.current.emit("session:notes-updated", {
+                campaignId,
+                sessionId,
+                userId,
+              });
+            }
+          } catch (err) {
+            setPlayerNotesError(err.message || "Failed to save note.");
+          } finally {
+            setPlayerNotesSaving(false);
+          }
         }}
+        notesSaving={playerNotesSaving}
+        notesError={playerNotesError}
         notesStatus={playerNotesStatus}
+        currentNotes={currentSessionNotes}
+        previousNotes={previousSessionNotes}
+        previousNotesLoading={sessionsLoading}
       />
 
       {error && <p className="session-player-runtime__error">{error}</p>}
@@ -397,6 +482,15 @@ function SessionPlayerView() {
             <p className="session-lobby__eyebrow">Session Closed</p>
             <h2>Returning to Campaign</h2>
             <p>{notice}</p>
+          </div>
+        </div>
+      )}
+
+      {liveSessionState?.isSessionPaused && !notice && (
+        <div className="session-dm__pause-overlay" role="status" aria-live="assertive">
+          <div className="session-dm__pause-overlay-card">
+            <h2>Session Is Currently Paused</h2>
+            <p>Gameplay is paused by the DM.</p>
           </div>
         </div>
       )}
