@@ -2,6 +2,7 @@ import express, { urlencoded, json } from "express";
 import cors from "cors";
 import http from "http";
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
 import connectDB from "./config/db.js";
 import sessionRoutes from './routes/sessions.js';
 import encounterRoutes from './routes/encounters.js';
@@ -83,6 +84,34 @@ const getUserId = (value) => {
 const isDMForCampaign = (campaign, userId) =>
   campaign?.createdBy?.toString?.() === userId ||
   campaign?.members?.some((member) => getUserId(member.userId) === userId && member.role === "DM");
+
+const getSocketAuthUserId = (socket) => {
+  const rawToken = socket.handshake.auth?.token || "";
+  const token = typeof rawToken === "string" && rawToken.startsWith("Bearer ")
+    ? rawToken.split(" ")[1]
+    : rawToken;
+  if (!token) return "";
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return getUserId(decoded.userId || decoded.id || decoded._id);
+  } catch {
+    return "";
+  }
+};
+
+const getCampaignMembershipForSocket = async (campaignId, userId) => {
+  if (!campaignId || !userId) return null;
+  const campaign = await Campaign.findById(campaignId).select("createdBy members").lean();
+  if (!campaign) return null;
+  const membership = campaign.members?.find((member) => getUserId(member.userId) === userId);
+  if (!membership) return null;
+  return {
+    campaign,
+    role: membership.role,
+    isDM: isDMForCampaign(campaign, userId),
+  };
+};
 
 const getCampaignForUser = async (campaignId, userId) => {
   if (!campaignId || !userId) return null;
@@ -296,24 +325,54 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("session:state-load", ({ campaignId, sessionId, userId }) => {
-    if (!campaignId || !sessionId || !userId) return;
-    const state = sessionRuntimeStates.get(sessionId);
-    if (state) {
-      socket.emit("session:state", state);
+  socket.on("session:state-load", async ({ campaignId, sessionId, userId }) => {
+    try {
+      if (!campaignId || !sessionId || !userId) return;
+      const authUserId = getSocketAuthUserId(socket);
+      if (authUserId !== userId) {
+        socket.emit("room-error", { message: "Session sync authentication failed." });
+        return;
+      }
+      const membership = await getCampaignMembershipForSocket(campaignId, userId);
+      if (!membership) {
+        socket.emit("room-error", { message: "Campaign access denied." });
+        return;
+      }
+      const state = sessionRuntimeStates.get(sessionId);
+      if (state) {
+        socket.emit("session:state", state);
+      }
+    } catch (error) {
+      console.error("Session state load error:", error);
+      socket.emit("room-error", { message: "Failed to load live session state." });
     }
   });
 
-  socket.on("session:state-update", ({ campaignId, sessionId, userId, state }) => {
-    if (!campaignId || !sessionId || !userId || !state) return;
-    const nextState = {
-      ...state,
-      campaignId,
-      sessionId,
-      updatedAt: new Date().toISOString(),
-    };
-    sessionRuntimeStates.set(sessionId, nextState);
-    io.to(`campaign:${campaignId}`).emit("session:state", nextState);
+  socket.on("session:state-update", async ({ campaignId, sessionId, userId, state }) => {
+    try {
+      if (!campaignId || !sessionId || !userId || !state) return;
+      const authUserId = getSocketAuthUserId(socket);
+      if (authUserId !== userId) {
+        socket.emit("room-error", { message: "Session sync authentication failed." });
+        return;
+      }
+      const membership = await getCampaignMembershipForSocket(campaignId, userId);
+      if (!membership?.isDM) {
+        socket.emit("room-error", { message: "Only the DM can update live session state." });
+        return;
+      }
+      const nextState = {
+        ...state,
+        campaignId,
+        sessionId,
+        updatedAt: new Date().toISOString(),
+      };
+      sessionRuntimeStates.set(sessionId, nextState);
+      io.to(`campaign:${campaignId}`).emit("session:state", nextState);
+    } catch (error) {
+      console.error("Session state update error:", error);
+      socket.emit("room-error", { message: "Failed to update live session state." });
+    }
   });
 
   socket.on("session:lobby-joined", ({ campaignId, sessionId, userId }) => {

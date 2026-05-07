@@ -7,6 +7,16 @@ import CampaignDMView from "./CampaignDMView.jsx";
 import CampaignPlayerView from "./CampaignPlayerView.jsx";
 import "./campaign.css";
 
+const getUserId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return getUserId(value._id);
+  if (value.id) return getUserId(value.id);
+  if (value.$oid) return value.$oid;
+  const stringValue = value.toString?.();
+  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+};
+
 function ViewCampaignPage() {
   const { id } = useParams();
   const { user, loading: authLoading } = useAuth();
@@ -38,8 +48,9 @@ function ViewCampaignPage() {
     );
   }
 
-  const dmMember = campaign.members.find((m) => m.role === "DM");
-  const isDM = dmMember?.userId?._id?.toString() === user?.id?.toString();
+  const currentUserId = getUserId(user?.id || user?._id);
+  const currentMember = campaign.members.find((member) => getUserId(member.userId) === currentUserId);
+  const isDM = currentMember?.role === "DM" || getUserId(campaign.createdBy) === currentUserId;
 
   // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
   return isDM

@@ -49,28 +49,28 @@ function SessionLobby() {
   const lobbyExitCleanupSentRef = useRef(false);
   const lobbyExitCleanupRef = useRef(null);
 
+  const currentUserId = getUserId(user?.id || user?._id);
   const membership = useMemo(() => {
-    if (!campaign?.members || !user?.id) return null;
-    return campaign.members.find((member) => getUserId(member.userId) === getUserId(user.id)) || null;
-  }, [campaign?.members, user?.id]);
+    if (!campaign?.members || !currentUserId) return null;
+    return campaign.members.find((member) => getUserId(member.userId) === currentUserId) || null;
+  }, [campaign?.members, currentUserId]);
 
   const isDM = membership?.role === "DM";
   const participants = Array.isArray(session?.participants) ? session.participants : [];
   const joinedUserIds = new Set(participants.map((participant) => getUserId(participant.userId || participant)));
-  const currentUserJoined = user?.id ? joinedUserIds.has(getUserId(user.id)) : false;
+  const currentUserJoined = currentUserId ? joinedUserIds.has(currentUserId) : false;
   const playerMembers = (campaign?.members || []).filter((member) => member.role === "Player");
   const dmMember = (campaign?.members || []).find((member) => member.role === "DM");
   const rosterMembers = [dmMember, ...playerMembers].filter(Boolean);
   const status = session?.status || "In Progress";
   const isClosed = ["Completed", "Archived"].includes(status);
-  const currentUserId = getUserId(user?.id || user?._id);
-
   useEffect(() => {
     if (!campaignId || !sessionId || !currentUserId) return;
 
     const socket = io(SOCKET_SERVER, {
       transports: ["websocket"],
       withCredentials: true,
+      auth: { token },
     });
     socketRef.current = socket;
 
@@ -90,7 +90,7 @@ function SessionLobby() {
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, sessionId, currentUserId]);
+  }, [campaignId, currentUserId, sessionId, token]);
 
   useEffect(() => {
     lobbyExitCleanupRef.current = {
@@ -99,9 +99,9 @@ function SessionLobby() {
       sessionId,
       shouldCancelOnExit: Boolean(isDM && sessionId && token && session && !session.startedAt && !isClosed),
       token,
-      userId: user?.id || "current",
+      userId: currentUserId || "current",
     };
-  }, [campaignId, isClosed, isDM, session, sessionId, token, user?.id]);
+  }, [campaignId, currentUserId, isClosed, isDM, session, sessionId, token]);
 
   useEffect(() => {
     return () => {
@@ -213,7 +213,7 @@ function SessionLobby() {
 
   useEffect(() => {
     autoJoinAttemptedRef.current = false;
-  }, [sessionId, user?.id]);
+  }, [currentUserId, sessionId]);
 
   const runSessionAction = async (actionName, request) => {
     if (actionPending) return null;
@@ -316,8 +316,8 @@ function SessionLobby() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to cancel session");
       }
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
-      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${campaignId}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${campaignId}`);
       allowLobbyExitRef.current = true;
       navigate(`/campaigns/${campaignId}`, { replace: true });
     } catch (err) {
@@ -413,7 +413,7 @@ function SessionLobby() {
                     <div>
                       <h3>
                         {memberUser.username || "Unknown Player"}
-                        {memberId === getUserId(user?.id) && <span>You</span>}
+                        {memberId === currentUserId && <span>You</span>}
                       </h3>
                       <p>{member.role}</p>
                     </div>

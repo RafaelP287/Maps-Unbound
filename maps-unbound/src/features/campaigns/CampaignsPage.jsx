@@ -9,6 +9,16 @@ import LoadingPage from "../../shared/Loading.jsx";
 import { clearCachePrefix, removeCachedValue, setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 import "./campaign.css";
 
+const getUserId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value._id) return getUserId(value._id);
+  if (value.id) return getUserId(value.id);
+  if (value.$oid) return value.$oid;
+  const stringValue = value.toString?.();
+  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+};
+
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
@@ -19,17 +29,20 @@ function CampaignsPage() {
   const [startingCampaignId, setStartingCampaignId] = useState("");
   const [startSessionError, setStartSessionError] = useState("");
   const navigate = useNavigate();
+  const currentUserId = getUserId(user?.id || user?._id);
   const dmCampaigns = useMemo(() => {
     return campaigns.filter((campaign) => {
-      const dmMember = campaign.members?.find((member) => member.role === "DM");
-      if (!dmMember) return false;
-      const dmUserId =
-        typeof dmMember.userId === "object"
-          ? dmMember.userId?._id || dmMember.userId?.id
-          : dmMember.userId;
-      return String(dmUserId) === String(user?.id);
+      const member = campaign.members?.find((entry) => getUserId(entry.userId) === currentUserId);
+      return member?.role === "DM" || getUserId(campaign.createdBy) === currentUserId;
     });
-  }, [campaigns, user?.id]);
+  }, [campaigns, currentUserId]);
+  const activeSessionsByCampaignId = useMemo(() => {
+    return new Map(
+      activeCampaigns
+        .filter(({ campaign, session }) => campaign?._id && session?._id)
+        .map(({ campaign, session }) => [campaign._id, session])
+    );
+  }, [activeCampaigns]);
 
   const fetchActiveCampaigns = useCallback(async ({ showLoading = true } = {}) => {
     if (!token) {
@@ -233,7 +246,12 @@ function CampaignsPage() {
         <div className="campaign-list">
           {campaigns.length > 0 ? (
             campaigns.map((c) => (
-              <CampaignCard key={c._id} campaign={c} currentUser={user.id} />
+              <CampaignCard
+                key={c._id}
+                campaign={c}
+                currentUser={currentUserId}
+                activeSession={activeSessionsByCampaignId.get(c._id)}
+              />
             ))
           ) : (
             <div className="campaign-empty">

@@ -98,6 +98,7 @@ function SessionDMView() {
         const socket = io(SOCKET_SERVER, {
             transports: ["websocket"],
             withCredentials: true,
+            auth: { token },
         });
         socketRef.current = socket;
 
@@ -159,7 +160,7 @@ function SessionDMView() {
             socket.disconnect();
             socketRef.current = null;
         };
-    }, [campaignId, sessionId, userId]);
+    }, [campaignId, sessionId, token, userId]);
 
     useEffect(() => {
         if (!socketRef.current || !socketConnected || !campaignId || !sessionId || !userId) {
@@ -224,6 +225,11 @@ function SessionDMView() {
 
     const campaignName = loading ? "Loading..." : campaign?.title || "";
     const sessionName = currentSession?.title || sessionNameParam || "";
+    const currentUserMembership = useMemo(() => {
+        if (!campaign?.members || !userId) return null;
+        return campaign.members.find((member) => getUserId(member.userId) === getUserId(userId)) || null;
+    }, [campaign?.members, userId]);
+    const isCurrentUserDM = currentUserMembership?.role === "DM";
     const campaignMembersById = useMemo(() => {
         return new Map(
             (campaign?.members || []).map((member) => [getUserId(member.userId), member])
@@ -542,6 +548,18 @@ function SessionDMView() {
     const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
     useEffect(() => {
+        if (loading || !campaign || !userId || isCurrentUserDM) {
+            return;
+        }
+
+        const query = new URLSearchParams();
+        if (campaignId) query.set("campaignId", campaignId);
+        if (sessionId) query.set("sessionId", sessionId);
+        query.set("sessionName", sessionName || "Session");
+        navigate(`/session/player?${query.toString()}`, { replace: true });
+    }, [campaign, campaignId, isCurrentUserDM, loading, navigate, sessionId, sessionName, userId]);
+
+    useEffect(() => {
         sessionExitCleanupRef.current = {
             activeEncounterId,
             campaignId,
@@ -551,9 +569,9 @@ function SessionDMView() {
             shouldEndOnExit: Boolean(sessionId && token && currentSession?.startedAt && !["Completed", "Archived"].includes(currentSession?.status)),
             token,
             turns,
-            userId: user?.id || "current",
+            userId: userId || "current",
         };
-    }, [activeEncounterId, campaignId, combatRound, currentSession, sceneName, sessionId, token, turns, user?.id]);
+    }, [activeEncounterId, campaignId, combatRound, currentSession, sceneName, sessionId, token, turns, userId]);
 
     useEffect(() => {
         const endSessionOnExit = () => {
@@ -647,8 +665,8 @@ function SessionDMView() {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to end session");
             }
-            clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
-            removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
+            clearCachePrefix(`campaign:sessions:${userId || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${userId || "current"}:${campaignId}`);
             allowSessionExitRef.current = true;
             sessionExitCleanupSentRef.current = true;
             navigate(exitLink, { replace: true });
@@ -690,14 +708,14 @@ function SessionDMView() {
             }
             setNotesDraft("");
             setNotesStatus("Session note saved.");
-            clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaignId}`);
-            removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaignId}`);
+            clearCachePrefix(`campaign:sessions:${userId || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${userId || "current"}:${campaignId}`);
             await refetchSessions();
             if (socketRef.current && campaignId && sessionId) {
                 socketRef.current.emit("session:notes-updated", {
                     campaignId,
                     sessionId,
-                    userId: user?.id || user?._id || "current",
+                    userId: userId || "current",
                 });
             }
         } catch (err) {
@@ -709,6 +727,10 @@ function SessionDMView() {
 
     if (loading || (sessionsLoading && sessions.length === 0)) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
+    }
+
+    if (campaign && userId && !isCurrentUserDM) {
+        return <LoadingPage>Redirecting to player session...</LoadingPage>;
     }
 
     return (

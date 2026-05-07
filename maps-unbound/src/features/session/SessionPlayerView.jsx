@@ -59,6 +59,8 @@ function SessionPlayerView() {
   const bootTimeoutRef = useRef(null);
   const exitLink = campaignId ? `/campaigns/${campaignId}` : "/campaigns";
   const userId = user?._id || user?.id || "";
+  const currentUserMembership = (campaign?.members || []).find((member) => getUserId(member.userId) === getUserId(userId)) || null;
+  const isCurrentUserDM = currentUserMembership?.role === "DM";
 
   const liveTurns = (() => {
     if (Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0) {
@@ -196,6 +198,7 @@ function SessionPlayerView() {
     const socket = io(SOCKET_SERVER, {
       transports: ["websocket"],
       withCredentials: true,
+      auth: { token },
     });
     socketRef.current = socket;
 
@@ -298,7 +301,19 @@ function SessionPlayerView() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [campaignId, refetchSessions, sessionId, userId]);
+  }, [campaignId, refetchSessions, sessionId, token, userId]);
+
+  useEffect(() => {
+    if (campaignLoading || !campaign || !userId || !isCurrentUserDM) {
+      return;
+    }
+
+    const query = new URLSearchParams();
+    if (campaignId) query.set("campaignId", campaignId);
+    if (sessionId) query.set("sessionId", sessionId);
+    query.set("sessionName", session?.title || sessionNameParam);
+    navigate(`/session/dm?${query.toString()}`, { replace: true });
+  }, [campaign, campaignId, campaignLoading, isCurrentUserDM, navigate, session, sessionId, sessionNameParam, userId]);
 
   useEffect(() => {
     if (!user?.username) {
@@ -348,6 +363,10 @@ function SessionPlayerView() {
 
   if (campaignLoading || loadingSession || (sessionsLoading && sessions.length === 0)) {
     return <LoadingPage>Joining the session...</LoadingPage>;
+  }
+
+  if (campaign && userId && isCurrentUserDM) {
+    return <LoadingPage>Redirecting to DM session...</LoadingPage>;
   }
 
   return (
