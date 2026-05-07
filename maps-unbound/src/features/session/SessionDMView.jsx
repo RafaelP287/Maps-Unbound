@@ -677,16 +677,13 @@ function SessionDMView() {
         setNotesStatus("");
         try {
             const res = await fetch(`/api/sessions/${sessionId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    sessionNoteContent: content,
-                    sessionNoteVisibleToPlayers: true,
-                }),
-            });
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ sessionNoteContent: content }),
+        });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to save note");
