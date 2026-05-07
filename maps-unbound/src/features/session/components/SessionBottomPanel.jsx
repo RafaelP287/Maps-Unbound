@@ -1,9 +1,15 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 // Bottom workspace for chat and notes.
 function SessionBottomPanel({
     isCollapsed,
     onToggle,
+    mode = "dm",
+    chatMessages = [],
+    chatInput = "",
+    onChatInputChange,
+    onSendChat,
+    chatConnected = false,
     notesDraft = "",
     onNotesDraftChange,
     onSaveNotes,
@@ -15,7 +21,7 @@ function SessionBottomPanel({
     previousNotesLoading = false,
     canSaveNotes = true,
 }) {
-    const chatMessages = [];
+    const chatLogRef = useRef(null);
     const [activeNotesTab, setActiveNotesTab] = useState("write");
     const [collapsedPastSessions, setCollapsedPastSessions] = useState({});
     const groupedPastNotes = useMemo(() => {
@@ -58,6 +64,16 @@ function SessionBottomPanel({
             [key]: !prev[key],
         }));
     };
+    const isPlayerMode = mode === "player";
+
+    useLayoutEffect(() => {
+        const node = chatLogRef.current;
+        if (!node) return;
+
+        window.requestAnimationFrame(() => {
+            node.scrollTop = node.scrollHeight;
+        });
+    }, [chatMessages.length]);
 
     return (
         <footer
@@ -90,39 +106,48 @@ function SessionBottomPanel({
                         <div className="session-dm__panel-header">
                             <div>
                                 <p className="session-dm__panel-title">Table Chat</p>
-                                <p className="session-dm__panel-subtitle">Session chatter & whispers</p>
-                            </div>
-                            <div className="session-dm__tabs">
-                                <button className="session-dm__tab is-active" type="button">All</button>
-                                <button className="session-dm__tab" type="button">Whisper</button>
+                                <p className="session-dm__panel-subtitle">
+                                    {isPlayerMode
+                                        ? chatConnected ? "Connected to live table chat" : "Connecting to table chat"
+                                        : "Session chatter & whispers"}
+                                </p>
                             </div>
                         </div>
-                        <div className="session-dm__chat-log">
+                        <div className="session-dm__chat-log" ref={chatLogRef}>
                             {chatMessages.length === 0 && (
                                 <div className="session-dm__empty-state">
                                     Chat messages will appear here when table chat is enabled.
                                 </div>
                             )}
                             {chatMessages.map((message, index) => (
-                                <div key={`${message.name}-${index}`} className="session-dm__chat-item">
+                                <div key={message.id || `${message.name || message.username}-${index}`} className="session-dm__chat-item">
                                     <div className="session-dm__chat-meta">
-                                        <span className="session-dm__chat-name">{message.name}</span>
-                                        <span className="session-dm__chat-time">{message.time}</span>
+                                        <span className="session-dm__chat-name">{message.name || message.username}</span>
+                                        <span className="session-dm__chat-time">{message.time || message.timestamp}</span>
                                     </div>
-                                    <p className="session-dm__chat-text">{message.text}</p>
+                                    <p className="session-dm__chat-text">{message.text || message.message}</p>
                                 </div>
                             ))}
                         </div>
-                        <div className="session-dm__chat-input">
-                            <input type="text" placeholder="Send a message to the table..." />
-                            <button className="session-dm__ghost" type="button">Send</button>
-                        </div>
+                        <form className="session-dm__chat-input" onSubmit={onSendChat}>
+                            <input
+                                type="text"
+                                placeholder="Send a message to the table..."
+                                value={chatInput}
+                                onChange={(event) => onChatInputChange?.(event.target.value)}
+                            />
+                            <button className="session-dm__ghost" type="submit" disabled={!chatInput.trim()}>
+                                Send
+                            </button>
+                        </form>
                     </section>
                     <section className="session-dm__bottom-pane session-dm__notes">
                         <div className="session-dm__panel-header">
                             <div>
-                                <p className="session-dm__panel-title">Session Notes</p>
-                                <p className="session-dm__panel-subtitle">Track key moments and save to this session</p>
+                                <p className="session-dm__panel-title">{isPlayerMode ? "Player Notes" : "Session Notes"}</p>
+                                <p className="session-dm__panel-subtitle">
+                                    {isPlayerMode ? "Private notes for this session" : "Track key moments and save to this session"}
+                                </p>
                             </div>
                             {activeNotesTab === "write" && (
                                 <button
@@ -135,7 +160,7 @@ function SessionBottomPanel({
                                 </button>
                             )}
                         </div>
-                        <div className="session-dm__tabs session-dm__tabs--full session-dm__notes-tabs">
+                        {!isPlayerMode && <div className="session-dm__tabs session-dm__tabs--full session-dm__notes-tabs">
                             <button
                                 type="button"
                                 className={[
@@ -166,25 +191,25 @@ function SessionBottomPanel({
                             >
                                 Past Notes
                             </button>
-                        </div>
+                        </div>}
                         {activeNotesTab === "write" && (
                             <>
                                 <textarea
                                     className="session-dm__notes-input"
-                                    placeholder="Jot down NPCs, clues, or session beats..."
+                                    placeholder={isPlayerMode ? "Keep private notes, reminders, or plans..." : "Jot down NPCs, clues, or session beats..."}
                                     value={notesDraft}
                                     onChange={(event) => onNotesDraftChange?.(event.target.value)}
                                 />
                                 {notesError && <p className="session-dm__notes-feedback is-error">{notesError}</p>}
                                 {notesStatus && <p className="session-dm__notes-feedback is-success">{notesStatus}</p>}
-                                {!canSaveNotes && (
+                                {!isPlayerMode && !canSaveNotes && (
                                     <p className="session-dm__notes-feedback">
                                         Opened without a session ID. Notes cannot be saved yet.
                                     </p>
                                 )}
                             </>
                         )}
-                        {activeNotesTab === "current" && (
+                        {!isPlayerMode && activeNotesTab === "current" && (
                             <div className="session-dm__notes-history">
                                 <div className="session-dm__notes-history-head">
                                     <p className="session-dm__section-title">Saved In This Session</p>
@@ -211,7 +236,7 @@ function SessionBottomPanel({
                                 </div>
                             </div>
                         )}
-                        {activeNotesTab === "past" && (
+                        {!isPlayerMode && activeNotesTab === "past" && (
                             <div className="session-dm__notes-history">
                                 <div className="session-dm__notes-history-head">
                                     <p className="session-dm__section-title">Previous Session Notes</p>

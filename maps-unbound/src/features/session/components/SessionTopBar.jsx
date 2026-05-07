@@ -5,10 +5,13 @@ function SessionTopBar({
     players = [],
     sceneName = "SCENE",
     isCombatState = false,
+    role = "dm",
+    onLeaveSession,
     onPauseSession,
     onEndSession,
 }) {
     const renderedPlayers = players.length > 0 ? players : [];
+    const isDM = role === "dm";
     return (
         <header className="session-dm__top session-dm__panel">
             {isCombatState && <div className="session-dm__combat-indicator">IN COMBAT</div>}
@@ -49,12 +52,20 @@ function SessionTopBar({
                         <span className="session-dm__player-empty">No one joined</span>
                     )}
                 </div>
-                <button type="button" className="session-dm__exit session-dm__pause" onClick={onPauseSession}>
-                    Pause Session
-                </button>
-                <button type="button" className="session-dm__exit" onClick={onEndSession}>
-                    End Session
-                </button>
+                {isDM ? (
+                    <>
+                        <button type="button" className="session-dm__exit session-dm__pause" onClick={onPauseSession}>
+                            Pause Session
+                        </button>
+                        <button type="button" className="session-dm__exit" onClick={onEndSession}>
+                            End Session
+                        </button>
+                    </>
+                ) : (
+                    <button type="button" className="session-dm__exit session-dm__pause" onClick={onLeaveSession}>
+                        Leave Session
+                    </button>
+                )}
             </div>
         </header>
     )

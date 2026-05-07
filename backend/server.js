@@ -16,6 +16,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+const sessionRuntimeStates = new Map();
 
 if (!process.env.MONGO_URI) {
   console.error('MONGO_URI is not defined in .env');
@@ -293,6 +294,26 @@ io.on("connection", (socket) => {
       message,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  socket.on("session:state-load", ({ campaignId, sessionId, userId }) => {
+    if (!campaignId || !sessionId || !userId) return;
+    const state = sessionRuntimeStates.get(sessionId);
+    if (state) {
+      socket.emit("session:state", state);
+    }
+  });
+
+  socket.on("session:state-update", ({ campaignId, sessionId, userId, state }) => {
+    if (!campaignId || !sessionId || !userId || !state) return;
+    const nextState = {
+      ...state,
+      campaignId,
+      sessionId,
+      updatedAt: new Date().toISOString(),
+    };
+    sessionRuntimeStates.set(sessionId, nextState);
+    io.to(`campaign:${campaignId}`).emit("session:state", nextState);
   });
 
   socket.on("encounter:load", async ({ campaignId, userId }) => {
