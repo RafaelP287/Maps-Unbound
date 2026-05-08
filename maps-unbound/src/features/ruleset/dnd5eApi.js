@@ -1,4 +1,4 @@
-const apiServer = (import.meta.env.VITE_API_SERVER || "").replace(/\/$/, "");
+const apiServer = (import.meta.env.VITE_API_SERVER || "http://localhost:5002").replace(/\/$/, "");
 
 function assertApiServer() {
   if (!apiServer) {

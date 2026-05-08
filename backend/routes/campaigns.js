@@ -35,6 +35,7 @@ import Session from "../models/Session.js";
 import User from "../models/User.js";
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "maps-unbound-secret-key";
 const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
 const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
 const QUEST_STATUSES = new Set(["In Progress", "Blocked", "Completed"]);
@@ -105,7 +106,7 @@ const verifyToken = (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // contains { userId, username }
     next();
   } catch {
@@ -205,7 +206,7 @@ router.post("/", verifyToken, async (req, res) => {
 router.get("/", verifyToken, async (req, res) => {
   try {
     const campaigns = await Campaign.find({ "members.userId": req.user.userId })
-      .select("title description image playStyle maxPlayers startDate status members createdAt updatedAt")
+      .select("title description image playStyle maxPlayers startDate status createdBy members createdAt updatedAt")
       .sort({ updatedAt: -1 })
       .lean();
     res.json(campaigns);
@@ -262,6 +263,61 @@ router.get("/active-sessions", verifyToken, async (req, res) => {
     }
 
     res.json(activeCampaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Public browse view for the Party Finder tab.
+router.get("/finder/available", async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({ isPublic: true, isHosting: true })
+      .select("title description createdBy isPublic isHosting accessCode maxPlayers members createdAt updatedAt")
+      .populate("createdBy", "username")
+      .populate("members.userId", "username")
+      .populate("members.characterId", "name class level")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    res.json(campaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/:id/start-hosting", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.createdBy?.toString() === req.user.userId ||
+      campaign.members.some((m) => m.userId.toString() === req.user.userId && m.role === "DM");
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can change hosting status" });
+    }
+
+    campaign.isHosting = true;
+    await campaign.save();
+    res.json({ message: "Campaign is now hosting", isHosting: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/:id/stop-hosting", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = campaign.createdBy?.toString() === req.user.userId ||
+      campaign.members.some((m) => m.userId.toString() === req.user.userId && m.role === "DM");
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can change hosting status" });
+    }
+
+    campaign.isHosting = false;
+    await campaign.save();
+    res.json({ message: "Campaign stopped hosting", isHosting: false });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

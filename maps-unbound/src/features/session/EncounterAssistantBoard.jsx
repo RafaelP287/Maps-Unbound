@@ -155,7 +155,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
       return;
     }
 
-    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5001", {
+    const socket = io(import.meta.env.VITE_API_URL || "http://localhost:5002", {
       transports: ["websocket"],
       withCredentials: true,
     });

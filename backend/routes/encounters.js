@@ -5,6 +5,7 @@ import Session from "../models/Session.js";
 import Campaign from "../models/Campaign.js";
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "maps-unbound-secret-key";
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
 const KINDS = new Set(["Player", "NPC", "Enemy"]);
 
@@ -15,7 +16,7 @@ const verifyToken = (req, res, next) => {
   }
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch {

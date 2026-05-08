@@ -17,7 +17,7 @@ const CharacterSheet = ({ characterId, onClose, embedded = false }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:5001/api/characters/${characterId}`,
+          `http://localhost:5002/api/characters/${characterId}`,
           {
             method: "GET",
             headers: {

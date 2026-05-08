@@ -74,7 +74,7 @@ function PartyFinder() {
     try {
       setLoading(true);
       setError("");
-      const response = await fetch("http://localhost:5001/api/campaigns/finder/available", {
+      const response = await fetch("/api/campaigns/finder/available", {
         method: "GET"
       });
 
@@ -93,7 +93,7 @@ function PartyFinder() {
     try {
       setLoading(true);
       setError("");
-      const response = await fetch("http://localhost:5001/api/campaigns", {
+      const response = await fetch("/api/campaigns", {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -118,7 +118,7 @@ function PartyFinder() {
   // Fetch user's characters for join modal
   const fetchUserCharacters = async () => {
     try {
-      const response = await fetch("http://localhost:5001/api/characters", {
+      const response = await fetch("/api/characters", {
         headers: {
           "Authorization": `Bearer ${token}`
         }
@@ -154,7 +154,7 @@ function PartyFinder() {
 
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/join-request`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -189,7 +189,7 @@ function PartyFinder() {
     try {
       setLoading(true);
       const endpoint = isCurrentlyHosting ? 'stop-hosting' : 'start-hosting';
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/${endpoint}`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/${endpoint}`, {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`
@@ -212,7 +212,7 @@ function PartyFinder() {
   const approveJoinRequest = async (campaignId, requestId) => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request/${requestId}`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/join-request/${requestId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -235,7 +235,7 @@ function PartyFinder() {
     try {
       setLoading(true);
       const shouldBlock = blockUserChecked[`${campaignId}-${requestId}`] || false;
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/join-request/${requestId}`, {
+      const response = await fetch(`/api/campaigns/${campaignId}/join-request/${requestId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

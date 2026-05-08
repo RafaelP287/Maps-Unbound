@@ -13,7 +13,7 @@ import SessionBottomPanel from "./components/SessionBottomPanel.jsx";
 import "./session.css";
 
 const API_SERVER = import.meta.env.VITE_API_SERVER || "";
-const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5002";
 
 const getUserId = (value) => {
   if (!value) return "";

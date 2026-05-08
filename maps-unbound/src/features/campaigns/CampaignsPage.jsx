@@ -42,18 +42,29 @@ function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const currentUserId = user?._id?.toString?.() || user?.id?.toString?.() || "";
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
     const fetchCampaigns = async () => {
+      setError("");
       try {
-        // Fetch only campaigns the current user can access.
-        const res = await fetch("http://localhost:5001/api/campaigns", {
+        const res = await fetch("/api/campaigns", {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         });
-        const data = await res.json();
-        const mine = (data || []).filter((campaign) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error || `Failed to fetch campaigns (${res.status})`);
+        }
+
+        const campaignsList = Array.isArray(data)
+          ? data
+          : Array.isArray(data.campaigns)
+            ? data.campaigns
+            : [];
+
+        const mine = campaignsList.filter((campaign) => {
           const createdBy = campaign?.createdBy?._id?.toString?.() || campaign?.createdBy?.toString?.();
           // IMPORTANT: only show campaigns created by the current user in this tab.
           return createdBy === currentUserId;
@@ -61,6 +72,7 @@ function CampaignsPage() {
         setCampaigns(mine);
       } catch (err) {
         console.error("Error fetching campaigns:", err);
+        setError(err.message || "Failed to fetch campaigns");
       } finally { setLoading(false); }
     };
     fetchCampaigns();
@@ -91,11 +103,18 @@ function CampaignsPage() {
           </Link>
         </header>
 
+        {error && (
+          <div className="campaign-error-banner">
+            <span style={{ marginRight: "0.5rem" }}>⚠</span>
+            {error}
+          </div>
+        )}
+
         {/* Campaign grid */}
         <div className="campaign-list">
           {campaigns.length > 0 ? (
             campaigns.map((c) => (
-              <CampaignCard key={c._id} campaign={c} currentUser={user.id} />
+              <CampaignCard key={c._id} campaign={c} currentUser={currentUserId} />
             ))
           ) : (
             <div className="campaign-empty">

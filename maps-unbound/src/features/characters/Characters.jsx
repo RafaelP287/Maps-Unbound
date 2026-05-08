@@ -47,7 +47,7 @@ const Characters = () => {
     const fetchCharacters = async () => {
       try {
         setLoading(true);
-        const response = await fetch("http://localhost:5001/api/characters", {
+        const response = await fetch("http://localhost:5002/api/characters", {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`
@@ -82,7 +82,7 @@ const Characters = () => {
       setDeletingId(characterId);
       setError("");
 
-      const response = await fetch(`http://localhost:5001/api/characters/${characterId}`, {
+      const response = await fetch(`http://localhost:5002/api/characters/${characterId}`, {
         method: "DELETE",
         headers: {
           "Authorization": `Bearer ${token}`

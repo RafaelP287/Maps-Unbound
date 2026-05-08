@@ -7,6 +7,8 @@ import { getUsers, getUser, deleteUser } from "../controllers/userController.js"
 import { getCharactersFromUser } from '../controllers/characterController.js';
 import User from "../models/User.js";
 
+const JWT_SECRET = process.env.JWT_SECRET || "maps-unbound-secret-key";
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -15,7 +17,7 @@ const verifyToken = (req, res, next) => {
 
   const token = authHeader.split(" ")[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();
   } catch {

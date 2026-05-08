@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
 
-const apiServer = import.meta.env.VITE_API_SERVER;
+const apiServer = import.meta.env.VITE_API_SERVER || "http://localhost:5002";
 
 // Helper to format bytes into readable sizes
 const formatBytes = (bytes, decimals = 2) => {

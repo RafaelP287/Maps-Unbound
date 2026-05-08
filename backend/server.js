@@ -31,6 +31,9 @@ import { Server } from 'socket.io';   // WebSocket server
 import authRoutes from './routes/auth.js';
 import campaignRoutes from './routes/campaigns.js';
 import characterRoutes from './routes/characters.js';
+import partyRoutes from './routes/partyRoutes.js';
+import assetRoutes from './routes/assets.js';
+import dndProxy from './routes/dndProxy.js';
 import Campaign from './models/Campaign.js';
 
 dotenv.config({ path: '../.env' });
@@ -90,6 +93,9 @@ mongoose
 app.use('/api/auth', authRoutes);           // Authentication (login/signup)
 app.use('/api/campaigns', campaignRoutes);  // Campaign CRUD and party finder
 app.use('/api/characters', characterRoutes); // Character management
+app.use('/api/parties', partyRoutes);        // Party finder / lobby system
+app.use('/api/assets', assetRoutes);         // Asset vault
+app.use('/api/dnd', dndProxy);               // D&D 5e compendium proxy
 
 // Health check endpoint
 app.get('/', (req, res) => {

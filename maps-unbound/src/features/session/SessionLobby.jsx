@@ -9,7 +9,7 @@ import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 import LoadingPage from "../../shared/Loading.jsx";
 
-const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5001";
+const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5002";
 
 const getUserId = (value) => {
   if (!value) return "";

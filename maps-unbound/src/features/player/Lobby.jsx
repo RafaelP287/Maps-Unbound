@@ -93,7 +93,7 @@ function Lobby() {
     const fetchCampaignRole = async () => {
       if (!campaignId || !token || !user?._id) return;
       try {
-        const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}`, {
+        const response = await fetch(`http://localhost:5002/api/campaigns/${campaignId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!response.ok) return;
@@ -106,7 +106,7 @@ function Lobby() {
 
         // Fetch player's first character
         if (campaign.createdBy?.toString?.() !== user._id?.toString?.() && dmId !== user._id?.toString?.()) {
-          const charResponse = await fetch(`http://localhost:5001/api/characters?userId=${user._id}`, {
+          const charResponse = await fetch(`http://localhost:5002/api/characters?userId=${user._id}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (charResponse.ok) {
@@ -148,7 +148,7 @@ function Lobby() {
 
     // Initialize Socket.io client with server URL from environment variable
     // Uses WebSocket transport for real-time bidirectional communication
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001', {
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5002', {
       transports: ['websocket'], // Force WebSocket (no polling fallback)
       withCredentials: true,      // Send cookies with requests
     });
@@ -270,7 +270,7 @@ function Lobby() {
     try {
       setEncounterReadySaving(true);
       // IMPORTANT: DM toggles whether players are allowed to join encounter map.
-      const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}/encounter-ready`, {
+      const response = await fetch(`http://localhost:5002/api/campaigns/${campaignId}/encounter-ready`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
