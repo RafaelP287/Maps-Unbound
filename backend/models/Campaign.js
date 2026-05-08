@@ -1,3 +1,35 @@
+/**
+ * Campaign Data Model
+ *
+ * Represents a campaign (game/session) in Maps Unbound with:
+ * - Campaign metadata (title, description, type)
+ * - Member management (DM, players, join requests)
+ * - Encounter state (grid, tokens, initiative, combat log)
+ * - Campaign content (NPCs, loot, quests)
+ *
+ * KEY FEATURES:
+ * - Encounter readiness gate: only DM can prep, players join when isReady=true
+ * - Token ownership: tokens have ownerUserId for strict movement control
+ * - Turn economy: action, bonus action, reaction tracking per token
+ * - Theater of mind support: tokens track distance in feet (~5ft per grid square)
+ */
+
+/**
+ * Campaign Data Model
+ *
+ * Represents a campaign (game/session) in Maps Unbound with:
+ * - Campaign metadata (title, description, type)
+ * - Member management (DM, players, join requests)
+ * - Encounter state (grid, tokens, initiative, combat log)
+ * - Campaign content (NPCs, loot, quests)
+ *
+ * KEY FEATURES:
+ * - Encounter readiness gate: only DM can prep, players join when isReady=true
+ * - Token ownership: tokens have ownerUserId for strict movement control
+ * - Turn economy: action, bonus action, reaction tracking per token
+ * - Theater of mind support: tokens track distance in feet (~5ft per grid square)
+ */
+
 import mongoose from "mongoose";
 
 // Sub-schema for members
@@ -43,6 +75,10 @@ const encounterGridSchema = new mongoose.Schema({
   rows: { type: Number, min: 2, max: 30, default: 4 },
 }, { _id: false });
 
+// IMPORTANT: Token schema represents a combatant on the encounter map.
+// Each token tracks combat resources and ownership for strict control.
+// IMPORTANT: Token schema represents a combatant on the encounter map.
+// Each token tracks combat resources and ownership for strict control.
 const encounterTokenSchema = new mongoose.Schema({
   tokenId: { type: String, required: true },
   name: { type: String, trim: true, maxlength: 80, required: true },
@@ -62,16 +98,23 @@ const encounterTokenSchema = new mongoose.Schema({
   ownerUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
   initiative: { type: Number, min: -99, max: 999, default: 0 },
   movementSpeed: { type: Number, min: 0, max: 120, default: 30 },
+  // Theater-of-mind combat tracks separation in feet instead of relying on the grid.
+  distanceFeet: { type: Number, min: 0, max: 9999, default: 30 },
   characterId: { type: mongoose.Schema.Types.ObjectId, ref: "Character", default: null },
   characterStats: { type: mongoose.Schema.Types.Mixed, default: null },
   movementRemaining: { type: Number, min: 0, max: 120, default: 30 },
   actionAvailable: { type: Boolean, default: true },
+  // IMPORTANT: Bonus actions default to false (must be explicitly granted by class features).
+  // This differs from standard D&D; enforces careful class/feat design.
   bonusActionAvailable: { type: Boolean, default: false },
   reactionAvailable: { type: Boolean, default: true },
   objectInteractionAvailable: { type: Boolean, default: true },
 }, { _id: false });
 
+// IMPORTANT: Encounter state schema holds all combat info and readiness flag.
+// isReady gates player access; DM can prep privately before opening encounter.
 const encounterStateSchema = new mongoose.Schema({
+  // FEATURE: isReady blocks non-DM access to live encounter until DM explicitly opens it.
   isReady: { type: Boolean, default: false },
   grid: { type: encounterGridSchema, default: () => ({ cols: 6, rows: 4 }) },
   tokens: { type: [encounterTokenSchema], default: [] },

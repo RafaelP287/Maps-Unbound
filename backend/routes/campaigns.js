@@ -1,3 +1,33 @@
+/**
+ * Campaign Routes
+ *
+ * REST API endpoints for campaign management:
+ * - CRUD operations (create, read, update, delete campaigns)
+ * - Party finder (browse/host campaigns)
+ * - Member management (join requests, approvals)
+ * - Encounter readiness gating
+ *
+ * KEY AUTHORIZATION:
+ * - DM/creator only: start-hosting, stop-hosting, access-settings, encounter-ready
+ * - Members only: join-room, encounter access
+ * - Public browse: party finder available/joinable routes
+ */
+
+/**
+ * Campaign Routes
+ *
+ * REST API endpoints for campaign management:
+ * - CRUD operations (create, read, update, delete campaigns)
+ * - Party finder (browse/host campaigns)
+ * - Member management (join requests, approvals)
+ * - Encounter readiness gating
+ *
+ * KEY AUTHORIZATION:
+ * - DM/creator only: start-hosting, stop-hosting, access-settings, encounter-ready
+ * - Members only: join-room, encounter access
+ * - Public browse: party finder available/joinable routes
+ */
+
 import express from "express";
 import jwt from "jsonwebtoken";
 import Campaign from "../models/Campaign.js";
@@ -237,6 +267,30 @@ router.get("/active-sessions", verifyToken, async (req, res) => {
   }
 });
 
+/**
+ * PUT /campaigns/:id/encounter-ready
+ *
+ * IMPORTANT: DM-only endpoint to gate player access to live encounter.
+ * Toggles campaign.encounter.isReady flag used by socket layer.
+ *
+ * Flow:
+ * 1. DM creates/edits encounter in private prep mode (isReady=false)
+ * 2. DM clicks "Allow Players to Join" (isReady=true)
+ * 3. Players can now load encounter:load, join-room, move tokens
+ * 4. DM can lock back for adjustments (isReady=false)
+ */
+/**
+ * PUT /campaigns/:id/encounter-ready
+ *
+ * IMPORTANT: DM-only endpoint to gate player access to live encounter.
+ * Toggles campaign.encounter.isReady flag used by socket layer.
+ *
+ * Flow:
+ * 1. DM creates/edits encounter in private prep mode (isReady=false)
+ * 2. DM clicks "Allow Players to Join" (isReady=true)
+ * 3. Players can now load encounter:load, join-room, move tokens
+ * 4. DM can lock back for adjustments (isReady=false)
+ */
 router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id);

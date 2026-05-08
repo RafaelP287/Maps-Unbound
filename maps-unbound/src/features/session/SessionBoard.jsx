@@ -1,3 +1,45 @@
+/**
+ * SessionBoard Component - Encounter Grid & Controls
+ *
+ * Unified encounter interface for DM and players:
+ * - Live grid combat with token placement and movement
+ * - Turn management and initiative tracking
+ * - Token resource controls (HP, movement, actions)
+ * - Real-time state sync via Socket.io
+ *
+ * MODES:
+ * - Fullscreen (isDM=false, embedded=false): complete session view
+ * - Embedded Lobby (embedded=true, isDM=false): players see map + quick controls under grid
+ * - DM Editor (isDM=true): full editing sidebar + token placement tools
+ *
+ * KEY FEATURES:
+ * - Readiness gating: non-DM users blocked if encounter.isReady=false
+ * - Token ownership: playerControlledToken memoized for quick UI access
+ * - Movement economy: 5ft per square tracked, deducted from movementRemaining
+ * - Turn resources: action, bonus action, reaction per-token management
+ */
+
+/**
+ * SessionBoard Component - Encounter Grid & Controls
+ *
+ * Unified encounter interface for DM and players:
+ * - Live grid combat with token placement and movement
+ * - Turn management and initiative tracking
+ * - Token resource controls (HP, movement, actions)
+ * - Real-time state sync via Socket.io
+ *
+ * MODES:
+ * - Fullscreen (isDM=false, embedded=false): complete session view
+ * - Embedded Lobby (embedded=true, isDM=false): players see map + quick controls under grid
+ * - DM Editor (isDM=true): full editing sidebar + token placement tools
+ *
+ * KEY FEATURES:
+ * - Readiness gating: non-DM users blocked if encounter.isReady=false
+ * - Token ownership: playerControlledToken memoized for quick UI access
+ * - Movement economy: 5ft per square tracked, deducted from movementRemaining
+ * - Turn resources: action, bonus action, reaction per-token management
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { io } from "socket.io-client";
@@ -73,6 +115,14 @@ function SessionBoard({ isDM = false, campaignIdOverride = "", embedded = false,
     [encounter.tokens, selectedTokenId]
   );
 
+  /**
+   * playerControlledToken - memoized reference to user's character token
+   *
+   * Used in embedded lobby mode to render quick movement/action controls
+   * directly under the grid (players don't see full sidebar).
+   *
+   * Recalculated whenever tokens array changes or userId changes.
+   */
   const playerControlledToken = useMemo(() => {
     if (!userId) return null;
     // IMPORTANT: in lobby embedded mode, quick controls target the user's owned token.

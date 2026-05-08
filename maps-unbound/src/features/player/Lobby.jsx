@@ -1,16 +1,26 @@
 /**
- * Lobby Component
- * 
+ * Lobby Component - Campaign Hub
+ *
  * Real-time campaign lobby interface using Socket.io for WebSocket communication.
- * Provides live chat messaging, player presence tracking, and event notifications.
- * 
- * Features:
+ * Hub for chat, events, encounter entry, and DM prep controls.
+ *
+ * KEY FEATURES:
  * - Real-time chat messaging between campaign members
  * - Live player join/leave notifications
+ * - Encounter readiness gating:
+ *   * DM: "Open Encounter Editor" + "Allow Players to Join" button
+ *   * Players: Join button disabled until DM opens encounter (encounterReady=true)
+ * - Embedded SessionBoard for inline encounter map
  * - Connection status monitoring with debug logging
- * - Auto-scroll chat messages
  * - Room-based communication (isolated per campaign)
+ *
+ * DM WORKFLOW:
+ * 1. Click "Open Encounter Editor" to prepare tokens + grid (local prep)
+ * 2. Click "Allow Players to Join" to set isReady=true
+ * 3. Players can now join and see the updated encounter map
+ * 4. DM can "Lock Encounter" to prep privately again
  */
+
 
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -23,25 +33,25 @@ import './lobby.css';
 function Lobby() {
   // Get campaignId from URL parameters (e.g., /campaign/:campaignId/lobby)
   const { campaignId } = useParams();
-  
+
   // Get authenticated user from AuthContext
   const { user, token } = useAuth();
-  
+
   // State for live events feed (player joins/leaves)
   const [events, setEvents] = useState([]);
-  
+
   // State for chat messages with username and timestamp
   const [messages, setMessages] = useState([]);
-  
+
   // State for current message being typed
   const [messageInput, setMessageInput] = useState('');
-  
+
   // Socket.io connection status (true = connected, false = disconnected)
   const [connected, setConnected] = useState(false);
-  
+
   // Array of player userIds currently in the lobby
   const [players, setPlayers] = useState([]);
-  
+
   // Debug log for troubleshooting connection issues (visible in UI)
   const [debugLog, setDebugLog] = useState([]);
   const [isDM, setIsDM] = useState(false);
@@ -49,10 +59,10 @@ function Lobby() {
   const [encounterReady, setEncounterReady] = useState(false);
   const [encounterReadySaving, setEncounterReadySaving] = useState(false);
   const [playerCharacterId, setPlayerCharacterId] = useState(null);
-  
+
   // Reference to the Socket.io client instance (persists across renders)
   const socketRef = useRef(null);
-  
+
   // Reference to the bottom of messages container for auto-scrolling
   const messagesEndRef = useRef(null);
 
@@ -118,7 +128,7 @@ function Lobby() {
 
   /**
    * Socket.io Connection Effect
-   * 
+   *
    * Establishes WebSocket connection when component mounts and user/campaign are available.
    * Sets up event listeners for real-time communication.
    * Cleans up connection on unmount or when dependencies change.
@@ -127,7 +137,7 @@ function Lobby() {
     // Debug: Log current state for troubleshooting
     addDebugLog(`📊 campaignId: ${campaignId || 'MISSING'}`);
     addDebugLog(`📊 user: ${user ? JSON.stringify({_id: user._id, username: user.username}) : 'MISSING'}`);
-    
+
     // Validation: Ensure we have required data before connecting
     if (!campaignId || !user?._id) {
       addDebugLog('❌ Missing campaignId or userId - cannot connect');
@@ -226,7 +236,7 @@ function Lobby() {
    */
   const sendMessage = (e) => {
     e.preventDefault();
-    
+
     // Validation: Don't send empty messages or if not connected
     if (!messageInput.trim() || !socketRef.current) return;
 
@@ -242,6 +252,19 @@ function Lobby() {
     setMessageInput('');
   };
 
+  /**
+   * updateEncounterReady(nextReady)
+   *
+   * IMPORTANT: DM-only function to toggle encounter.isReady via REST API.
+   * Toggles between "Open Encounter Editor" and "Lock Encounter (Prep Mode)" states.
+   *
+   * Flow:
+   * 1. DM clicks button
+   * 2. Sends PUT to /api/campaigns/:id/encounter-ready with { isReady: true/false }
+   * 3. Backend persists to campaign.encounter.isReady
+   * 4. Socket broadcasts state change to all clients
+   * 5. Player "Join Encounter" button enables/disables based on isReady
+   */
   const updateEncounterReady = async (nextReady) => {
     if (!isDM || !campaignId || !token) return;
     try {

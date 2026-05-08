@@ -279,6 +279,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
     playerControlledToken.reactionAvailable
   );
 
+  // Players can only spend actions on their own active turn; the DM can act when controlling an enemy turn.
   const canUseTurnActions = Boolean(
     activeTurn && (
       (!activeTurnOwnerId && effectiveIsDM) ||
@@ -595,7 +596,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <div style={styles.panelCard}>
               <h3 style={styles.panelTitle}>Your Turn Actions</h3>
               <p style={styles.panelBody}>{playerControlledToken.name} — {playerControlledToken.role}</p>
-              
+
               {/* Turn Sections */}
               <div style={styles.turnSectionTabs}>
                 {[
@@ -736,6 +737,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <div style={styles.controlRow}>
                 <button type="button" style={styles.secondaryButton} onClick={resetEncounter}>Reset Encounter</button>
                 <button type="button" style={styles.secondaryButton} onClick={levelUpAll}>Level Up All</button>
+                {/* Add default enemies before the DM opens the encounter so the initial turn order is ready. */}
                 <button type="button" style={styles.secondaryButton} onClick={addDefaultEnemies} disabled={encounter.isReady}>Add Default Enemies</button>
               </div>
             </div>
@@ -815,7 +817,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
               <p style={styles.modalText}>
                 Congratulations! You've reached <strong>Level {levelUpData.newLevel}</strong>!
               </p>
-              
+
               {levelUpData.newStats && (
                 <div style={styles.statsGrid}>
                   <div style={styles.statBox}>
