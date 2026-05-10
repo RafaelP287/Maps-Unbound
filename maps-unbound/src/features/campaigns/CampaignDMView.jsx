@@ -754,56 +754,10 @@ function CampaignDMView({ campaign, setCampaign }) {
               sessionsLoading={sessionsLoading}
               isDM
               onStartEditing={startEditing}
+              onJoinCodeUpdate={handleJoinCodeUpdate}
+              joinCodeSaving={joinCodeSaving}
+              joinCodeError={joinCodeError}
             />
-          )}
-
-          {!isEditing && (
-            <section className="campaign-section-panel">
-              <div className="campaign-details-header">
-                <span className="campaign-details-icon">✦</span>
-                <span className="campaign-details-heading">Private Join Code</span>
-                <span className="campaign-details-icon">✦</span>
-              </div>
-              <p className="campaign-helper-text">
-                Players with this code can join immediately while there are open player slots.
-              </p>
-              {campaign.accessCode ? (
-                <div className="campaign-edit-item">
-                  <div>
-                    <span className="campaign-field-label">Current Code</span>
-                    <h3 className="campaign-resource-title">{campaign.accessCode}</h3>
-                  </div>
-                  <div className="campaign-btn-row">
-                    <button
-                      type="button"
-                      className="btn-edit"
-                      disabled={joinCodeSaving}
-                      onClick={() => handleJoinCodeUpdate(true)}
-                    >
-                      Regenerate
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-cancel"
-                      disabled={joinCodeSaving}
-                      onClick={() => handleJoinCodeUpdate(false)}
-                    >
-                      Disable
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  disabled={joinCodeSaving}
-                  onClick={() => handleJoinCodeUpdate(true)}
-                >
-                  Generate Join Code
-                </button>
-              )}
-              {joinCodeError && <p className="campaign-error-text">{joinCodeError}</p>}
-            </section>
           )}
 
           {!isEditing && (

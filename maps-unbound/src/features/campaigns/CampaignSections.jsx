@@ -30,6 +30,9 @@ function CampaignSections({
   isDM = false,
   user = null,
   onStartEditing = null,
+  onJoinCodeUpdate = null,
+  joinCodeSaving = false,
+  joinCodeError = "",
 }) {
   const currentQuest = campaign.currentQuest;
   const npcs = campaign.npcs || [];
@@ -89,46 +92,82 @@ function CampaignSections({
           <span className="campaign-details-heading">Important Details</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        <div className="campaign-details-grid">
-          <div className="campaign-detail-row">
+        <div className="campaign-details-grid campaign-details-grid-overhauled">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Dungeon Master</span>
             <span className="campaign-detail-val">
               {dm}
               {isDM && <span className="badge-dm">You</span>}
             </span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Style</span>
             <span className="campaign-detail-val">{campaign.playStyle || "Online"}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Status</span>
             <span className="campaign-detail-val">{campaign.status || "Planning"}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Party Finder</span>
             <span className="campaign-detail-val">{campaign.isHosting ? "Findable" : "Hidden"}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Start Date</span>
             <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Campaign Members</span>
             <span className="campaign-detail-val">{members.length}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Player Slots Filled</span>
             <span className="campaign-detail-val">{players.length}/{campaign.maxPlayers || 5}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          {isDM && (
+            <div className="campaign-detail-tile campaign-detail-tile-wide">
+              <div>
+                <span className="campaign-detail-key">Private Join Code</span>
+                <span className="campaign-detail-val campaign-join-code-value">
+                  {campaign.accessCode || "Disabled"}
+                </span>
+                <span className="campaign-helper-text">Code holders can join immediately while seats are open.</span>
+              </div>
+              <div className="campaign-btn-row">
+                {campaign.accessCode ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-edit"
+                      disabled={joinCodeSaving}
+                      onClick={() => onJoinCodeUpdate?.(true)}
+                    >
+                      Regenerate
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      disabled={joinCodeSaving}
+                      onClick={() => onJoinCodeUpdate?.(false)}
+                    >
+                      Disable
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={joinCodeSaving}
+                    onClick={() => onJoinCodeUpdate?.(true)}
+                  >
+                    Generate Join Code
+                  </button>
+                )}
+              </div>
+              {joinCodeError && <p className="campaign-error-text">{joinCodeError}</p>}
+            </div>
+          )}
+          <div className="campaign-detail-tile campaign-detail-tile-wide">
             <span className="campaign-detail-key">Player Roster</span>
             <span className="campaign-detail-val">
               {players.length > 0 ? players.map((p) => (
