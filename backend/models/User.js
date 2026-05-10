@@ -29,6 +29,7 @@ const userSchema = new Schema(
     updatedAt: { type: Date, default: Date.now },
     profileImageUrl: { type: String }, // The S3 URL
     s3Key: { type: String }, // The file path in the bucket (useful for deleting later)
+    openToCampaignInvites: { type: Boolean, default: false },
     profileId: {
       type: Schema.Types.ObjectId,
       ref: "Profile",

@@ -68,6 +68,7 @@
 }
 
 .pf-mode-btn.is-active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
   color: var(--bg-deep);
   border-color: transparent;
 }
@@ -177,6 +178,96 @@
 .pf-request-list {
   display: grid;
   gap: 0.7rem;
+}
+
+.pf-recruiting-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-recruit-controls {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(240px, 1fr);
+  margin-bottom: 1rem;
+}
+
+.pf-helper-copy {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0 0 0.8rem;
+}
+
+.pf-recruit-controls label {
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.pf-recruit-controls span {
+  color: var(--gold);
+  font-family: var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pf-recruit-controls select,
+.pf-recruit-controls input {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-base);
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+}
+
+.pf-player-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.pf-player-card {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.7rem;
+}
+
+.pf-player-card h3 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  margin: 0 0 0.2rem;
+}
+
+.pf-player-card p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.pf-player-avatar {
+  align-items: center;
+  background: rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 50%;
+  color: var(--gold);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  height: 42px;
+  justify-content: center;
+  overflow: hidden;
+  width: 42px;
+}
+
+.pf-player-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .pf-campaign-card {
@@ -363,6 +454,55 @@
   padding: 1.2rem;
 }
 
+.pf-invite-modal {
+  width: min(540px, 100%);
+}
+
+.pf-invite-modal .pf-helper-copy {
+  margin-bottom: 0;
+}
+
+.pf-invite-campaign-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.pf-invite-campaign-option {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.75rem;
+}
+
+.pf-invite-campaign-option.is-selected {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: rgba(201, 168, 76, 0.55);
+}
+
+.pf-invite-campaign-option input {
+  accent-color: var(--gold);
+}
+
+.pf-invite-campaign-option span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pf-invite-campaign-option strong {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+}
+
+.pf-invite-campaign-option small {
+  color: var(--text-muted);
+}
+
 .pf-label {
   display: flex;
   flex-direction: column;
@@ -404,6 +544,11 @@
   .pf-request-item {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .pf-recruit-controls,
+  .pf-player-card {
+    grid-template-columns: 1fr;
   }
 
   .pf-code-form {

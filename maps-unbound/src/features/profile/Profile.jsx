@@ -69,6 +69,9 @@ function Profile() {
   const [isProfileImageModalOpen, setIsProfileImageModalOpen] = useState(false);
   const [profileImageBroken, setProfileImageBroken] = useState(false);
   const [draftImageBroken, setDraftImageBroken] = useState(false);
+  const [inviteAvailabilitySaving, setInviteAvailabilitySaving] = useState(false);
+  const [inviteAvailabilityError, setInviteAvailabilityError] = useState("");
+  const [inviteAvailabilityStatus, setInviteAvailabilityStatus] = useState("");
   const closeProfileImageButtonRef = useRef(null);
 
   useEffect(() => {
@@ -300,6 +303,36 @@ function Profile() {
     navigate("/", { replace: true });
   };
 
+  const updateInviteAvailability = async (openToCampaignInvites) => {
+    if (!token || inviteAvailabilitySaving) return;
+    setInviteAvailabilitySaving(true);
+    setInviteAvailabilityError("");
+    setInviteAvailabilityStatus("");
+    try {
+      const res = await fetch("/api/users/me/invite-availability", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ openToCampaignInvites }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || data.message || "Failed to update invite availability.");
+      }
+
+      const data = await res.json();
+      updateUser(data.user);
+      setInviteAvailabilityStatus(openToCampaignInvites ? "You can now receive campaign invites." : "Campaign invites are now closed.");
+    } catch (err) {
+      setInviteAvailabilityError(err.message || "Failed to update invite availability.");
+    } finally {
+      setInviteAvailabilitySaving(false);
+    }
+  };
+
   const deleteAccount = async (event) => {
     event.preventDefault();
     if (!token || deleteSaving) return;
@@ -463,6 +496,26 @@ function Profile() {
                     <button type="button" className="profile-modal-close profile-settings-button" onClick={handleLogout}>
                       Log Out
                     </button>
+                  </div>
+
+                  <div className="profile-settings-panel">
+                    <div>
+                      <h3>Campaign Invites</h3>
+                      <p>Allow DMs to find your profile in Party Finder and invite you to campaigns.</p>
+                    </div>
+                    <label className="profile-field">
+                      <span>Invite Availability</span>
+                      <select
+                        value={user?.openToCampaignInvites ? "open" : "closed"}
+                        onChange={(event) => updateInviteAvailability(event.target.value === "open")}
+                        disabled={inviteAvailabilitySaving}
+                      >
+                        <option value="closed">Closed to invites</option>
+                        <option value="open">Open to invites</option>
+                      </select>
+                    </label>
+                    {inviteAvailabilityError && <p className="profile-inline-error">{inviteAvailabilityError}</p>}
+                    {inviteAvailabilityStatus && <p className="profile-inline-success">{inviteAvailabilityStatus}</p>}
                   </div>
 
                   <form className="profile-settings-panel profile-danger-panel" onSubmit={deleteAccount}>

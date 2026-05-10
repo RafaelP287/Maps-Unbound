@@ -72,6 +72,7 @@ router.post('/signup', async (req, res) => {
         username: user.username,
         email: user.email,
         profileImageUrl: user.profileImageUrl || '',
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
       },
       token,
     });
@@ -137,6 +138,7 @@ router.post('/login', async (req, res) => {
         username: user.username,
         email: user.email,
         profileImageUrl: user.profileImageUrl || '',
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
       },
       token,
     });

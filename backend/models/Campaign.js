@@ -19,6 +19,18 @@ const joinRequestSchema = new mongoose.Schema({
   resolvedAt: { type: Date, default: null },
 }, { _id: true });
 
+const invitationSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  status: {
+    type: String,
+    enum: ["Pending", "Accepted", "Declined"],
+    default: "Pending",
+  },
+  invitedAt: { type: Date, default: Date.now },
+  resolvedAt: { type: Date, default: null },
+}, { _id: true });
+
 const currentQuestSchema = new mongoose.Schema({
   title: { type: String, trim: true, maxlength: 120 },
   objective: { type: String, trim: true, maxlength: 500 },
@@ -115,6 +127,7 @@ const campaignSchema = new mongoose.Schema({
     default: "Planning",
   },
   joinRequests: { type: [joinRequestSchema], default: [] },
+  invitations: { type: [invitationSchema], default: [] },
   currentQuest: { type: currentQuestSchema, default: null },
   npcs: { type: [npcSchema], default: [] },
   enemies: { type: [enemySchema], default: [] },
@@ -127,6 +140,7 @@ const campaignSchema = new mongoose.Schema({
 campaignSchema.index({ "members.userId": 1, updatedAt: -1 });
 campaignSchema.index({ isHosting: 1, isPublic: 1, updatedAt: -1 });
 campaignSchema.index({ "joinRequests.userId": 1, updatedAt: -1 });
+campaignSchema.index({ "invitations.userId": 1, updatedAt: -1 });
 campaignSchema.index(
   { accessCode: 1 },
   { unique: true, partialFilterExpression: { accessCode: { $type: "string" } } }

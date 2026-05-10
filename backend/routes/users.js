@@ -45,7 +45,7 @@ router.put("/me/profile-image", verifyToken, async (req, res) => {
       req.user.userId,
       { profileImageUrl: profileImageUrl || "" },
       { new: true, runValidators: true }
-    ).select("_id username email profileImageUrl");
+    ).select("_id username email profileImageUrl openToCampaignInvites");
 
     if (!user) {
       return res.status(404).json({ error: "User not found." });
@@ -57,6 +57,35 @@ router.put("/me/profile-image", verifyToken, async (req, res) => {
         username: user.username,
         email: user.email,
         profileImageUrl: user.profileImageUrl || "",
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// UPDATE logged-in user's campaign invite availability
+router.put("/me/invite-availability", verifyToken, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { openToCampaignInvites: Boolean(req.body?.openToCampaignInvites) },
+      { new: true, runValidators: true }
+    ).select("_id username email profileImageUrl openToCampaignInvites");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        profileImageUrl: user.profileImageUrl || "",
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
       },
     });
   } catch (error) {
