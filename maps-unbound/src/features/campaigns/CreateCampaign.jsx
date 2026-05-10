@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { CalendarDays, ImagePlus, Settings2, Shield, UsersRound } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 import ImageDrop from "../../shared/ImageDrop.jsx";
@@ -83,18 +84,20 @@ function CreateCampaignPage() {
   };
 
   return (
-    <div className="campaign-page-padded">
-      <div className="campaign-content-narrow">
-        {/* Header */}
-        <header className="campaign-page-header">
-          <div className="campaign-header-divider" />
-          <div className="campaign-header-row">
-            <span className="campaign-header-rune">✦</span>
-            <h1 className="campaign-page-title">Forge a New Campaign</h1>
-            <span className="campaign-header-rune">✦</span>
+    <div className="campaign-page-padded create-campaign-page">
+      <div className="create-campaign-shell">
+        <header className="create-campaign-header">
+          <div className="create-campaign-header-copy">
+            <p className="campaign-index-eyebrow">Campaign Builder</p>
+            <h1 className="create-campaign-title">Forge a New Campaign</h1>
+            <p className="create-campaign-subtitle">
+              Set the premise, table details, artwork, and first invites from one clean desktop workspace.
+            </p>
           </div>
-          <p className="campaign-page-subtitle">Chronicle your legend — name it, describe it, assemble your party.</p>
-          <div className="campaign-header-divider" />
+          <div className="create-campaign-header-card" aria-label="Campaign creation checklist">
+            <span><Shield size={16} /> You are the DM</span>
+            <span><UsersRound size={16} /> {players.length}/{form.maxPlayers || 0} player slots</span>
+          </div>
         </header>
 
         {error && (
@@ -104,126 +107,168 @@ function CreateCampaignPage() {
         )}
 
         <form onSubmit={handleSubmit} className="campaign-form">
-          {/* Title */}
-          <div className="campaign-field-group">
-            <label className="campaign-field-label">Campaign Title</label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={(e) => updateForm("title", e.target.value)}
-              required
-              maxLength={80}
-              placeholder="e.g. Curse of the Crimson Throne"
-            />
+          <div className="create-campaign-layout">
+            <main className="create-campaign-main">
+              <section className="create-campaign-panel">
+                <div className="create-campaign-panel-heading">
+                  <Shield size={18} aria-hidden="true" />
+                  <div>
+                    <h2>Campaign Identity</h2>
+                    <p>Name the table and give players the hook.</p>
+                  </div>
+                </div>
+
+                <div className="campaign-field-group">
+                  <label className="campaign-field-label">Campaign Title</label>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(e) => updateForm("title", e.target.value)}
+                    required
+                    maxLength={80}
+                    placeholder="e.g. Curse of the Crimson Throne"
+                  />
+                </div>
+
+                <div className="campaign-field-group">
+                  <label className="campaign-field-label">Description</label>
+                  <textarea
+                    value={form.description}
+                    onChange={(e) => updateForm("description", e.target.value)}
+                    required
+                    maxLength={500}
+                    placeholder="Set the scene - what awaits your adventurers?"
+                    className="create-campaign-description"
+                  />
+                  <span className="campaign-helper-text">{form.description.length}/500</span>
+                </div>
+              </section>
+
+              <section className="create-campaign-panel">
+                <div className="create-campaign-panel-heading">
+                  <Settings2 size={18} aria-hidden="true" />
+                  <div>
+                    <h2>Table Setup</h2>
+                    <p>Define availability, party size, and where this campaign appears.</p>
+                  </div>
+                </div>
+
+                <div className="campaign-field-grid create-campaign-field-grid">
+                  <div className="campaign-field-group">
+                    <label className="campaign-field-label">Play Style</label>
+                    <select
+                      className="campaign-select"
+                      value={form.playStyle}
+                      onChange={(e) => updateForm("playStyle", e.target.value)}
+                    >
+                      <option value="Online">Online</option>
+                      <option value="In Person">In Person</option>
+                      <option value="Hybrid">Hybrid</option>
+                    </select>
+                  </div>
+
+                  <div className="campaign-field-group">
+                    <label className="campaign-field-label">Status</label>
+                    <select
+                      className="campaign-select"
+                      value={form.status}
+                      onChange={(e) => updateForm("status", e.target.value)}
+                    >
+                      <option value="Planning">Planning</option>
+                      <option value="Active">Active</option>
+                      <option value="On Hold">On Hold</option>
+                      <option value="Completed">Completed</option>
+                    </select>
+                  </div>
+
+                  <div className="campaign-field-group">
+                    <label className="campaign-field-label">Max Players</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={form.maxPlayers}
+                      onChange={(e) => updateForm("maxPlayers", e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="campaign-field-group">
+                    <label className="campaign-field-label">Start Date</label>
+                    <input
+                      type="date"
+                      value={form.startDate}
+                      onChange={(e) => updateForm("startDate", e.target.value)}
+                    />
+                  </div>
+
+                  <div className="campaign-field-group create-campaign-field-wide">
+                    <label className="campaign-field-label">Party Finder</label>
+                    <select
+                      className="campaign-select"
+                      value={form.isHosting ? "true" : "false"}
+                      onChange={(e) => updateForm("isHosting", e.target.value === "true")}
+                    >
+                      <option value="false">Hidden</option>
+                      <option value="true">Findable</option>
+                    </select>
+                    <span className="campaign-helper-text">Findable campaigns can receive DM-approved join requests.</span>
+                  </div>
+                </div>
+              </section>
+            </main>
+
+            <aside className="create-campaign-aside">
+              <section className="create-campaign-panel create-campaign-side-panel">
+                <div className="create-campaign-panel-heading">
+                  <ImagePlus size={18} aria-hidden="true" />
+                  <div>
+                    <h2>Artwork</h2>
+                    <p>Upload a banner image for campaign cards and details.</p>
+                  </div>
+                </div>
+                <ImageDrop imagePreview={imagePreview} onImageChange={setImagePreview} />
+              </section>
+
+              <section className="create-campaign-panel create-campaign-side-panel">
+                <div className="create-campaign-panel-heading">
+                  <UsersRound size={18} aria-hidden="true" />
+                  <div>
+                    <h2>Party</h2>
+                    <p>Invite players now, or leave slots open for later.</p>
+                  </div>
+                </div>
+                <PlayerSearch players={players} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} />
+                <span className="campaign-helper-text">
+                  Party slots used: {players.length}/{form.maxPlayers || 0} (DM not included)
+                </span>
+              </section>
+
+              <section className="create-campaign-summary" aria-label="Campaign summary">
+                <div>
+                  <span>Play Style</span>
+                  <strong>{form.playStyle}</strong>
+                </div>
+                <div>
+                  <span>Status</span>
+                  <strong>{form.status}</strong>
+                </div>
+                <div>
+                  <span>Start</span>
+                  <strong><CalendarDays size={15} /> {form.startDate || "Unscheduled"}</strong>
+                </div>
+              </section>
+            </aside>
           </div>
 
-          {/* Description */}
-          <div className="campaign-field-group">
-            <label className="campaign-field-label">Description</label>
-            <textarea
-              value={form.description}
-              onChange={(e) => updateForm("description", e.target.value)}
-              required
-              maxLength={500}
-              placeholder="Set the scene — what awaits your adventurers?"
-              style={{ minHeight: "110px", resize: "vertical" }}
-            />
-            <span className="campaign-helper-text">{form.description.length}/500</span>
-          </div>
-
-          <div className="campaign-section-divider">
-            <div className="campaign-section-line" />
-            <span className="campaign-section-label">Campaign Setup</span>
-            <div className="campaign-section-line" />
-          </div>
-
-          <div className="campaign-field-grid">
-            <div className="campaign-field-group">
-              <label className="campaign-field-label">Play Style</label>
-              <select
-                className="campaign-select"
-                value={form.playStyle}
-                onChange={(e) => updateForm("playStyle", e.target.value)}
-              >
-                <option value="Online">Online</option>
-                <option value="In Person">In Person</option>
-                <option value="Hybrid">Hybrid</option>
-              </select>
-            </div>
-
-            <div className="campaign-field-group">
-              <label className="campaign-field-label">Status</label>
-              <select
-                className="campaign-select"
-                value={form.status}
-                onChange={(e) => updateForm("status", e.target.value)}
-              >
-                <option value="Planning">Planning</option>
-                <option value="Active">Active</option>
-                <option value="On Hold">On Hold</option>
-                <option value="Completed">Completed</option>
-              </select>
-            </div>
-
-            <div className="campaign-field-group">
-              <label className="campaign-field-label">Max Players</label>
-              <input
-                type="number"
-                min="1"
-                max="12"
-                value={form.maxPlayers}
-                onChange={(e) => updateForm("maxPlayers", e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="campaign-field-group">
-              <label className="campaign-field-label">Party Finder</label>
-              <select
-                className="campaign-select"
-                value={form.isHosting ? "true" : "false"}
-                onChange={(e) => updateForm("isHosting", e.target.value === "true")}
-              >
-                <option value="false">Hidden</option>
-                <option value="true">Findable</option>
-              </select>
-              <span className="campaign-helper-text">Findable campaigns can receive DM-approved join requests.</span>
-            </div>
-
-            <div className="campaign-field-group">
-              <label className="campaign-field-label">Start Date</label>
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => updateForm("startDate", e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Separator */}
-          <div className="campaign-section-divider">
-            <div className="campaign-section-line" />
-            <span className="campaign-section-label">Campaign Artwork</span>
-            <div className="campaign-section-line" />
-          </div>
-
-          <ImageDrop imagePreview={imagePreview} onImageChange={setImagePreview} />
-
-          {/* Separator */}
-          <div className="campaign-section-divider">
-            <div className="campaign-section-line" />
-            <span className="campaign-section-label">Assemble Your Party</span>
-            <div className="campaign-section-line" />
-          </div>
-
-          <PlayerSearch players={players} onAddPlayer={addPlayer} onRemovePlayer={removePlayer} />
-          <span className="campaign-helper-text">
-            Party slots used: {players.length}/{form.maxPlayers || 0} (DM not included)
-          </span>
-
-          <button type="submit" className="btn-submit" disabled={loading}>
-            {loading ? "Forging the chronicle…" : "⚔  Create Campaign"}
-          </button>
+          <footer className="create-campaign-actions">
+            <button type="button" className="btn-ghost" onClick={() => navigate("/campaigns")}>
+              Cancel
+            </button>
+            <button type="submit" className="btn-submit create-campaign-submit" disabled={loading}>
+              {loading ? "Forging the Chronicle..." : "Create Campaign"}
+            </button>
+          </footer>
         </form>
       </div>
     </div>
