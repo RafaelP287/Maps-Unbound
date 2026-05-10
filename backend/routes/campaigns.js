@@ -540,6 +540,41 @@ router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
   }
 });
 
+// Remove a player from a campaign. DMs can kick players; players can leave themselves.
+router.delete("/:id/members/:memberId", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const memberId = req.params.memberId;
+    const isSelf = memberId === req.user.userId;
+    const isDM = isCampaignDM(campaign, req.user.userId);
+    if (!isSelf && !isDM) {
+      return res.status(403).json({ error: "Only the DM can remove another player" });
+    }
+
+    const targetMember = campaign.members.find((member) => getUserId(member.userId) === memberId);
+    if (!targetMember) {
+      return res.status(404).json({ error: "Campaign member not found" });
+    }
+    if (targetMember.role === "DM") {
+      return res.status(400).json({ error: "The DM cannot be removed from the campaign" });
+    }
+
+    campaign.members = campaign.members.filter((member) => getUserId(member.userId) !== memberId);
+    await campaign.save();
+
+    if (isSelf) {
+      return res.json({ message: "You left the campaign" });
+    }
+
+    const updatedCampaign = await populateCampaignForDetail(Campaign.findById(campaign._id)).lean();
+    res.json(updatedCampaign);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Get a campaign by ID — only if the user is a member
 router.get("/:id", verifyToken, async (req, res) => {
   try {

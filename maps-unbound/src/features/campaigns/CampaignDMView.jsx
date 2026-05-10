@@ -71,6 +71,9 @@ function CampaignDMView({ campaign, setCampaign }) {
   const [sessionActionError, setSessionActionError] = useState("");
   const [joinCodeSaving, setJoinCodeSaving] = useState(false);
   const [joinCodeError, setJoinCodeError] = useState("");
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [removingMember, setRemovingMember] = useState(false);
+  const [removeMemberError, setRemoveMemberError] = useState("");
 
   // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -348,12 +351,38 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
       const updatedCampaign = await res.json();
       setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setEditPlayers((prev) => prev.filter((player) => player.userId !== memberToRemove.userId._id));
       setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, updatedCampaign);
       clearCachePrefix("campaigns:list:");
     } catch (err) {
       setJoinCodeError(err.message || "Failed to update join code.");
     } finally {
       setJoinCodeSaving(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove?.userId?._id) return;
+    setRemovingMember(true);
+    setRemoveMemberError("");
+    try {
+      const res = await fetch(`/api/campaigns/${id}/members/${memberToRemove.userId._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Status ${res.status}`);
+      }
+      const updatedCampaign = await res.json();
+      setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, updatedCampaign);
+      clearCachePrefix("campaigns:list:");
+      setMemberToRemove(null);
+    } catch (err) {
+      setRemoveMemberError(err.message || "Failed to remove player.");
+    } finally {
+      setRemovingMember(false);
     }
   };
 
@@ -396,7 +425,15 @@ function CampaignDMView({ campaign, setCampaign }) {
             <PlayerSearch
               players={editPlayers}
               onAddPlayer={(p) => setEditPlayers((prev) => [...prev, p])}
-              onRemovePlayer={(userId) => setEditPlayers((prev) => prev.filter((p) => p.userId !== userId))}
+              onRemovePlayer={(userId) => {
+                const existingMember = players.find((player) => player.userId?._id === userId);
+                if (existingMember) {
+                  setRemoveMemberError("");
+                  setMemberToRemove(existingMember);
+                  return;
+                }
+                setEditPlayers((prev) => prev.filter((p) => p.userId !== userId));
+              }}
             />
           )}
 
@@ -828,6 +865,24 @@ function CampaignDMView({ campaign, setCampaign }) {
                 {deleting ? "Deleting…" : "Yes, Delete"}
               </button>
               <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {memberToRemove && (
+        <div className="campaign-modal-overlay">
+          <div className="campaign-modal-box">
+            <div className="campaign-modal-icon">⚠</div>
+            <h3 className="campaign-modal-title">Remove Player?</h3>
+            <p className="campaign-modal-body">
+              <strong style={{ color: "var(--gold-light)" }}>{memberToRemove.userId?.username || "This player"}</strong> will lose access to <strong style={{ color: "var(--gold-light)" }}>{campaign.title}</strong>.
+            </p>
+            {removeMemberError && <p className="campaign-error-text">{removeMemberError}</p>}
+            <div className="campaign-btn-row">
+              <button className="btn-delete" onClick={handleRemoveMember} disabled={removingMember}>
+                {removingMember ? "Removing..." : "Remove Player"}
+              </button>
+              <button className="btn-cancel" onClick={() => setMemberToRemove(null)} disabled={removingMember}>Cancel</button>
             </div>
           </div>
         </div>
