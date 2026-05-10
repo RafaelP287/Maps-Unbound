@@ -33,6 +33,7 @@ function CampaignDMView({ campaign, setCampaign }) {
     campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : ""
   );
   const [editStatus, setEditStatus] = useState(campaign.status || "Planning");
+  const [editIsHosting, setEditIsHosting] = useState(Boolean(campaign.isHosting));
   const [editCurrentQuestTitle, setEditCurrentQuestTitle] = useState(campaign.currentQuest?.title || "");
   const [editCurrentQuestObjective, setEditCurrentQuestObjective] = useState(campaign.currentQuest?.objective || "");
   const [editCurrentQuestStatus, setEditCurrentQuestStatus] = useState(campaign.currentQuest?.status || "In Progress");
@@ -148,6 +149,8 @@ function CampaignDMView({ campaign, setCampaign }) {
           maxPlayers,
           startDate: editStartDate || undefined,
           status: editStatus,
+          isHosting: editIsHosting,
+          isPublic: true,
           currentQuest,
           npcs,
           enemies,
@@ -186,6 +189,8 @@ function CampaignDMView({ campaign, setCampaign }) {
         npcs,
         enemies,
         loot,
+        isHosting: editIsHosting,
+        isPublic: true,
         members: populatedMembers,
       };
       setCampaign((prev) => ({ ...prev, ...nextCampaign }));
@@ -216,6 +221,7 @@ function CampaignDMView({ campaign, setCampaign }) {
     setEditMaxPlayers(campaign.maxPlayers || 5);
     setEditStartDate(campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : "");
     setEditStatus(campaign.status || "Planning");
+    setEditIsHosting(Boolean(campaign.isHosting));
     setEditCurrentQuestTitle(campaign.currentQuest?.title || "");
     setEditCurrentQuestObjective(campaign.currentQuest?.objective || "");
     setEditCurrentQuestStatus(campaign.currentQuest?.status || "In Progress");
@@ -386,6 +392,14 @@ function CampaignDMView({ campaign, setCampaign }) {
                   <option value="On Hold">On Hold</option>
                   <option value="Completed">Completed</option>
                 </select>
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Party Finder</span>
+                <select className="campaign-select" value={editIsHosting ? "true" : "false"} onChange={(e) => setEditIsHosting(e.target.value === "true")}>
+                  <option value="false">Hidden</option>
+                  <option value="true">Findable</option>
+                </select>
+                <span className="campaign-helper-text">Findable campaigns can receive join requests.</span>
               </div>
               <div className="campaign-field-group">
                 <span className="campaign-field-label">Max Players</span>

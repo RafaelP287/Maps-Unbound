@@ -17,6 +17,7 @@ function CreateCampaignPage() {
     maxPlayers: 5,
     startDate: "",
     status: "Planning",
+    isHosting: false,
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -69,6 +70,8 @@ function CreateCampaignPage() {
           maxPlayers,
           startDate: form.startDate || undefined,
           status: form.status,
+          isHosting: form.isHosting,
+          isPublic: true,
           image: imagePreview ?? undefined,
           members,
         }),
@@ -172,6 +175,19 @@ function CreateCampaignPage() {
                 onChange={(e) => updateForm("maxPlayers", e.target.value)}
                 required
               />
+            </div>
+
+            <div className="campaign-field-group">
+              <label className="campaign-field-label">Party Finder</label>
+              <select
+                className="campaign-select"
+                value={form.isHosting ? "true" : "false"}
+                onChange={(e) => updateForm("isHosting", e.target.value === "true")}
+              >
+                <option value="false">Hidden</option>
+                <option value="true">Findable</option>
+              </select>
+              <span className="campaign-helper-text">Findable campaigns can receive DM-approved join requests.</span>
             </div>
 
             <div className="campaign-field-group">

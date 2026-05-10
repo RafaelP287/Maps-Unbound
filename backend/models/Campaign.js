@@ -8,6 +8,17 @@ const memberSchema = new mongoose.Schema({
   joinedAt: { type: Date, default: Date.now },
 });
 
+const joinRequestSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  status: {
+    type: String,
+    enum: ["Pending", "Approved", "Rejected"],
+    default: "Pending",
+  },
+  requestedAt: { type: Date, default: Date.now },
+  resolvedAt: { type: Date, default: null },
+}, { _id: true });
+
 const currentQuestSchema = new mongoose.Schema({
   title: { type: String, trim: true, maxlength: 120 },
   objective: { type: String, trim: true, maxlength: 500 },
@@ -103,6 +114,7 @@ const campaignSchema = new mongoose.Schema({
     enum: ["Planning", "Active", "On Hold", "Completed"],
     default: "Planning",
   },
+  joinRequests: { type: [joinRequestSchema], default: [] },
   currentQuest: { type: currentQuestSchema, default: null },
   npcs: { type: [npcSchema], default: [] },
   enemies: { type: [enemySchema], default: [] },
@@ -113,6 +125,8 @@ const campaignSchema = new mongoose.Schema({
 }, {timestamps: true});
 
 campaignSchema.index({ "members.userId": 1, updatedAt: -1 });
+campaignSchema.index({ isHosting: 1, isPublic: 1, updatedAt: -1 });
+campaignSchema.index({ "joinRequests.userId": 1, updatedAt: -1 });
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 

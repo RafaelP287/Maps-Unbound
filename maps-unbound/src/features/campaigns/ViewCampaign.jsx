@@ -10,11 +10,13 @@ import "./campaign.css";
 const getUserId = (value) => {
   if (!value) return "";
   if (typeof value === "string") return value;
-  if (value._id) return getUserId(value._id);
-  if (value.id) return getUserId(value.id);
   if (value.$oid) return value.$oid;
+  if (value._id && value._id !== value) return getUserId(value._id);
   const stringValue = value.toString?.();
-  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+  if (stringValue && stringValue !== "[object Object]") return stringValue;
+  if (typeof value.id === "string") return value.id;
+  if (value.id && value.id !== value) return getUserId(value.id);
+  return "";
 };
 
 function ViewCampaignPage() {

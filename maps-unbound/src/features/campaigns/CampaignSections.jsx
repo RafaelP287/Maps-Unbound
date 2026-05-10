@@ -109,6 +109,11 @@ function CampaignSections({
           </div>
           <div className="campaign-detail-divider" />
           <div className="campaign-detail-row">
+            <span className="campaign-detail-key">Party Finder</span>
+            <span className="campaign-detail-val">{campaign.isHosting ? "Findable" : "Hidden"}</span>
+          </div>
+          <div className="campaign-detail-divider" />
+          <div className="campaign-detail-row">
             <span className="campaign-detail-key">Start Date</span>
             <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
           </div>
