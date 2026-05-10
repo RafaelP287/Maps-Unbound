@@ -1,5 +1,6 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import Campaign from "../models/Campaign.js";
 import Session from "../models/Session.js";
 import User from "../models/User.js";
@@ -9,6 +10,7 @@ const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
 const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
 const QUEST_STATUSES = new Set(["In Progress", "Blocked", "Completed"]);
 const JOIN_REQUEST_STATUSES = new Set(["Pending", "Approved", "Rejected"]);
+const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const getUserId = (value) => {
   if (!value) return "";
@@ -30,6 +32,23 @@ const populateCampaignForDetail = (query) =>
   query
     .populate("members.userId", "username email profileImageUrl")
     .populate("joinRequests.userId", "username email profileImageUrl");
+
+const generateJoinCode = () => {
+  let code = "";
+  for (let i = 0; i < 8; i += 1) {
+    code += JOIN_CODE_CHARS[crypto.randomInt(0, JOIN_CODE_CHARS.length)];
+  }
+  return code;
+};
+
+const generateUniqueJoinCode = async () => {
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    const code = generateJoinCode();
+    const existing = await Campaign.exists({ accessCode: code });
+    if (!existing) return code;
+  }
+  throw new Error("Failed to generate a unique join code");
+};
 
 const normalizeCurrentQuest = (input) => {
   if (!input) return null;
@@ -199,7 +218,7 @@ router.post("/", verifyToken, async (req, res) => {
 router.get("/", verifyToken, async (req, res) => {
   try {
     const campaigns = await Campaign.find({ "members.userId": req.user.userId })
-      .select("title description image playStyle maxPlayers startDate status isPublic isHosting members joinRequests createdAt updatedAt")
+      .select("title description image playStyle maxPlayers startDate status isPublic isHosting accessCode members joinRequests createdAt updatedAt")
       .sort({ updatedAt: -1 })
       .lean();
     res.json(campaigns);
@@ -388,6 +407,71 @@ router.post("/:id/join-requests", verifyToken, async (req, res) => {
   }
 });
 
+// Join immediately with a DM-issued private campaign code.
+router.post("/join-code", verifyToken, async (req, res) => {
+  try {
+    const code = req.body?.code?.trim?.().toUpperCase();
+    if (!code) {
+      return res.status(400).json({ error: "Join code is required" });
+    }
+
+    const campaign = await Campaign.findOne({ accessCode: code });
+    if (!campaign) {
+      return res.status(404).json({ error: "No campaign found for that join code" });
+    }
+    if (campaign.status === "Completed") {
+      return res.status(400).json({ error: "This campaign is completed" });
+    }
+
+    const isMember = campaign.members.some((member) => getUserId(member.userId) === req.user.userId);
+    if (isMember) {
+      return res.status(400).json({ error: "You are already a member of this campaign" });
+    }
+
+    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+    if (playerCount >= campaign.maxPlayers) {
+      return res.status(400).json({ error: "This campaign is full" });
+    }
+
+    campaign.members.push({ userId: req.user.userId, role: "Player" });
+    campaign.joinRequests = campaign.joinRequests.map((request) => {
+      if (getUserId(request.userId) === req.user.userId && request.status === "Pending") {
+        request.status = "Approved";
+        request.resolvedAt = new Date();
+      }
+      return request;
+    });
+    await campaign.save();
+
+    res.json({
+      message: `Joined ${campaign.title}`,
+      campaignId: campaign._id,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DM enables, regenerates, or disables the private campaign join code.
+router.put("/:id/join-code", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!isCampaignDM(campaign, req.user.userId)) {
+      return res.status(403).json({ error: "Only the DM can manage this campaign's join code" });
+    }
+
+    const enabled = Boolean(req.body.enabled);
+    campaign.accessCode = enabled ? await generateUniqueJoinCode() : null;
+    await campaign.save();
+
+    const updatedCampaign = await populateCampaignForDetail(Campaign.findById(campaign._id)).lean();
+    res.json(updatedCampaign);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // DM resolves a pending join request. Approval adds the user as a Player.
 router.put("/:id/join-requests/:requestId", verifyToken, async (req, res) => {
   try {
@@ -513,6 +597,7 @@ router.put("/:id", verifyToken, async (req, res) => {
       req.body.isHosting = Boolean(req.body.isHosting);
     }
     delete req.body.joinRequests;
+    delete req.body.accessCode;
 
     const incomingMembers = Array.isArray(req.body.members) ? req.body.members : campaign.members;
     const incomingMaxPlayersRaw = req.body.maxPlayers ?? campaign.maxPlayers ?? 5;

@@ -69,6 +69,8 @@ function CampaignDMView({ campaign, setCampaign }) {
   const [pendingSessionDeleteIds, setPendingSessionDeleteIds] = useState([]);
   const [showSessionDeleteConfirmOnSave, setShowSessionDeleteConfirmOnSave] = useState(false);
   const [sessionActionError, setSessionActionError] = useState("");
+  const [joinCodeSaving, setJoinCodeSaving] = useState(false);
+  const [joinCodeError, setJoinCodeError] = useState("");
 
   // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -329,6 +331,30 @@ function CampaignDMView({ campaign, setCampaign }) {
         ? prev.filter((id) => id !== sessionId)
         : [...prev, sessionId]
     );
+  };
+
+  const handleJoinCodeUpdate = async (enabled) => {
+    setJoinCodeSaving(true);
+    setJoinCodeError("");
+    try {
+      const res = await fetch(`/api/campaigns/${id}/join-code`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Status ${res.status}`);
+      }
+      const updatedCampaign = await res.json();
+      setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, updatedCampaign);
+      clearCachePrefix("campaigns:list:");
+    } catch (err) {
+      setJoinCodeError(err.message || "Failed to update join code.");
+    } finally {
+      setJoinCodeSaving(false);
+    }
   };
 
   return (
@@ -692,6 +718,55 @@ function CampaignDMView({ campaign, setCampaign }) {
               isDM
               onStartEditing={startEditing}
             />
+          )}
+
+          {!isEditing && (
+            <section className="campaign-section-panel">
+              <div className="campaign-details-header">
+                <span className="campaign-details-icon">✦</span>
+                <span className="campaign-details-heading">Private Join Code</span>
+                <span className="campaign-details-icon">✦</span>
+              </div>
+              <p className="campaign-helper-text">
+                Players with this code can join immediately while there are open player slots.
+              </p>
+              {campaign.accessCode ? (
+                <div className="campaign-edit-item">
+                  <div>
+                    <span className="campaign-field-label">Current Code</span>
+                    <h3 className="campaign-resource-title">{campaign.accessCode}</h3>
+                  </div>
+                  <div className="campaign-btn-row">
+                    <button
+                      type="button"
+                      className="btn-edit"
+                      disabled={joinCodeSaving}
+                      onClick={() => handleJoinCodeUpdate(true)}
+                    >
+                      Regenerate
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      disabled={joinCodeSaving}
+                      onClick={() => handleJoinCodeUpdate(false)}
+                    >
+                      Disable
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={joinCodeSaving}
+                  onClick={() => handleJoinCodeUpdate(true)}
+                >
+                  Generate Join Code
+                </button>
+              )}
+              {joinCodeError && <p className="campaign-error-text">{joinCodeError}</p>}
+            </section>
           )}
 
           {!isEditing && (

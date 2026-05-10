@@ -127,6 +127,10 @@ const campaignSchema = new mongoose.Schema({
 campaignSchema.index({ "members.userId": 1, updatedAt: -1 });
 campaignSchema.index({ isHosting: 1, isPublic: 1, updatedAt: -1 });
 campaignSchema.index({ "joinRequests.userId": 1, updatedAt: -1 });
+campaignSchema.index(
+  { accessCode: 1 },
+  { unique: true, partialFilterExpression: { accessCode: { $type: "string" } } }
+);
 
 const Campaign = mongoose.model("Campaign", campaignSchema);
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
 import placeholderImage from "../campaigns/images/DnD.jpg";
@@ -12,6 +12,7 @@ const formatStartDate = (value) => {
 };
 
 function PartyFinder() {
+  const navigate = useNavigate();
   const { token, isLoggedIn } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [joinRequests, setJoinRequests] = useState([]);
@@ -20,6 +21,8 @@ function PartyFinder() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [requestingCampaignId, setRequestingCampaignId] = useState("");
   const [resolvingRequestId, setResolvingRequestId] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [joiningByCode, setJoiningByCode] = useState(false);
 
   const fetchFindableCampaigns = useCallback(async () => {
     if (!isLoggedIn || !token) return;
@@ -108,6 +111,36 @@ function PartyFinder() {
     }
   };
 
+  const joinWithCode = async (event) => {
+    event.preventDefault();
+    const code = joinCode.trim().toUpperCase();
+    if (!code) return;
+
+    setJoiningByCode(true);
+    setMessage({ type: "", text: "" });
+    try {
+      const response = await fetch("/api/campaigns/join-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ code }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to join campaign.");
+      }
+      setJoinCode("");
+      setMessage({ type: "success", text: data.message || "Campaign joined." });
+      await fetchFindableCampaigns();
+      if (data.campaignId) {
+        navigate(`/campaigns/${data.campaignId}`);
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: err.message || "Failed to join campaign." });
+    } finally {
+      setJoiningByCode(false);
+    }
+  };
+
   if (!isLoggedIn) {
     return <Gate>Sign in to find adventuring parties.</Gate>;
   }
@@ -131,6 +164,26 @@ function PartyFinder() {
             {message.text}
           </div>
         )}
+
+        <section className="pf-code-panel">
+          <div>
+            <h2>Have A Join Code?</h2>
+            <p>Enter a private campaign code from your DM to join immediately if a seat is open.</p>
+          </div>
+          <form className="pf-code-form" onSubmit={joinWithCode}>
+            <input
+              aria-label="Campaign join code"
+              className="pf-code-input"
+              maxLength={12}
+              placeholder="ENTER CODE"
+              value={joinCode}
+              onChange={(event) => setJoinCode(event.target.value.toUpperCase())}
+            />
+            <button type="submit" disabled={!joinCode.trim() || joiningByCode}>
+              {joiningByCode ? "Joining..." : "Join"}
+            </button>
+          </form>
+        </section>
 
         <section className="pf-request-panel">
           <div className="pf-section-heading-row">
