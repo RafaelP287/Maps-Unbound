@@ -32,6 +32,7 @@ import {
   proficiencyBonus,
   suggestedHitDice,
 } from "./characterFormData.js";
+import PortraitUpload from "./PortraitUpload.jsx";
 
 const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 
@@ -41,6 +42,7 @@ function CharacterEditor() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
   const [formData, setFormData] = useState(DEFAULT_CHARACTER_FORM);
   const [initialSnapshot, setInitialSnapshot] = useState("");
+  const [portraitUrl, setPortraitUrl] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -99,6 +101,7 @@ function CharacterEditor() {
         setFormData(nextForm);
         setInitialSnapshot(JSON.stringify(nextForm));
         setCachedValue(cacheKey, nextCharacter);
+        setPortraitUrl(nextCharacter.portrait?.url || "");
       } catch (err) {
         if (!hasCachedCharacter) {
           setError(err.message || "Could not load that character.");
@@ -401,11 +404,15 @@ function CharacterEditor() {
         ) : (
           <div className="character-form-layout">
             <aside className="character-preview-panel" aria-label="Character preview">
-              <div
-                className="character-preview-art"
-              >
-                <img className="character-preview-img" src={getCharacterImage(formData.characterClass)} alt="" />
-              </div>
+              <PortraitUpload
+                characterId={id}
+                currentUrl={portraitUrl}
+                fallbackImage={getCharacterImage(formData.characterClass)}
+                token={token}
+                onChange={(updatedCharacter) => {
+                  setPortraitUrl(updatedCharacter?.portrait?.url || "");
+                }}
+              />
               <div className="character-preview-body">
                 <h2 className="character-preview-name">{formData.name || "Unnamed Hero"}</h2>
                 <p className="character-preview-meta">

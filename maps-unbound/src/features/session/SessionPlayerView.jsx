@@ -396,7 +396,13 @@ function SessionPlayerView() {
         onToggle={() => setIsLeftCollapsed((prev) => !prev)}
       />
 
-      <SessionMapCanvas readOnly turns={liveTurns} round={displayedRound} />
+      <SessionMapCanvas
+        readOnly
+        turns={liveTurns}
+        round={displayedRound}
+        sessionId={sessionId}
+        token={token}
+      />
 
       <SessionRightPanel
         isCollapsed={isRightCollapsed}

@@ -30,10 +30,18 @@ const partySchema = new mongoose.Schema({
   players: [{
     type: String, // Array of usernames currently in the lobby
   }],
+  sessionId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Session",
+    default: null, // null = standalone Party Finder lobby (no campaign)
+  },
   createdAt: {
     type: Date,
     default: Date.now,
-    expires: 7200, // MongoDB will automatically delete this document after 7200 seconds (2 hours)
+  },
+  lastActivityAt: {
+    type: Date,
+    default: Date.now,
   },
 });
 

@@ -5,6 +5,28 @@ import User from "../models/User.js";
 import Character from "../models/Character.js";
 import { Item, parseEquipmentData } from "../models/Item.js";
 import { parseSpellData } from "../models/Spell.js";
+// Build the proxy URL for a character's portrait — points at our backend,
+// which streams from S3 server-side. No more CORS / 301 redirect issues.
+function portraitProxyUrl(characterId, version) {
+  if (!characterId) return "";
+  const base =
+    process.env.PUBLIC_API_BASE ||
+    `http://localhost:${process.env.PORT || 5001}`;
+  const v = version ? `?v=${new Date(version).getTime()}` : "";
+  return `${base}/api/characters/${characterId}/portrait/image${v}`;
+}
+
+// Rewrite portrait URLs on a list of character docs (in-place) to use the
+// proxy. Works on both Mongoose docs and lean objects.
+function refreshPortraitUrls(characters) {
+  if (!Array.isArray(characters)) return characters;
+  characters.forEach((character) => {
+    if (character?.portrait?.s3Key) {
+      character.portrait.url = portraitProxyUrl(character._id, character.updatedAt);
+    }
+  });
+  return characters;
+}
 
 function characterIdentifierQuery(id) {
   const clauses = [];
@@ -33,12 +55,16 @@ async function getCharacters() {
 // Finds all characters that belongs to a user
 async function getCharactersFromUser(username) {
   const userId = (await User.findOne({ username: username }))?.id;
-  return await Character.find({ user: userId });
+  const characters = await Character.find({ user: userId });
+  await refreshPortraitUrls(characters);
+  return characters;
 }
 
 // Finds character by id
 async function getCharacter(id) {
-  return await findCharacterByIdentifier(id);
+  const character = await findCharacterByIdentifier(id);
+  if (character) await refreshPortraitUrls([character]);
+  return character;
 }
 
 // Finds character by id but expanded

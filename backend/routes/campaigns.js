@@ -922,7 +922,57 @@ router.put("/:id", verifyToken, async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+// Player picks which character they're playing in this campaign.
+// Body: { characterId } — ObjectId of the player's character (or null to clear)
+router.put("/:id/active-character", verifyToken, async (req, res) => {
+  try {
+    const { characterId } = req.body;
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
+    // Find the requesting user's membership row.
+    const member = campaign.members.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    if (!member) {
+      return res.status(403).json({ error: "You are not a member of this campaign" });
+    }
+    if (member.role !== "Player") {
+      return res.status(400).json({ error: "Only Players have an active character" });
+    }
+
+    // Allow null/empty to clear, or validate that the character belongs to this user.
+    if (characterId) {
+      // Lazy import to avoid circular dependencies if any. The Character model
+      // is already imported at the top of this file? — if not we'll import it.
+      const Character = (await import("../models/Character.js")).default;
+      const character = await Character.findById(characterId);
+      if (!character) {
+        return res.status(404).json({ error: "Character not found" });
+      }
+      if (String(character.user) !== String(req.user.userId)) {
+        return res
+          .status(403)
+          .json({ error: "You can only pick your own characters" });
+      }
+      member.activeCharacterId = characterId;
+    } else {
+      member.activeCharacterId = null;
+    }
+
+    await campaign.save();
+
+    // Return the populated campaign so the frontend gets fresh data.
+    const populated = await Campaign.findById(req.params.id).populate(
+      "members.userId",
+      "username email"
+    );
+    res.json(populated);
+  } catch (err) {
+    console.error("Active character update error:", err);
+    res.status(400).json({ error: err.message });
+  }
+});
 // Delete a campaign — only the DM can delete
 router.delete("/:id", verifyToken, async (req, res) => {
   try {

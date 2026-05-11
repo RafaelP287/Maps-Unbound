@@ -6,6 +6,11 @@ const memberSchema = new mongoose.Schema({
   characterId: { type: mongoose.Schema.Types.ObjectId, ref: "Character", default: null },
   role: { type: String, enum: ["DM", "Player"], required: true },
   joinedAt: { type: Date, default: Date.now },
+  activeCharacterId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Character",
+    default: null,
+  },
 });
 
 const joinRequestSchema = new mongoose.Schema({

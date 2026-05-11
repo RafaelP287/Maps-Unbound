@@ -7,6 +7,7 @@ import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
 import { getUserId } from "../../shared/getUserId.js";
+import ActiveCharacterPicker from "./ActiveCharacterPicker.jsx";
 
 function CampaignPlayerView({ campaign, user }) {
   const navigate = useNavigate();
@@ -80,6 +81,8 @@ function CampaignPlayerView({ campaign, user }) {
         <CampaignHero campaign={campaign} />
 
         <div className="campaign-card-panel">
+          <ActiveCharacterPicker campaign={campaign} user={user} />
+
           {openLobby && (
             <section className="campaign-player-lobby-panel">
               <div>

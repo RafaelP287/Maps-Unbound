@@ -8,6 +8,7 @@ import LoadingPage from "./shared/Loading.jsx";
 const Home = lazy(() => import("./features/home/Home.jsx"));
 const Maps = lazy(() => import("./features/maps/Maps.jsx"));
 const MapsPage = lazy(() => import("./features/maps/MapsPage.jsx"));
+const Projector = lazy(() => import("./features/maps/Projector.jsx"));
 
 const Session = lazy(() => import("./features/session/Session.jsx"));
 const SessionDMView = lazy(() => import("./features/session/SessionDMView.jsx"));
@@ -320,6 +321,7 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<LoadingPage>Loading...</LoadingPage>}>
         <Routes>
+          <Route path="projector" element={<Projector />} />
           <Route path="session" element={<SessionLayout />}>
             <Route index element={<Session />} />
             <Route path="dm" element={<SessionDMView />} />

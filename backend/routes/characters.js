@@ -2,6 +2,13 @@ import { Router } from "express";
 const router = Router();
 
 import {
+  uploadPortrait,
+  deletePortrait,
+  refreshPortraitUrl,
+  streamPortraitImage,
+} from "../controllers/portraitController.js";
+import requireAuth from "../middleware/auth.js";
+import {
   DEFAULT_RACES,
   DEFAULT_CLASSES,
   DEFAULT_ALIGNMENTS,
@@ -310,5 +317,14 @@ router.post("/:id/spells", async (req, res) => {
 
 // POST: Add an item to a character's inventory
 router.post("/:id/inventory", addItemToInventory);
+
+// Portrait upload/delete/refresh — used for character token images in combat.
+router.post("/:characterId/portrait", requireAuth, uploadPortrait);
+router.delete("/:characterId/portrait", requireAuth, deletePortrait);
+router.get("/:characterId/portrait/refresh", requireAuth, refreshPortraitUrl);
+
+// Public proxy — Godot/img tags hit this, no auth header required.
+// Bypasses S3 CORS by streaming bytes through our origin.
+router.get("/:characterId/portrait/image", streamPortraitImage);
 
 export default router;

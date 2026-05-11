@@ -6,7 +6,10 @@ import jwt from "jsonwebtoken";
 import connectDB from "./config/db.js";
 import sessionRoutes from './routes/sessions.js';
 import encounterRoutes from './routes/encounters.js';
+import combatRoutes from "./routes/combat.js";
+import Session from "./models/Session.js";
 import Campaign from "./models/Campaign.js";
+import Party from "./models/Party.js";
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -29,12 +32,10 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
-// Middleware to parse JSON bodies (The data sent by frontend)
 app.use(urlencoded({ extended: false }));
 app.use(json({ limit: "15mb" }));
 app.use(cors());
 
-// --- Import route files ---
 import characterRoutes from './routes/characters.js';
 import userRoutes from './routes/users.js';
 import registerRoutes from './routes/register.js';
@@ -44,8 +45,9 @@ import campaignRoutes from './routes/campaigns.js';
 import partyRoutes from './routes/partyRoutes.js';
 import assetRoutes from './routes/assets.js';
 import dndProxy from './routes/dndProxy.js';
+import mapRoutes from './routes/maps.js';
 
-// ---  Mount the routes ---
+app.use('/api/maps', mapRoutes);
 app.use('/api/characters', characterRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/register', registerRoutes);
@@ -55,15 +57,14 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/parties', partyRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api/encounters', encounterRoutes);
-
 app.use('/api/assets', assetRoutes);
 app.use('/api/dnd', dndProxy);
+app.use('/api/combat', combatRoutes);
 
-// Debugging Middleware (Add this to see what is happening)
 app.use((req, res, next) => {
   console.log("---------------------");
   console.log("Incoming Request Method:", req.method);
-  console.log("Incoming URL:", req.url); // <--- Added this line
+  console.log("Incoming URL:", req.url);
   console.log("Incoming Headers:", req.headers["content-type"]);
   console.log("Incoming Body:", req.body);
   next();
@@ -297,6 +298,41 @@ const advanceEncounterTurn = async ({ campaignId, userId, allowPlayerAdvance = f
 };
 
 io.on("connection", (socket) => {
+  socket.on("joinSession", async ({ sessionId }, ack) => {
+    try {
+      if (!sessionId) return ack?.({ ok: false, error: "No sessionId" });
+
+      const authUserId = getSocketAuthUserId(socket);
+      if (!authUserId) return ack?.({ ok: false, error: "Invalid or expired token" });
+
+      const session = await Session.findById(sessionId);
+      if (!session) return ack?.({ ok: false, error: "Session not found" });
+
+      const campaign = await Campaign.findById(session.campaignId).select("createdBy members").lean();
+      const membership = campaign?.members?.find((member) => getUserId(member.userId) === authUserId);
+      const party = await Party.findOne({ sessionId }).lean();
+      const isInParty = party?.players?.includes(socket.data?.username);
+
+      if (!membership && !isInParty) {
+        return ack?.({ ok: false, error: "Access denied" });
+      }
+
+      socket.data.sessionId = sessionId;
+      socket.data.userId = authUserId;
+      socket.data.isDM = isDMForCampaign(campaign, authUserId);
+      socket.join(`session:${sessionId}`);
+      ack?.({ ok: true, isDM: socket.data.isDM });
+    } catch (error) {
+      console.error("joinSession error:", error);
+      ack?.({ ok: false, error: error.message });
+    }
+  });
+
+  socket.on("mapState", ({ state }) => {
+    if (!socket.data.sessionId || !state) return;
+    socket.to(`session:${socket.data.sessionId}`).emit("mapState", { state });
+  });
+
   socket.on("join-room", ({ campaignId, userId }) => {
     if (!campaignId || !userId) {
       socket.emit("room-error", { message: "campaignId and userId are required" });
