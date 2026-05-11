@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "../campaigns/use-campaign.js";
 import { clearCachePrefix, getCachedValue, setCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 import placeholderImage from "../campaigns/images/DnD.jpg";
 import "../campaigns/campaign.css";
 import "./campaignjournal.css";
@@ -48,6 +49,7 @@ function CampaignJournalPage() {
   const [noteVisibilitySavingKey, setNoteVisibilitySavingKey] = useState("");
   const [noteVisibilityErrorKey, setNoteVisibilityErrorKey] = useState("");
   const [noteVisibilityError, setNoteVisibilityError] = useState("");
+  const currentUserId = user?.id;
 
   useEffect(() => {
     if (!id || !token) {
@@ -59,7 +61,7 @@ function CampaignJournalPage() {
     }
 
     let cancelled = false;
-    const cacheKey = `campaign:journal:${user?.id || "current"}:${id}`;
+    const cacheKey = `campaign:journal:${currentUserId || "current"}:${id}`;
     const cachedJournal = getCachedValue(cacheKey);
     const hasCachedJournal = Boolean(cachedJournal);
 
@@ -112,7 +114,7 @@ function CampaignJournalPage() {
     return () => {
       cancelled = true;
     };
-  }, [id, token, user?.id]);
+  }, [currentUserId, id, token]);
 
   const timelineItems = useMemo(() => {
     const sessionItems = (sessions || []).map((session) => ({
@@ -152,7 +154,7 @@ function CampaignJournalPage() {
     });
   }, [noteVisibilityOverrides, sessionSummaryOverrides, sessionTitleOverrides, sessions]);
 
-  const journalCacheKey = `campaign:journal:${user?.id || "current"}:${id}`;
+  const journalCacheKey = `campaign:journal:${currentUserId || "current"}:${id}`;
   const setJournalSessions = (updater) => {
     setSessions((currentSessions) => {
       const nextSessions = typeof updater === "function" ? updater(currentSessions) : updater;
@@ -180,8 +182,8 @@ function CampaignJournalPage() {
   }
 
   const backgroundImage = campaign.image || placeholderImage;
-  const dmMember = campaign.members?.find((member) => member.role === "DM");
-  const isDM = dmMember?.userId?._id?.toString() === user?.id?.toString();
+  const currentMember = campaign.members?.find((member) => getUserId(member.userId) === currentUserId);
+  const isDM = currentMember?.role === "DM" || getUserId(campaign.createdBy) === currentUserId;
   const toggleSessionExpanded = (sessionId) => {
     setExpandedSessionIds((prev) => ({
       ...prev,
@@ -250,7 +252,7 @@ function CampaignJournalPage() {
           session._id === sessionId ? { ...session, title: sessionNameDraft.trim() } : session
         )
       );
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${id}`);
       setEditingSessionNameId(null);
       setSessionNameDraft("");
     } catch (err) {
@@ -289,7 +291,7 @@ function CampaignJournalPage() {
           session._id === sessionId ? { ...session, summary: summaryDraft.trim() } : session
         )
       );
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${id}`);
       setEditingSessionId(null);
       setSummaryDraft("");
     } catch (err) {
@@ -339,7 +341,7 @@ function CampaignJournalPage() {
           };
         })
       );
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${id}`);
     } catch (err) {
       setNoteVisibilityErrorKey(noteKey);
       setNoteVisibilityError(err.message || "Failed to update note visibility");

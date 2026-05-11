@@ -82,7 +82,7 @@ function EncounterAssistantBoard({ isDM = false, campaignIdOverride = "", embedd
   const socketRef = useRef(null);
 
   const campaignId = campaignIdOverride || location.state?.campaign?._id || new URLSearchParams(location.search).get("campaignId") || "";
-  const userId = user?._id || user?.id || "";
+  const userId = user?.id || "";
   const canUseLive = Boolean(campaignId && userId);
 
   const [connected, setConnected] = useState(false);

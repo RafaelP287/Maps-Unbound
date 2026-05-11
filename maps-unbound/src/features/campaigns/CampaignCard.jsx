@@ -1,15 +1,6 @@
 import { Link } from "react-router-dom";
+import { getUserId } from "../../shared/getUserId.js";
 import placeholderImage from "./images/DnD.jpg";
-
-const getUserId = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value._id) return getUserId(value._id);
-  if (value.id) return getUserId(value.id);
-  if (value.$oid) return value.$oid;
-  const stringValue = value.toString?.();
-  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
-};
 
 const CampaignCard = ({ campaign, currentUser, activeSession = null }) => {
   // Determine user's role in the campaign and total members

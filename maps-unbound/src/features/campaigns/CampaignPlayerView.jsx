@@ -6,6 +6,7 @@ import placeholderImage from "./images/DnD.jpg";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 function CampaignPlayerView({ campaign, user }) {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ function CampaignPlayerView({ campaign, user }) {
     };
   }, [campaign._id, refetchSessions]);
 
-  const currentUserId = user?.id || user?._id;
+  const currentUserId = user?.id;
 
   const handleLeaveCampaign = async () => {
     if (!currentUserId) {

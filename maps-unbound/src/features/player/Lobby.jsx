@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { useAuth } from '../../context/AuthContext.jsx';
+import { getUserId } from '../../shared/getUserId.js';
 import EncounterAssistantBoard from '../session/EncounterAssistantBoard.jsx';
 import CharacterSheet from '../characters/CharacterSheet.jsx';
 import './lobby.css';
@@ -26,6 +27,7 @@ function Lobby() {
   
   // Get authenticated user from AuthContext
   const { user, token } = useAuth();
+  const currentUserId = user?.id;
   
   // State for live events feed (player joins/leaves)
   const [events, setEvents] = useState([]);
@@ -81,7 +83,7 @@ function Lobby() {
 
   useEffect(() => {
     const fetchCampaignRole = async () => {
-      if (!campaignId || !token || !user?._id) return;
+      if (!campaignId || !token || !currentUserId) return;
       try {
         const response = await fetch(`http://localhost:5001/api/campaigns/${campaignId}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -89,14 +91,14 @@ function Lobby() {
         if (!response.ok) return;
 
         const campaign = await response.json();
-        const dmMember = campaign.members?.find((member) => member.role === 'DM');
-        const dmId = dmMember?.userId?._id?.toString?.() || dmMember?.userId?.toString?.();
-        setIsDM(campaign.createdBy?.toString?.() === user._id?.toString?.() || dmId === user._id?.toString?.());
+        const currentMember = campaign.members?.find((member) => getUserId(member.userId) === currentUserId);
+        const userIsDM = currentMember?.role === 'DM' || getUserId(campaign.createdBy) === currentUserId;
+        setIsDM(userIsDM);
         setEncounterReady(Boolean(campaign.encounter?.isReady));
 
         // Fetch player's first character
-        if (campaign.createdBy?.toString?.() !== user._id?.toString?.() && dmId !== user._id?.toString?.()) {
-          const charResponse = await fetch(`http://localhost:5001/api/characters?userId=${user._id}`, {
+        if (!userIsDM) {
+          const charResponse = await fetch(`http://localhost:5001/api/characters?userId=${currentUserId}`, {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (charResponse.ok) {
@@ -114,7 +116,7 @@ function Lobby() {
     };
 
     fetchCampaignRole();
-  }, [campaignId, token, user?._id]);
+  }, [campaignId, currentUserId, token]);
 
   /**
    * Socket.io Connection Effect
@@ -126,15 +128,15 @@ function Lobby() {
   useEffect(() => {
     // Debug: Log current state for troubleshooting
     addDebugLog(`📊 campaignId: ${campaignId || 'MISSING'}`);
-    addDebugLog(`📊 user: ${user ? JSON.stringify({_id: user._id, username: user.username}) : 'MISSING'}`);
+    addDebugLog(`📊 user: ${user ? JSON.stringify({_id: currentUserId, username: user.username}) : 'MISSING'}`);
     
     // Validation: Ensure we have required data before connecting
-    if (!campaignId || !user?._id) {
+    if (!campaignId || !currentUserId) {
       addDebugLog('❌ Missing campaignId or userId - cannot connect');
       return;
     }
 
-    addDebugLog(`🔌 Attempting to connect... campaignId: ${campaignId}, userId: ${user._id}`);
+    addDebugLog(`🔌 Attempting to connect... campaignId: ${campaignId}, userId: ${currentUserId}`);
 
     // Initialize Socket.io client with server URL from environment variable
     // Uses WebSocket transport for real-time bidirectional communication
@@ -151,7 +153,7 @@ function Lobby() {
       addDebugLog('✓ Socket connected: ' + socket.id);
       setConnected(true);
       // Immediately join the campaign-specific room after connecting
-      socket.emit('join-room', { campaignId, userId: user._id });
+      socket.emit('join-room', { campaignId, userId: currentUserId });
     });
 
     // Event: 'room-joined' - Confirmation that we successfully joined the campaign room
@@ -217,7 +219,7 @@ function Lobby() {
       socket.off('connect_error');
       socket.disconnect();
     };
-  }, [campaignId, user?._id]); // Re-run effect if campaignId or userId changes
+  }, [campaignId, currentUserId, user]); // Re-run effect if campaignId or userId changes
 
   /**
    * Send a chat message to the campaign room
@@ -233,7 +235,7 @@ function Lobby() {
     // Emit message event to server with all required data
     socketRef.current.emit('send-message', {
       campaignId,        // Which campaign room to send to
-      userId: user._id,  // Sender's user ID
+      userId: currentUserId,  // Sender's user ID
       username: user.username, // Sender's display name
       message: messageInput,   // The actual message content
     });
@@ -362,8 +364,8 @@ function Lobby() {
                 <p className="lobby-empty">No messages yet. Start the conversation!</p>
               ) : (
                 messages.map((msg, idx) => (
-                  <div key={idx} className={msg.userId === user._id ? 'lobby-message is-self' : 'lobby-message'}>
-                    <strong className={msg.userId === user._id ? 'lobby-author is-self' : 'lobby-author'}>
+                  <div key={idx} className={getUserId(msg.userId) === currentUserId ? 'lobby-message is-self' : 'lobby-message'}>
+                    <strong className={getUserId(msg.userId) === currentUserId ? 'lobby-author is-self' : 'lobby-author'}>
                       {msg.username}:
                     </strong>
                     <p className="lobby-message-text">{msg.message}</p>

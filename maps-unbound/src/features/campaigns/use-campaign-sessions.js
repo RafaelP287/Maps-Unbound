@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 function useCampaignSessions(campaignId, options = {}) {
   const includeNotes = Boolean(options.includeNotes);
@@ -8,10 +9,11 @@ function useCampaignSessions(campaignId, options = {}) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const currentUserId = user?.id;
 
   const fetchSessions = useCallback(async () => {
     if (!token || !campaignId) return;
-    const cacheKey = `campaign:sessions:${user?.id || "current"}:${campaignId}:${includeNotes ? "notes" : "summary"}`;
+    const cacheKey = `campaign:sessions:${currentUserId || "current"}:${campaignId}:${includeNotes ? "notes" : "summary"}`;
     const cachedSessions = getCachedValue(cacheKey);
     const hasCachedSessions = Boolean(cachedSessions);
     if (cachedSessions) {
@@ -41,7 +43,7 @@ function useCampaignSessions(campaignId, options = {}) {
     } finally {
       setLoading(false);
     }
-  }, [campaignId, includeNotes, token, user?.id]);
+  }, [campaignId, currentUserId, includeNotes, token]);
 
   useEffect(() => {
     fetchSessions();

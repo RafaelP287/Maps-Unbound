@@ -17,6 +17,7 @@ import Gate from "../../shared/Gate.jsx";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
 import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 function formatDisplayName(username = "") {
   if (!username) return "Adventurer";
@@ -24,12 +25,9 @@ function formatDisplayName(username = "") {
 }
 
 function getCampaignRole(campaign, userId) {
+  const currentUserId = getUserId(userId);
   const member = campaign.members?.find((entry) => {
-    const memberId =
-      typeof entry.userId === "object"
-        ? entry.userId?._id || entry.userId?.id
-        : entry.userId;
-    return String(memberId) === String(userId);
+    return getUserId(entry.userId) === currentUserId;
   });
 
   return member?.role || "Player";
@@ -73,6 +71,7 @@ function Profile() {
   const [inviteAvailabilityError, setInviteAvailabilityError] = useState("");
   const [inviteAvailabilityStatus, setInviteAvailabilityStatus] = useState("");
   const closeProfileImageButtonRef = useRef(null);
+  const currentUserId = user?.id;
 
   useEffect(() => {
     setProfileImageDraft(user?.profileImageUrl || "");
@@ -91,7 +90,7 @@ function Profile() {
     }
 
     let cancelled = false;
-    const campaignsCacheKey = `campaigns:list:${user.id || "current"}`;
+    const campaignsCacheKey = `campaigns:list:${currentUserId || "current"}`;
     const charactersCacheKey = `characters:list:${user.username}`;
     const cachedCampaigns = getCachedValue(campaignsCacheKey);
     const cachedCharacters = getCachedValue(charactersCacheKey);
@@ -159,10 +158,10 @@ function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, token, user?.id, user?.username]);
+  }, [currentUserId, isLoggedIn, token, user?.username]);
 
   const stats = useMemo(() => {
-    const dmCampaigns = campaigns.filter((campaign) => getCampaignRole(campaign, user?.id) === "DM").length;
+    const dmCampaigns = campaigns.filter((campaign) => getCampaignRole(campaign, currentUserId) === "DM").length;
     const playerCampaigns = campaigns.length - dmCampaigns;
 
     return [
@@ -171,7 +170,7 @@ function Profile() {
       { label: "DM Seats", value: dmCampaigns, icon: Crown },
       { label: "Player Seats", value: playerCampaigns, icon: Shield },
     ];
-  }, [campaigns, characters, user?.id]);
+  }, [campaigns, characters, currentUserId]);
 
   const profileCampaigns = campaigns;
   const profileCharacters = characters;
@@ -573,7 +572,7 @@ function Profile() {
                       {profileCampaigns.length > 0 ? (
                         <div className="profile-list">
                           {profileCampaigns.map((campaign) => {
-                            const role = getCampaignRole(campaign, user?.id);
+                            const role = getCampaignRole(campaign, currentUserId);
                             return (
                               <Link
                                 to={`/campaigns/${campaign._id}`}

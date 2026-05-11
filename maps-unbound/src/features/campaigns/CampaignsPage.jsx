@@ -7,17 +7,8 @@ import CampaignCard from "./CampaignCard.jsx";
 import Gate from "../../shared/Gate.jsx";
 import LoadingPage from "../../shared/Loading.jsx";
 import { clearCachePrefix, removeCachedValue, setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 import "./campaign.css";
-
-const getUserId = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value._id) return getUserId(value._id);
-  if (value.id) return getUserId(value.id);
-  if (value.$oid) return value.$oid;
-  const stringValue = value.toString?.();
-  return stringValue && stringValue !== "[object Object]" ? stringValue : "";
-};
 
 function CampaignsPage() {
   const { user, token, isLoggedIn, loading: authLoading } = useAuth();
@@ -29,7 +20,7 @@ function CampaignsPage() {
   const [startingCampaignId, setStartingCampaignId] = useState("");
   const [startSessionError, setStartSessionError] = useState("");
   const navigate = useNavigate();
-  const currentUserId = getUserId(user?.id || user?._id);
+  const currentUserId = user?.id;
   const dmCampaigns = useMemo(() => {
     return campaigns.filter((campaign) => {
       const member = campaign.members?.find((entry) => getUserId(entry.userId) === currentUserId);
@@ -77,7 +68,7 @@ function CampaignsPage() {
 
   useEffect(() => {
     if (!isLoggedIn) { setLoading(false); return; }
-    const cacheKey = `campaigns:list:${user?.id || "current"}`;
+    const cacheKey = `campaigns:list:${currentUserId || "current"}`;
     const cachedCampaigns = getCachedValue(cacheKey);
     const hasCachedCampaigns = Boolean(cachedCampaigns);
     if (cachedCampaigns) {
@@ -115,7 +106,7 @@ function CampaignsPage() {
       } finally { setLoading(false); }
     };
     fetchCampaigns();
-  }, [fetchActiveCampaigns, isLoggedIn, token, user?.id]);
+  }, [currentUserId, fetchActiveCampaigns, isLoggedIn, token]);
 
   useEffect(() => {
     if (!isLoggedIn || campaigns.length === 0) return;
@@ -168,8 +159,8 @@ function CampaignsPage() {
       }
 
       const createdSession = await createRes.json();
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaign._id}`);
-      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${campaign._id}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${campaign._id}`);
       setShowStartSession(false);
       navigate(
         `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`,

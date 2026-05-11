@@ -61,7 +61,7 @@ function SessionDMView() {
     const campaignId = searchParams.get("campaignId");
     const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
-    const userId = user?._id || user?.id || "";
+    const userId = user?.id || "";
     const { campaign, loading } = useCampaign(campaignId);
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId, { includeNotes: true });
 

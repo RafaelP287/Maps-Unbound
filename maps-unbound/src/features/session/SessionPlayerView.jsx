@@ -58,7 +58,7 @@ function SessionPlayerView() {
   const socketRef = useRef(null);
   const bootTimeoutRef = useRef(null);
   const exitLink = campaignId ? `/campaigns/${campaignId}` : "/campaigns";
-  const userId = user?._id || user?.id || "";
+  const userId = user?.id || "";
   const currentUserMembership = (campaign?.members || []).find((member) => getUserId(member.userId) === getUserId(userId)) || null;
   const isCurrentUserDM = currentUserMembership?.role === "DM";
 

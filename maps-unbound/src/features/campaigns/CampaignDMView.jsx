@@ -9,11 +9,13 @@ import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
 import { clearCachePrefix, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 function CampaignDMView({ campaign, setCampaign }) {
   const { user, token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
+  const currentUserId = user?.id;
   const editFocusRef = useRef(null);
   const editSectionRefs = useRef({});
 
@@ -199,7 +201,7 @@ function CampaignDMView({ campaign, setCampaign }) {
         members: populatedMembers,
       };
       setCampaign((prev) => ({ ...prev, ...nextCampaign }));
-      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, nextCampaign);
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, nextCampaign);
       clearCachePrefix("campaigns:list:");
       setPendingSessionDeleteIds([]);
       setShowSessionDeleteConfirmOnSave(false);
@@ -271,9 +273,9 @@ function CampaignDMView({ campaign, setCampaign }) {
       // Hard delete campaign and return to list after successful API confirmation.
       const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
-      removeCachedValue(`campaign:detail:${user?.id || "current"}:${id}`);
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${id}`);
-      removeCachedValue(`campaign:journal:${user?.id || "current"}:${id}`);
+      removeCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${id}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${id}`);
       clearCachePrefix("campaigns:list:");
       navigate("/campaigns", { replace: true });
     } catch (err) { setDeleteError(err.message || "Failed to delete campaign."); setDeleting(false); setShowDeleteConfirm(false); }
@@ -314,8 +316,8 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
 
       const createdSession = await res.json();
-      clearCachePrefix(`campaign:sessions:${user?.id || "current"}:${campaign._id}`);
-      removeCachedValue(`campaign:journal:${user?.id || "current"}:${campaign._id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${campaign._id}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${campaign._id}`);
       await refetchSessions();
       navigate(
         `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`,
@@ -352,7 +354,7 @@ function CampaignDMView({ campaign, setCampaign }) {
       const updatedCampaign = await res.json();
       setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
       setEditPlayers((prev) => prev.filter((player) => player.userId !== memberToRemove.userId._id));
-      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, updatedCampaign);
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
       clearCachePrefix("campaigns:list:");
     } catch (err) {
       setJoinCodeError(err.message || "Failed to update join code.");
@@ -376,7 +378,7 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
       const updatedCampaign = await res.json();
       setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
-      setCachedValue(`campaign:detail:${user?.id || "current"}:${id}`, updatedCampaign);
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
       clearCachePrefix("campaigns:list:");
       setMemberToRemove(null);
     } catch (err) {

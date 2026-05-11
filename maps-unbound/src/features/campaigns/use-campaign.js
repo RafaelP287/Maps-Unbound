@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 const getCampaignFetchError = (status, fallbackMessage) => {
   if (status === 401) return "Your session expired. Please sign in again.";
@@ -14,12 +15,13 @@ function useCampaign(id) {
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const currentUserId = user?.id;
 
   const fetchCampaign = useCallback(async () => {
     // Guard against invalid navigation states before hitting the API.
     if (!id) { setError("No campaign ID provided."); setLoading(false); return; }
     if (!isLoggedIn) { setError("Please sign in to view campaign details."); setLoading(false); return; }
-    const cacheKey = `campaign:detail:${user?.id || "current"}:${id}`;
+    const cacheKey = `campaign:detail:${currentUserId || "current"}:${id}`;
     const cachedCampaign = getCachedValue(cacheKey);
     const hasCachedCampaign = Boolean(cachedCampaign);
     if (cachedCampaign) {
@@ -54,7 +56,7 @@ function useCampaign(id) {
       }
     }
     finally { setLoading(false); }
-  }, [id, token, isLoggedIn, user?.id]);
+  }, [currentUserId, id, token, isLoggedIn]);
 
   useEffect(() => { fetchCampaign(); }, [fetchCampaign]);
 

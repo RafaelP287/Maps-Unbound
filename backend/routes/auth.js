@@ -63,12 +63,11 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Return user object with _id (not 'id') for consistency with MongoDB documents
-    // Frontend Socket.io connection requires user._id to be present
     res.status(201).json({
       message: 'User created successfully',
       user: {
-        _id: user._id,  // Using _id to match MongoDB field naming
+        id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
         profileImageUrl: user.profileImageUrl || '',
@@ -129,12 +128,11 @@ router.post('/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    // Return user object with _id (not 'id') for consistency with MongoDB documents
-    // Frontend Socket.io connection requires user._id to be present
     res.status(200).json({
       message: 'Login successful',
       user: {
-        _id: user._id,  // Using _id to match MongoDB field naming
+        id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
         profileImageUrl: user.profileImageUrl || '',

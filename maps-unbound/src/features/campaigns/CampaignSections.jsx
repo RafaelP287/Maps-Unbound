@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { getUserId } from "../../shared/getUserId.js";
 
 const formatStartDate = (value) => {
   if (!value) return "TBD";
@@ -47,6 +48,7 @@ function CampaignSections({
     return bTime - aTime;
   });
   const selectedSession = sortedSessions.find((session) => session._id === selectedSessionId) || null;
+  const currentUserId = user?.id;
 
   return (
     <div className="campaign-sections-stack">
@@ -171,9 +173,9 @@ function CampaignSections({
             <span className="campaign-detail-key">Player Roster</span>
             <span className="campaign-detail-val">
               {players.length > 0 ? players.map((p) => (
-                <span key={p.userId._id}>
+                <span key={getUserId(p.userId)}>
                   {p.userId?.username}
-                  {p.userId?._id?.toString() === user?.id?.toString() && (
+                  {getUserId(p.userId) === currentUserId && (
                     <span className="badge-player">You</span>
                   )}
                 </span>

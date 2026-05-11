@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext.jsx";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
 import { clearCachePrefix } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 import "./campaign.css";
 
 function CreateCampaignPage() {
@@ -58,7 +59,7 @@ function CreateCampaignPage() {
 
     setLoading(true);
     // API expects a unified members array; include creator first as canonical DM entry.
-    const currentUserId = user?._id || user?.id;
+    const currentUserId = user?.id;
     const members = [{ userId: currentUserId, role: "DM" }, ...players.map((p) => ({ userId: p.userId, role: "Player" }))];
     try {
       const response = await fetch("/api/campaigns", {

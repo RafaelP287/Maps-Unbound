@@ -5,19 +5,8 @@ import LoadingPage from "../../shared/Loading.jsx";
 import useCampaign from "./use-campaign.js";
 import CampaignDMView from "./CampaignDMView.jsx";
 import CampaignPlayerView from "./CampaignPlayerView.jsx";
+import { getUserId } from "../../shared/getUserId.js";
 import "./campaign.css";
-
-const getUserId = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") return value;
-  if (value.$oid) return value.$oid;
-  if (value._id && value._id !== value) return getUserId(value._id);
-  const stringValue = value.toString?.();
-  if (stringValue && stringValue !== "[object Object]") return stringValue;
-  if (typeof value.id === "string") return value.id;
-  if (value.id && value.id !== value) return getUserId(value.id);
-  return "";
-};
 
 function ViewCampaignPage() {
   const { id } = useParams();
@@ -50,7 +39,7 @@ function ViewCampaignPage() {
     );
   }
 
-  const currentUserId = getUserId(user?.id || user?._id);
+  const currentUserId = user?.id;
   const currentMember = campaign.members.find((member) => getUserId(member.userId) === currentUserId);
   const isDM = currentMember?.role === "DM" || getUserId(campaign.createdBy) === currentUserId;
 

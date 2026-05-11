@@ -49,7 +49,7 @@ function SessionLobby() {
   const lobbyExitCleanupSentRef = useRef(false);
   const lobbyExitCleanupRef = useRef(null);
 
-  const currentUserId = getUserId(user?.id || user?._id);
+  const currentUserId = user?.id;
   const membership = useMemo(() => {
     if (!campaign?.members || !currentUserId) return null;
     return campaign.members.find((member) => getUserId(member.userId) === currentUserId) || null;
