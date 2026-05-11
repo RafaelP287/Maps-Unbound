@@ -14,8 +14,30 @@ const s3Client = new S3Client({
 });
 
 const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME;
+const HAS_S3_CONFIG = Boolean(
+  process.env.AWS_REGION &&
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  BUCKET_NAME
+);
 const ONE_MB = 1048576;    // 1MB in bytes
 const ONE_GB = 1073741824; // 1GB in bytes
+
+const validateUpload = ({ category, fileSize, fileType }) => {
+  if (!["image", "audio"].includes(category)) {
+    return "Invalid category. Must be image or audio.";
+  }
+  if (fileSize > ONE_MB) {
+    return "File exceeds the 1MB limit.";
+  }
+  if (category === "image" && !fileType?.startsWith("image/")) {
+    return "File type must be an image.";
+  }
+  if (category === "audio" && !fileType?.startsWith("audio/")) {
+    return "File type must be audio.";
+  }
+  return "";
+};
 
 // Generate an Upload URL (Enforces 1MB limit & 1GB total user limit)
 export const generateUploadData = async (req, res) => {
@@ -24,17 +46,8 @@ export const generateUploadData = async (req, res) => {
     const { category, isPublic, fileSize, fileName, fileType } = req.body;
     const owner = req.body.username; 
 
-    if (!["image", "audio"].includes(category)) {
-      return res.status(400).json({ message: "Invalid category. Must be image or audio." });
-    }
-    if (fileSize > ONE_MB) {
-      return res.status(400).json({ message: "File exceeds the 1MB limit." });
-    }
-
-    // Validates the fileType matches the category
-    if (category === 'image' && !fileType.startsWith('image/')) {
-       return res.status(400).json({ message: "File type must be an image." });
-    }
+    const validationError = validateUpload({ category, fileSize, fileType });
+    if (validationError) return res.status(400).json({ message: validationError });
 
     // Finds all assets that belong to a certain User
     const userAssets = await Asset.aggregate([
@@ -52,6 +65,13 @@ export const generateUploadData = async (req, res) => {
     const visibilityFolder = isPublic ? "public" : "private";
     const fileExtension = fileName.split('.').pop();
     const s3Key = `${visibilityFolder}/${owner}/${category}/${uuidv4()}.${fileExtension}`;
+
+    if (!HAS_S3_CONFIG) {
+      return res.status(200).json({
+        uploadMode: "local",
+        s3Key: `local:${s3Key}`,
+      });
+    }
 
     // Creates a presigned URL that lasts for the Expires time (also contains all data like fields, conditions, and metadata)
     const { url, fields } = await createPresignedPost(s3Client, {
@@ -78,18 +98,30 @@ export const generateUploadData = async (req, res) => {
 // Confirm Upload (Saves metadata to MongoDB after successful S3 upload)
 export const confirmUpload = async (req, res) => {
   try {
-    const { s3Key, category, size, isPublic, title, description } = req.body;
+    const { s3Key, category, size, isPublic, title, description, tags, fileDataUrl, fileType } = req.body;
     const owner = req.body.username; 
+    const isLocal = !HAS_S3_CONFIG || s3Key?.startsWith("local:");
+
+    let dataUrl = "";
+    if (isLocal) {
+      if (typeof fileDataUrl !== "string" || !fileDataUrl.startsWith("data:")) {
+        return res.status(400).json({ message: "Local asset uploads require fileDataUrl." });
+      }
+      dataUrl = fileDataUrl;
+    }
 
     const newAsset = new Asset({
       owner,
       title,
       description,
       s3Key,
-      url: `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
+      url: isLocal ? dataUrl : `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${s3Key}`,
+      dataUrl,
+      mimeType: fileType || "",
       category,
       size,
       isPublic,
+      tags: Array.isArray(tags) ? tags : [],
     });
 
     const savedAsset = await newAsset.save();
@@ -103,6 +135,11 @@ export const confirmUpload = async (req, res) => {
 const attachSignedUrls = async (assets) => {
   return Promise.all(
     assets.map(async (asset) => {
+      const assetObj = asset.toObject ? asset.toObject() : asset;
+      if (!HAS_S3_CONFIG || assetObj.s3Key?.startsWith("local:")) {
+        return { ...assetObj, url: assetObj.dataUrl || assetObj.url };
+      }
+
       const command = new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: asset.s3Key,
@@ -112,7 +149,6 @@ const attachSignedUrls = async (assets) => {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
       // Convert Mongoose document to plain object to safely overwrite the URL
-      const assetObj = asset.toObject ? asset.toObject() : asset;
       return { ...assetObj, url: signedUrl };
     })
   );
@@ -161,11 +197,12 @@ export const deleteAsset = async (req, res) => {
     if (!asset) return res.status(404).json({ message: "Asset not found." });
     if (asset.owner !== owner) return res.status(403).json({ message: "Unauthorized deletion." });
 
-    // Delete from AWS S3
-    await s3Client.send(new DeleteObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: asset.s3Key,
-    }));
+    if (HAS_S3_CONFIG && !asset.s3Key?.startsWith("local:")) {
+      await s3Client.send(new DeleteObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: asset.s3Key,
+      }));
+    }
 
     // Delete from MongoDB
     await Asset.findByIdAndDelete(id);

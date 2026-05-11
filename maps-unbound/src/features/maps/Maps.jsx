@@ -290,18 +290,6 @@ function Maps({
         }
     }, []);
 
-    // ─── Status label updates browser tab title ───────────────────────────
-    useEffect(() => {
-        const name = bridge.currentMapName?.trim() || "(Untitled)";
-        let suffix = "";
-        if (isManualSaving) suffix = " • Saving...";
-        else if (bridge.isDirty) suffix = " • Unsaved";
-        document.title = `${name}${suffix} — Maps Unbound`;
-        return () => {
-            document.title = "Maps Unbound";
-        };
-    }, [bridge.currentMapName, bridge.isDirty, isManualSaving]);
-
     // ═══════════════════════════════════════════════════════════════════════
     // Below this line is your existing dice setup — preserved as-is.
     // ═══════════════════════════════════════════════════════════════════════

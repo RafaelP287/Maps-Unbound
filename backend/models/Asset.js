@@ -23,6 +23,14 @@ const assetSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  dataUrl: {
+    type: String,
+    default: "",
+  },
+  mimeType: {
+    type: String,
+    default: "",
+  },
   category: {
     type: String,
     enum: ["image", "audio"],

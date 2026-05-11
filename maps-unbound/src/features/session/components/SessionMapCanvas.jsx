@@ -18,6 +18,8 @@ import MapLoadModal from "../../maps/MapLoadModal.jsx";
 import MapNamingModal from "../../maps/MapNamingModal.jsx";
 import ConfirmDiscardModal from "../../maps/ConfirmDiscardModal.jsx";
 
+const MAP_SOCKET_SERVER = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_SERVER || "http://localhost:5001";
+
 function SessionMapCanvas({
     turns = [],
     round = 0,
@@ -101,6 +103,9 @@ function SessionMapCanvas({
     const iframeRef = useRef(null);
     const bridgeRef = useRef(null);
     const pendingLoadRef = useRef(null); // map data waiting to be sent once Godot is ready
+    const pendingPlayerLoadRef = useRef(null); // player map data waiting for Godot projector/editor readiness
+    const mapSocketRef = useRef(null);
+    const latestSelectedMapStateRef = useRef(null);
     const { getMap, createMap, updateMap, duplicateMap } = useMapsApi();
 
     const [showLoadModal, setShowLoadModal] = useState(false);
@@ -108,6 +113,7 @@ function SessionMapCanvas({
     const [namingModal, setNamingModal] = useState({ open: false, mode: "save", initial: "" });
     const [namingSubmitting, setNamingSubmitting] = useState(false);
     const [isManualSaving, setIsManualSaving] = useState(false);
+    const [iframeLoaded, setIframeLoaded] = useState(false);
 
     // True until the user picks a map. Until then, the Godot iframe isn't mounted
     // and the user sees the "Map Canvas" placeholder + the Maps button.
@@ -211,11 +217,15 @@ function SessionMapCanvas({
 
         import("socket.io-client").then(({ io }) => {
             if (cancelled) return;
-            socket = io(apiServer, { auth: { token } });
+            socket = io(MAP_SOCKET_SERVER, { auth: { token } });
+            mapSocketRef.current = socket;
 
             socket.on("connect", () => {
                 socket.emit("joinSession", { sessionId }, (resp) => {
                     if (!resp?.ok) console.warn("[socket DM] joinSession failed:", resp?.error);
+                    if (resp?.ok && latestSelectedMapStateRef.current) {
+                        socket.emit("mapState", { state: latestSelectedMapStateRef.current });
+                    }
                 });
             });
 
@@ -262,27 +272,88 @@ function SessionMapCanvas({
             cancelled = true;
             if (postTimer) clearTimeout(postTimer);
             channel.close();
+            if (mapSocketRef.current === socket) mapSocketRef.current = null;
             if (socket) socket.disconnect();
         };
     }, [readOnly, sessionId, token]);
 
+    const persistSelectedSessionMap = useCallback((mapId, state) => {
+        if (readOnly || !sessionId || !token) return;
+        const apiServer = import.meta.env.VITE_API_SERVER || "";
+
+        fetch(`${apiServer}/api/sessions/${sessionId}/current-map`, {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ mapId }),
+        }).catch((err) => console.warn("[session map] failed to set current map:", err.message));
+
+        if (state) {
+            fetch(`${apiServer}/api/sessions/${sessionId}/live-map-state`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ state }),
+            }).catch((err) => console.warn("[session map] failed to persist selected map state:", err.message));
+        }
+    }, [readOnly, sessionId, token]);
+
+    const publishSelectedMapState = useCallback((state) => {
+        if (readOnly || !state) return;
+        latestSelectedMapStateRef.current = state;
+        const socket = mapSocketRef.current;
+        if (socket?.connected) {
+            socket.emit("mapState", { state });
+        }
+    }, [readOnly]);
+
+    const applyPlayerMap = useCallback((json, id = "", name = "") => {
+        if (!readOnly || !json || !bridgeRef.current) return;
+        pendingPlayerLoadRef.current = { id, name, json };
+        if (!bridge.isReady) return;
+
+        pendingPlayerLoadRef.current = null;
+        bridgeRef.current.loadMap(id, name, json);
+    }, [bridge.isReady, readOnly]);
+
     useEffect(() => {
-        if (!readOnly || !sessionId || !token || !bridge.isReady) return;
+        if (!readOnly || !bridge.isReady || !pendingPlayerLoadRef.current || !bridgeRef.current) return;
+        const { id, name, json } = pendingPlayerLoadRef.current;
+        pendingPlayerLoadRef.current = null;
+        bridgeRef.current.loadMap(id, name, json);
+    }, [bridge.isReady, readOnly]);
+
+    useEffect(() => {
+        if (!readOnly || !sessionId || !token || !iframeLoaded) return;
         const apiServer = import.meta.env.VITE_API_SERVER || "";
         let socket = null;
         let cancelled = false;
 
-        const applyState = (state, name = "") => {
-            if (cancelled || !state || !bridgeRef.current) return;
-            bridgeRef.current.loadMap(
-                bridgeRef.current.currentMapId || "",
-                bridgeRef.current.currentMapName || name,
-                state
-            );
+        const applyState = (state, id = "", name = "") => {
+            if (cancelled || !state) return;
+            applyPlayerMap(state, id, name);
         };
 
         const fetchLatestSnapshot = async () => {
             try {
+                let loadedSelectedMap = false;
+                const mapRes = await fetch(`${apiServer}/api/sessions/${sessionId}/map`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (mapRes.ok) {
+                    const map = await mapRes.json();
+                    if (!cancelled && map?.json) {
+                        applyState(map.json, map._id || "", map.name || "");
+                        loadedSelectedMap = true;
+                    }
+                }
+
+                if (loadedSelectedMap) return;
+
                 const liveRes = await fetch(`${apiServer}/api/sessions/${sessionId}/live-map-state`, {
                     headers: { Authorization: `Bearer ${token}` },
                 });
@@ -290,17 +361,7 @@ function SessionMapCanvas({
                     const data = await liveRes.json();
                     if (data?.state) {
                         applyState(data.state);
-                        return;
                     }
-                }
-
-                const mapRes = await fetch(`${apiServer}/api/sessions/${sessionId}/map`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (!mapRes.ok) return;
-                const map = await mapRes.json();
-                if (!cancelled && map?.json && bridgeRef.current) {
-                    bridgeRef.current.loadMap(map._id || "", map.name || "", map.json);
                 }
             } catch (err) {
                 console.warn("[session map] failed to load player map state:", err.message);
@@ -309,7 +370,7 @@ function SessionMapCanvas({
 
         import("socket.io-client").then(({ io }) => {
             if (cancelled) return;
-            socket = io(apiServer, { auth: { token } });
+            socket = io(MAP_SOCKET_SERVER, { auth: { token } });
             socket.on("connect", () => {
                 socket.emit("joinSession", { sessionId }, (resp) => {
                     if (!resp?.ok) {
@@ -330,7 +391,7 @@ function SessionMapCanvas({
             cancelled = true;
             if (socket) socket.disconnect();
         };
-    }, [bridge.isReady, readOnly, sessionId, token]);
+    }, [applyPlayerMap, iframeLoaded, readOnly, sessionId, token]);
     // Once Godot signals ready, drain any pending map load (queued by handlePickMap
     // before the iframe was mounted/booted).
     useEffect(() => {
@@ -432,6 +493,8 @@ function SessionMapCanvas({
                 const full = await getMap(mapMeta._id);
                 // Bubble the scene name up to the parent (existing behavior).
                 if (onSceneNameChange) onSceneNameChange(full.name);
+                persistSelectedSessionMap(full._id, full.json);
+                publishSelectedMapState(full.json);
                 // If Godot isn't booted yet (first map of the session), mount the iframe
                 // and queue the load — an effect below will fire it once bridge.isReady.
                 if (!bridgeRef.current?.isReady) {
@@ -450,7 +513,7 @@ function SessionMapCanvas({
                 alert(err.message || "Could not load that map.");
             }
         },
-        [getMap, onSceneNameChange]
+        [getMap, onSceneNameChange, persistSelectedSessionMap, publishSelectedMapState]
     );
 
     const handleCreateNewFromLoad = useCallback(() => {
@@ -469,17 +532,6 @@ function SessionMapCanvas({
         bridgeRef.current?.newMap();
         setShowDiscardModal(false);
     }, []);
-
-
-    // Browser tab title sync (same format as standalone Maps.jsx)
-    useEffect(() => {
-        if (!hasOpenedMap) return;
-        const name = bridge.currentMapName?.trim() || "(Untitled)";
-        let suffix = "";
-        if (isManualSaving) suffix = " • Saving...";
-        else if (bridge.isDirty) suffix = " • Unsaved";
-        document.title = `${name}${suffix} — Maps Unbound`;
-    }, [bridge.currentMapName, bridge.isDirty, isManualSaving, hasOpenedMap]);
 
     // ─── Combat setup helpers (unchanged from your existing code) ─────────
     const openCombatSetup = () => {
@@ -757,9 +809,10 @@ function SessionMapCanvas({
             {hasOpenedMap && (
                 <iframe
                     ref={iframeRef}
-                    src="/maps-unbound-godot.html"
-                    title="Map Editor"
+                    src={readOnly ? "/maps-unbound-godot.html?mode=projector" : "/maps-unbound-godot.html"}
+                    title={readOnly ? "Session Map" : "Map Editor"}
                     className="session-dm__map-iframe"
+                    onLoad={() => setIframeLoaded(true)}
                     style={{
                         position: "absolute",
                         top: 0,

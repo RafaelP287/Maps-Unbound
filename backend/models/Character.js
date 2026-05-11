@@ -51,6 +51,8 @@ const characterSchema = new Schema(
     portrait: {
       url: { type: String, default: "" },     // signed S3 URL
       s3Key: { type: String, default: "" },   // for deletion + re-signing later
+      data: { type: Buffer },
+      mimeType: { type: String, default: "" },
     },
 
     // --- Core RPG Data ---

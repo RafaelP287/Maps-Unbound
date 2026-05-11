@@ -10,6 +10,8 @@ import SessionPlayerCharacterPanel from "./components/SessionPlayerCharacterPane
 import SessionMapCanvas from "./components/SessionMapCanvas.jsx";
 import SessionRightPanel from "./components/SessionRightPanel.jsx";
 import SessionBottomPanel from "./components/SessionBottomPanel.jsx";
+import InitiativeStrip from "./components/InitiativeStrip.jsx";
+import useLiveCombat from "./use-live-combat.js";
 import "./session.css";
 
 const API_SERVER = import.meta.env.VITE_API_SERVER || "";
@@ -61,8 +63,49 @@ function SessionPlayerView() {
   const userId = user?.id || "";
   const currentUserMembership = (campaign?.members || []).find((member) => getUserId(member.userId) === getUserId(userId)) || null;
   const isCurrentUserDM = currentUserMembership?.role === "DM";
+  const liveCombat = useLiveCombat({
+    sessionId,
+    token,
+    isCombatActive: true,
+  });
+  const hasLiveCombat = liveCombat.combat?.status === "active" && liveCombat.combatants.length > 0;
+
+  const liveCombatTurns = hasLiveCombat
+    ? liveCombat.combatants
+        .filter((combatant) => !combatant.hiddenFromInitiative)
+        .map((combatant, index) => ({
+          order: index + 1,
+          name: combatant.name || "Unknown",
+          kind: combatant.kind || "Player",
+          hp: combatant.hp,
+          initiative: combatant.initiative,
+          isActive: index === liveCombat.activeIndex,
+          isNext: index === ((liveCombat.activeIndex + 1) % liveCombat.combatants.length),
+        }))
+    : [];
+
+  const liveCombatEvents = hasLiveCombat
+    ? (liveCombat.log || []).slice(-40).map((entry, index) => ({
+        id: `live-combat-${entry.timestamp || index}-${entry.type || "event"}`,
+        title: entry.type === "turn_started"
+          ? "Turn Started"
+          : entry.type === "round_started"
+            ? `Round ${entry.round || liveCombat.round}`
+            : entry.type === "combat_started"
+              ? "Combat Started"
+              : "Combat",
+        detail: entry.message || [entry.actorName, entry.targetName].filter(Boolean).join(" -> ") || "Combat updated.",
+        tone: entry.type === "round_started" ? "highlight" : "neutral",
+        kind: entry.type === "round_started" ? "round" : "note",
+        createdAt: entry.timestamp || new Date().toISOString(),
+      }))
+    : [];
 
   const liveTurns = (() => {
+    if (liveCombatTurns.length > 0) {
+      return liveCombatTurns;
+    }
+
     if (Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0) {
       return liveSessionState.turns;
     }
@@ -88,8 +131,12 @@ function SessionPlayerView() {
   })();
   const displayedEvents = Array.isArray(liveSessionState?.events) && liveSessionState.events.length > 0
     ? liveSessionState.events
-    : liveEvents;
-  const displayedRound = Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0
+    : liveCombatEvents.length > 0
+      ? liveCombatEvents
+      : liveEvents;
+  const displayedRound = hasLiveCombat
+    ? liveCombat.round
+    : Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0
     ? liveSessionState.combatRound || 0
     : Math.max(0, Number(liveEncounter?.round || 1) - 1);
   const orderedSessions = [...sessions].sort((a, b) => {
@@ -385,6 +432,17 @@ function SessionPlayerView() {
         sceneName={liveSessionState?.sceneName || (socketConnected ? "Live" : "Offline")}
         players={sessionParticipants}
         role="player"
+        isCombatState={hasLiveCombat || Boolean(liveSessionState?.isCombatState)}
+        combatStrip={
+          hasLiveCombat ? (
+            <InitiativeStrip
+              combatants={liveCombat.combatants}
+              activeIndex={liveCombat.activeIndex}
+              round={liveCombat.round}
+              isDM={false}
+            />
+          ) : null
+        }
         onLeaveSession={() => navigate(exitLink)}
       />
 

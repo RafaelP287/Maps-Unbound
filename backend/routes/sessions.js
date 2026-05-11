@@ -632,7 +632,7 @@ router.get("/:id/map", verifyToken, async (req, res) => {
     const map = await Map.findById(session.currentMapId);
     if (!map) return res.status(404).json({ error: "Map not found" });
 
-    const json = await fetchJsonFromS3(map.jsonKey);
+    const json = map.jsonData || await fetchJsonFromS3(map.jsonKey);
     if (!json) {
       return res.status(500).json({ error: "Failed to load map data" });
     }

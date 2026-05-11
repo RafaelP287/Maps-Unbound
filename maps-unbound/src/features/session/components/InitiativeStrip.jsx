@@ -116,15 +116,17 @@ function InitiativeStrip({
             </div>
 
             {/* Next turn button */}
-            <button
-                type="button"
-                className="initiative-strip__next-btn"
-                onClick={() => onNextTurn?.()}
-                title="End current turn, advance to next combatant"
-                aria-label="Next Turn"
-            >
-                <ChevronRight size={20} />
-            </button>
+            {isDM && (
+                <button
+                    type="button"
+                    className="initiative-strip__next-btn"
+                    onClick={() => onNextTurn?.()}
+                    title="End current turn, advance to next combatant"
+                    aria-label="Next Turn"
+                >
+                    <ChevronRight size={20} />
+                </button>
+            )}
         </div>
     );
 }

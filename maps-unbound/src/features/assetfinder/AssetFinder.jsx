@@ -14,6 +14,14 @@ const formatBytes = (bytes, decimals = 2) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 };
 
+const readFileAsDataUrl = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read file for local upload."));
+    reader.readAsDataURL(file);
+  });
+
 function AssetFinder() {
   const { user, token, isLoggedIn } = useAuth();
   
@@ -109,21 +117,24 @@ function AssetFinder() {
       const presignedData = await presignedRes.json();
       if (!presignedRes.ok) throw new Error(presignedData.message);
 
-      // 2. Upload to S3
-      const formData = new FormData();
-      Object.entries(presignedData.fields).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-      formData.append("file", uploadData.file); // MUST be last
+      let fileDataUrl = "";
+      if (presignedData.uploadMode === "local") {
+        fileDataUrl = await readFileAsDataUrl(uploadData.file);
+      } else {
+        const formData = new FormData();
+        Object.entries(presignedData.fields).forEach(([key, value]) => {
+          formData.append(key, value);
+        });
+        formData.append("file", uploadData.file); // MUST be last
 
-      const s3Res = await fetch(presignedData.url, {
-        method: "POST",
-        body: formData,
-      });
+        const s3Res = await fetch(presignedData.url, {
+          method: "POST",
+          body: formData,
+        });
 
-      if (!s3Res.ok) throw new Error("Failed to upload to object storage.");
+        if (!s3Res.ok) throw new Error("Failed to upload to object storage.");
+      }
 
-      // 3. Confirm with Backend
       const tagArray = uploadData.tags.split(",").map(tag => tag.trim()).filter(t => t);
       
       const confirmRes = await fetch(`${apiServer}/api/assets/upload/confirm`, {
@@ -140,6 +151,8 @@ function AssetFinder() {
           title: uploadData.title,
           description: uploadData.description,
           tags: tagArray,
+          fileDataUrl,
+          fileType: uploadData.file.type,
           username: user.username,
         }),
       });

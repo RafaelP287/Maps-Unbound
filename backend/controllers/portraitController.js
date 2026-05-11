@@ -16,6 +16,12 @@ const s3 = new S3Client({
 });
 
 const BUCKET = process.env.AWS_S3_BUCKET_NAME;
+const HAS_S3_CONFIG = Boolean(
+  process.env.AWS_REGION &&
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  BUCKET
+);
 
 function portraitProxyUrl(characterId, version) {
   if (!characterId) return "";
@@ -49,6 +55,7 @@ function portraitKeyFor(userId, characterId) {
 
 // Generate a 1-hour signed URL so the frontend (and Godot) can fetch the image.
 async function signGetUrl(key) {
+  if (!HAS_S3_CONFIG || key?.startsWith("local:")) return "";
   const cmd = new GetObjectCommand({ Bucket: BUCKET, Key: key });
   return getSignedUrl(s3, cmd, { expiresIn: 3600 });
 }
@@ -87,22 +94,28 @@ export async function uploadPortrait(req, res) {
       .png({ quality: 90 })
       .toBuffer();
 
-    // Upload to S3.
     const key = portraitKeyFor(req.user.userId, characterId);
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: BUCKET,
-        Key: key,
-        Body: processed,
-        ContentType: "image/png",
-      })
-    );
+    if (HAS_S3_CONFIG) {
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: BUCKET,
+          Key: key,
+          Body: processed,
+          ContentType: "image/png",
+        })
+      );
+    }
 
 // Hand back our proxy URL — stable, never expires, no CORS issues.
     const url = portraitProxyUrl(characterId, Date.now());
 
     // Update the character document.
-    character.portrait = { url, s3Key: key };
+    character.portrait = {
+      url,
+      s3Key: HAS_S3_CONFIG ? key : `local:${key}`,
+      data: HAS_S3_CONFIG ? undefined : processed,
+      mimeType: "image/png",
+    };
     await character.save();
 
     res.json(character);
@@ -126,7 +139,7 @@ export async function deletePortrait(req, res) {
     if (String(character.user) !== String(req.user.userId)) {
       return res.status(403).json({ error: "Not your character" });
     }
-    if (character.portrait?.s3Key) {
+    if (HAS_S3_CONFIG && character.portrait?.s3Key && !character.portrait.s3Key.startsWith("local:")) {
       try {
         await s3.send(
           new DeleteObjectCommand({
@@ -139,7 +152,7 @@ export async function deletePortrait(req, res) {
         console.warn("S3 delete failed (continuing):", err.message);
       }
     }
-    character.portrait = { url: "", s3Key: "" };
+    character.portrait = { url: "", s3Key: "", data: undefined, mimeType: "" };
     await character.save();
     res.json(character);
   } catch (err) {
@@ -182,6 +195,16 @@ export async function streamPortraitImage(req, res) {
     const character = await Character.findById(characterId);
     if (!character || !character.portrait?.s3Key) {
       return res.status(404).json({ error: "No portrait found" });
+    }
+    if (!HAS_S3_CONFIG || character.portrait.s3Key.startsWith("local:")) {
+      if (!character.portrait.data) {
+        return res.status(404).json({ error: "No portrait found" });
+      }
+      res.set("Content-Type", character.portrait.mimeType || "image/png");
+      res.set("Cache-Control", "public, max-age=3600");
+      res.set("Access-Control-Allow-Origin", "*");
+      res.set("Cross-Origin-Resource-Policy", "cross-origin");
+      return res.send(character.portrait.data);
     }
     const cmd = new GetObjectCommand({
       Bucket: BUCKET,
