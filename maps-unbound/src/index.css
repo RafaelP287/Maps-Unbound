@@ -297,62 +297,6 @@ textarea::placeholder {
 }
 
 /* ════════════════════════════════════════════
-   HOME PAGE
-════════════════════════════════════════════ */
-.hero-cta {
-  display: inline-block;
-  font-family: var(--font-heading);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--bg-deep);
-  background: linear-gradient(135deg, var(--gold), var(--gold-light));
-  border: none;
-  border-radius: var(--radius);
-  padding: 0.85rem 2.5rem;
-  cursor: pointer;
-  text-decoration: none;
-  box-shadow: 0 4px 24px rgba(201, 168, 76, 0.3);
-  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-}
-
-.hero-cta:hover {
-  opacity: 0.88;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(201, 168, 76, 0.4);
-  color: var(--bg-deep);
-}
-
-.service-card {
-  position: relative;
-  width: 100%;
-  max-width: 900px;
-  min-height: 220px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid rgba(201, 168, 76, 0.2);
-  background-size: cover;
-  background-position: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  cursor: pointer;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
-}
-
-.service-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
-  border-color: rgba(201, 168, 76, 0.45);
-}
-
-.service-card:hover .service-card-overlay {
-  background: linear-gradient(to top, rgba(8, 6, 3, 0.97) 0%, rgba(8, 6, 3, 0.55) 60%, transparent 100%);
-}
-
-/* ════════════════════════════════════════════
    CAMPAIGN CARD
 ════════════════════════════════════════════ */
 .campaign-card {
