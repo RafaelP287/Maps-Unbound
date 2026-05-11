@@ -628,8 +628,13 @@
 }
 
 textarea.campaign-quest-objective {
-  min-height: 90px;
-  resize: vertical;
+  width: 100%;
+  max-width: none;
+  height: 120px;
+  min-height: 120px;
+  max-height: 120px;
+  overflow-y: auto;
+  resize: none;
 }
 
 .campaign-quest-empty {
@@ -747,6 +752,36 @@ textarea.campaign-quest-objective {
   margin-bottom: 0.8rem;
 }
 
+.campaign-edit-list-scroll {
+  max-height: 26rem;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.45rem;
+  scrollbar-color: rgba(201, 168, 76, 0.46) rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+}
+
+.campaign-edit-list-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.campaign-edit-list-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 999px;
+}
+
+.campaign-edit-list-scroll::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.campaign-edit-list-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(201, 168, 76, 0.5);
+  background-clip: padding-box;
+}
+
 .campaign-edit-item {
   display: flex;
   flex-direction: column;
@@ -755,6 +790,67 @@ textarea.campaign-quest-objective {
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.24);
   padding: 0.75rem;
+}
+
+.campaign-card-panel-editing {
+  gap: 1rem;
+}
+
+.campaign-edit-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.campaign-edit-panel .campaign-details-header {
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.campaign-edit-panel .campaign-edit-list {
+  flex: 1;
+}
+
+.campaign-edit-panel .btn-edit {
+  align-self: flex-start;
+  margin-top: 0.1rem;
+}
+
+.campaign-edit-panel-sessions .campaign-edit-list-scroll {
+  max-height: 22rem;
+}
+
+.campaign-edit-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.7rem;
+  height: 1.4rem;
+  padding: 0 0.45rem;
+  border: 1px solid rgba(201, 168, 76, 0.28);
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.12);
+  color: #e9d8b4;
+  font-family: var(--font-heading);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+}
+
+.campaign-card-panel-editing .campaign-edit-item {
+  gap: 0.55rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(0, 0, 0, 0.28);
+}
+
+.campaign-card-panel-editing .campaign-edit-item textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.campaign-card-panel-editing .campaign-edit-item .btn-cancel,
+.campaign-card-panel-editing .campaign-edit-item .btn-delete {
+  align-self: flex-start;
 }
 
 .campaign-section-subtext {

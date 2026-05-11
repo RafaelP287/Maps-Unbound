@@ -9,7 +9,6 @@ import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
 import { clearCachePrefix, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
-import { getUserId } from "../../shared/getUserId.js";
 
 function CampaignDMView({ campaign, setCampaign }) {
   const { user, token } = useAuth();
@@ -406,7 +405,7 @@ function CampaignDMView({ campaign, setCampaign }) {
           onDescriptionChange={setEditDescription}
         />
 
-        <div className="campaign-card-panel">
+        <div className={`campaign-card-panel ${isEditing ? "campaign-card-panel-editing" : ""}`}>
           {/* Image editor */}
           {isEditing && (
             <div
@@ -533,15 +532,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel campaign-edit-panel-sessions"
               ref={(node) => { editSectionRefs.current.sessions = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Session Records</span>
+                <span className="campaign-edit-count">{sessions.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {sessionsLoading && <p className="campaign-helper-text">Loading session records...</p>}
                 {!sessionsLoading && sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
                 {sessions.map((session) => (
@@ -577,15 +577,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.enemies = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Enemy Tracker</span>
+                <span className="campaign-edit-count">{editEnemies.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editEnemies.length === 0 && <p className="campaign-helper-text">No enemies added yet.</p>}
                 {editEnemies.map((enemy, idx) => (
                   <div className="campaign-edit-item" key={`enemy-${idx}`}>
@@ -631,15 +632,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.npcs = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">NPC Tracker</span>
+                <span className="campaign-edit-count">{editNpcs.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editNpcs.length === 0 && <p className="campaign-helper-text">No NPCs added yet.</p>}
                 {editNpcs.map((npc, idx) => (
                   <div className="campaign-edit-item" key={`npc-${idx}`}>
@@ -685,15 +687,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.loot = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Loot Tracker</span>
+                <span className="campaign-edit-count">{editLoot.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editLoot.length === 0 && <p className="campaign-helper-text">No loot added yet.</p>}
                 {editLoot.map((item, idx) => (
                   <div className="campaign-edit-item" key={`loot-${idx}`}>
