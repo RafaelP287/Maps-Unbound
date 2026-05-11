@@ -92,12 +92,6 @@ const workflow = [
   },
 ];
 
-const quickLinks = [
-  { label: "Start a Campaign", path: "/campaigns/new" },
-  { label: "Open Maps", path: "/maps" },
-  { label: "Find a Party", path: "/party-finder" },
-];
-
 function Home() {
   return (
     <main className="home-page">
@@ -173,15 +167,6 @@ function Home() {
               <strong>{step.title}</strong>
               <p>{step.text}</p>
             </div>
-          ))}
-        </div>
-
-        <div className="home-quick-actions" aria-label="Quick actions">
-          {quickLinks.map((link) => (
-            <Link key={link.path} to={link.path}>
-              {link.label}
-              <ArrowRight size={15} aria-hidden="true" />
-            </Link>
           ))}
         </div>
       </section>
