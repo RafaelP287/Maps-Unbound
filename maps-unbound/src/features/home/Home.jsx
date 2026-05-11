@@ -3,6 +3,8 @@ import mapIMG from "./images/home1.jpg";
 import characterIMG from "./images/home2.jpg";
 import campaignIMG from "./images/home3.jpg";
 import partyFinderIMG from "./images/home4.jpg";
+import assetFinderIMG from "./images/home5.jpg";
+import compendiumIMG from "./images/home6.jpg";
 
 const services = [
   {
@@ -29,6 +31,18 @@ const services = [
     image: partyFinderIMG,
     path: "/party-finder",
   },
+  {
+    title: "Asset Library",
+    description: "Access a trove of tokens, tiles, and props to populate your maps and bring your stories to life.",
+    image: assetFinderIMG,
+    path: "/asset-finder",
+  },
+  {
+    title: "Compendium",
+    description: "Dive into a vast collection of rules, lore, and inspiration to fuel your campaigns.",
+    image: compendiumIMG,
+    path: "/ruleset",
+  }
 ];
 
 function Home() {
