@@ -71,6 +71,7 @@ function CampaignsPage() {
     setStartSessionError("");
     setStartingCampaignId(campaign._id);
     try {
+      // 1. Look up next session number.
       const sessionsRes = await fetch(`/api/sessions?campaignId=${campaign._id}`, {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       });
@@ -81,6 +82,7 @@ function CampaignsPage() {
       const existingSessions = await sessionsRes.json();
       const nextSessionNumber = (Array.isArray(existingSessions) ? existingSessions.length : 0) + 1;
 
+      // 2. Create a Planned session.
       const createRes = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -88,8 +90,7 @@ function CampaignsPage() {
           campaignId: campaign._id,
           title: `Session ${nextSessionNumber}`,
           sessionNumber: nextSessionNumber,
-          status: "In Progress",
-          startedAt: new Date().toISOString(),
+          status: "Planned",
           participants: (campaign.members || []).map((member) => ({
             userId: member.userId?._id || member.userId,
             role: member.role,
@@ -100,12 +101,27 @@ function CampaignsPage() {
         const createData = await createRes.json().catch(() => ({}));
         throw new Error(createData.error || "Failed to start session");
       }
-
       const createdSession = await createRes.json();
+
+      // 3. Start it — flips status, creates Party with lobby code.
+      const startRes = await fetch(`/api/sessions/${createdSession._id}/start`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const startData = await startRes.json().catch(() => ({}));
+      if (!startRes.ok) {
+        throw new Error(startData.error || "Failed to start session");
+      }
+
+      const code = startData?.party?.lobbyCode;
+      if (code) {
+        window.alert(
+          `Session started!\n\nLobby Code: ${code}\n\nShare this code with players so they can join from the Party Finder page.`
+        );
+      }
+
       setShowStartSession(false);
-      navigate(
-        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
-      );
+      navigate(`/session/dm?campaignId=${campaign._id}&sessionId=${createdSession._id}`);
     } catch (err) {
       setStartSessionError(err.message || "Failed to start session");
     } finally {

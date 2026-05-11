@@ -43,6 +43,15 @@ const characterSchema = new Schema(
       required: true,
       index: true,
     },
+        // --- Portrait Image ---
+    // Stored in S3 like assets and maps. The portrait shows up as the token
+    // image during combat (cropped to a circle in Godot) and on the character
+    // sheet. Both fields are populated by the upload route — leave blank if
+    // the character has no portrait yet (we'll show default initials circle).
+    portrait: {
+      url: { type: String, default: "" },     // signed S3 URL
+      s3Key: { type: String, default: "" },   // for deletion + re-signing later
+    },
 
     // --- Core RPG Data ---
     race: {

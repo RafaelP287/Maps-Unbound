@@ -1,8 +1,20 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import Session from "../models/Session.js";
 import Campaign from "../models/Campaign.js";
 import Encounter from "../models/Encounter.js";
+import Party from "../models/Party.js";
+import Map from "../models/Map.js";
+import { fetchJsonFromS3 } from "../controllers/mapController.js";
+
+// Generate a 6-char lobby code (mirrors partyController helper).
+const generateLobbyCode = () => {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) code += chars[crypto.randomInt(0, chars.length)];
+  return code;
+};
 
 const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
@@ -306,6 +318,264 @@ router.delete("/:id", verifyToken, async (req, res) => {
     await campaign.save();
 
     res.json({ message: "Session deleted" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST /api/sessions/:id/start
+// DM clicks "Start Session" — flips status to In Progress, creates a Party.
+router.post("/:id/start", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const membership = campaign.members.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    if (!membership || membership.role !== "DM") {
+      return res.status(403).json({ error: "Only the DM can start sessions" });
+    }
+
+    // Idempotent: if already In Progress with a party, return what's there.
+    if (session.status === "In Progress") {
+      const existing = await Party.findOne({ sessionId: session._id });
+      if (existing) {
+        return res.json({
+          session: serializeSessionForViewer(session, true),
+          party: existing,
+        });
+      }
+      // Stale "In Progress" status with no party — fall through and recreate.
+    }
+
+    // Disband any existing party owned by this DM (one party per owner).
+    await Party.deleteMany({ owner: req.user.username });
+
+    // Unique 6-char lobby code (10 attempts).
+    let lobbyCode = "";
+    for (let i = 0; i < 10; i++) {
+      const candidate = generateLobbyCode();
+      const collision = await Party.findOne({ lobbyCode: candidate });
+      if (!collision) {
+        lobbyCode = candidate;
+        break;
+      }
+    }
+    if (!lobbyCode) {
+      return res.status(500).json({ error: "Failed to generate lobby code" });
+    }
+
+    const party = await Party.create({
+      owner: req.user.username,
+      partyName: session.title || `${req.user.username}'s Session`,
+      isPublic: false,
+      maxPlayers: 12,
+      lobbyCode,
+      players: [req.user.username],
+      sessionId: session._id,
+    });
+
+    session.status = "In Progress";
+    if (!session.startedAt) session.startedAt = new Date();
+    await session.save();
+
+    res.json({
+      session: serializeSessionForViewer(session, true),
+      party,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// POST /api/sessions/:id/end
+// DM clicks "End Session" — flips status to Completed, disbands the Party.
+router.post("/:id/end", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const membership = campaign.members.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    if (!membership || membership.role !== "DM") {
+      return res.status(403).json({ error: "Only the DM can end sessions" });
+    }
+
+    await Party.deleteOne({ sessionId: session._id });
+
+    session.status = "Completed";
+    if (!session.endedAt) session.endedAt = new Date();
+    await session.save();
+
+    res.json({ session: serializeSessionForViewer(session, true) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PATCH /api/sessions/:id/current-map
+// DM updates which map is currently loaded for this session.
+// Players poll /party (which returns session data) to see when the map changes.
+router.patch("/:id/current-map", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const membership = campaign.members.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    if (!membership || membership.role !== "DM") {
+      return res.status(403).json({ error: "Only the DM can set the current map" });
+    }
+
+    session.currentMapId = req.body.mapId || null;
+    await session.save();
+    res.json({ session: serializeSessionForViewer(session, true) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/sessions/:id/party
+// Returns the live lobby. Accessible to campaign members AND to non-member
+// players who joined the lobby via code.
+router.get("/:id/party", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const party = await Party.findOne({ sessionId: session._id });
+    if (!party) {
+      return res.status(404).json({ error: "No active lobby for this session" });
+    }
+
+    // Resolve membership + active character (campaign members only).
+    const campaign = await Campaign.findById(session.campaignId);
+    const membership = campaign?.members?.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    const isMember = Boolean(membership);
+    const isInParty = party.players?.includes(req.user.username);
+    if (!isMember && !isInParty) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json({
+      party,
+      session: {
+        _id: session._id,
+        title: session.title,
+        status: session.status,
+        campaignId: session.campaignId,
+        currentMapId: session.currentMapId,
+      },
+      viewer: {
+        isMember,
+        role: membership?.role || "Guest",
+        activeCharacterId: membership?.activeCharacterId?.toString() || null,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+// GET /api/sessions/:id/map
+// Returns the current map's JSON. Accessible to campaign members AND
+// non-member party members. Used by PlayerDashboard to mirror the DM's map.
+router.get("/:id/map", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const party = await Party.findOne({ sessionId: session._id });
+    const campaign = await Campaign.findById(session.campaignId);
+    const isMember = campaign?.members?.some(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    const isInParty = party?.players?.includes(req.user.username);
+    if (!isMember && !isInParty) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    if (!session.currentMapId) {
+      return res.status(404).json({ error: "No map loaded for this session" });
+    }
+
+    const map = await Map.findById(session.currentMapId);
+    if (!map) return res.status(404).json({ error: "Map not found" });
+
+    const json = await fetchJsonFromS3(map.jsonKey);
+    if (!json) {
+      return res.status(500).json({ error: "Failed to load map data" });
+    }
+
+    res.json({ _id: map._id, name: map.name, json });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+// POST /api/sessions/:id/live-map-state
+// DM stashes the latest map state (terrain, environment, etc.) so players can poll for it.
+router.post("/:id/live-map-state", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const membership = campaign.members.find(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    if (!membership || membership.role !== "DM") {
+      return res.status(403).json({ error: "Only the DM can update live map state" });
+    }
+
+    session.liveMapState = req.body?.state ?? null;
+    session.liveMapStateUpdatedAt = new Date();
+    await session.save();
+
+    res.json({ updatedAt: session.liveMapStateUpdatedAt });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// GET /api/sessions/:id/live-map-state
+// Players (and DM) read the latest live map state. Same access pattern as /party.
+router.get("/:id/live-map-state", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id).select(
+      "campaignId liveMapState liveMapStateUpdatedAt"
+    );
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    const party = await Party.findOne({ sessionId: session._id });
+
+    const campaign = await Campaign.findById(session.campaignId);
+    const isMember = campaign?.members?.some(
+      (m) => m.userId.toString() === req.user.userId
+    );
+    const isInParty = party?.players?.includes(req.user.username);
+    if (!isMember && !isInParty) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    res.json({
+      state: session.liveMapState || null,
+      updatedAt: session.liveMapStateUpdatedAt || null,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

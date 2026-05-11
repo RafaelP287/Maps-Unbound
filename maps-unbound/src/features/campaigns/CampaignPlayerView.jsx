@@ -5,6 +5,7 @@ import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
+import ActiveCharacterPicker from "./ActiveCharacterPicker.jsx";
 
 function CampaignPlayerView({ campaign, user }) {
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -12,7 +13,7 @@ function CampaignPlayerView({ campaign, user }) {
   // Player-facing roster excludes the DM for party-size displays.
   const players = campaign.members.filter((m) => m.role === "Player");
   const backgroundImage = campaign.image || placeholderImage;
-  const { sessions, loading: sessionsLoading } = useCampaignSessions(campaign._id);
+  const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaign._id);
 
   if (sessionsLoading) {
     return <LoadingPage>Unravelling the scroll...</LoadingPage>;
@@ -28,9 +29,9 @@ function CampaignPlayerView({ campaign, user }) {
 
       <div className="campaign-content-wrap">
         <CampaignHero campaign={campaign} />
-
         <div className="campaign-card-panel">
-          <CampaignSections campaign={campaign} dm={dm} players={players} sessions={sessions} user={user} />
+          <ActiveCharacterPicker campaign={campaign} user={user} />
+           <CampaignSections campaign={campaign} dm={dm} players={players} sessions={sessions} user={user} onSessionsChanged={refetchSessions} />
 
           {/* Footer */}
           <div className="campaign-footer campaign-footer-split">

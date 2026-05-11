@@ -4,6 +4,13 @@ import mongoose from "mongoose";
 const memberSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   role: { type: String, enum: ["DM", "Player"], required: true },
+  // Player picks which character they're playing in this campaign.
+  // Null until they pick. Combat setup will skip players with no active character.
+  activeCharacterId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Character",
+    default: null,
+  },
 });
 
 const currentQuestSchema = new mongoose.Schema({

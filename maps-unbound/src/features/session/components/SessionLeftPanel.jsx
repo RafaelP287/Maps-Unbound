@@ -1,7 +1,16 @@
 // Left sidebar: sheets/stat blocks browser and detail panel for selected entity.
 import { useMemo, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
-function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) {
+function SessionLeftPanel({
+    isCollapsed,
+    onToggle,
+    turns = [],
+    entities = [],
+    forcedDetailEntity = null,
+    onClearForcedDetail,
+    onToggleVisibility,   // (combatantId, field, value) => void
+}) {
     const sourceEntities = entities.length > 0 ? entities : turns;
     const normalizedEntities = useMemo(
         () => sourceEntities.map((turn, idx) => ({
@@ -26,7 +35,9 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
         return Object.fromEntries(entries.map((entry) => [entry.entityId, entry]));
     }, [normalizedEntities]);
 
-    const selectedEntity = selectedEntityId ? entityById[selectedEntityId] : null;
+    // If the parent forces a detail entity (e.g., DM clicked a portrait in the
+    // InitiativeStrip), that wins over the locally-selected list entry.
+    const selectedEntity = forcedDetailEntity ?? (selectedEntityId ? entityById[selectedEntityId] : null);
     const getEntitySummary = (entity) => {
         if (!entity) {
             return "";
@@ -87,7 +98,10 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                 <button
                                     type="button"
                                     className="session-dm__ghost session-dm__ghost--small"
-                                    onClick={() => setSelectedEntityId(null)}
+                                    onClick={() => {
+                                        setSelectedEntityId(null);
+                                        onClearForcedDetail?.();
+                                    }}
                                 >
                                     Back to list
                                 </button>
@@ -108,7 +122,53 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                         </div>
                                     ))}
                                 </div>
-                            ) : (
+                            ) : null}
+
+                            {/* Visibility toggles — only show for actual combatants
+                                (forcedDetailEntity has the LiveCombat id + flags). */}
+                            {forcedDetailEntity?.id && onToggleVisibility && (
+                                <div className="session-dm__detail-block session-dm__visibility">
+                                    <span className="session-dm__section-title">Player Visibility</span>
+                                    <div className="session-dm__visibility-toggles">
+                                        <button
+                                            type="button"
+                                            className={[
+                                                "session-dm__visibility-btn",
+                                                selectedEntity.hiddenFromMap ? "is-hidden" : "is-visible",
+                                            ].join(" ")}
+                                            onClick={() =>
+                                                onToggleVisibility(
+                                                    selectedEntity.id,
+                                                    "hiddenFromMap",
+                                                    !selectedEntity.hiddenFromMap
+                                                )
+                                            }
+                                        >
+                                            {selectedEntity.hiddenFromMap ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            <span>Map</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={[
+                                                "session-dm__visibility-btn",
+                                                selectedEntity.hiddenFromInitiative ? "is-hidden" : "is-visible",
+                                            ].join(" ")}
+                                            onClick={() =>
+                                                onToggleVisibility(
+                                                    selectedEntity.id,
+                                                    "hiddenFromInitiative",
+                                                    !selectedEntity.hiddenFromInitiative
+                                                )
+                                            }
+                                        >
+                                            {selectedEntity.hiddenFromInitiative ? <EyeOff size={14} /> : <Eye size={14} />}
+                                            <span>Initiative</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedEntityFacts.length === 0 && (
                                 <div className="session-dm__detail-block">
                                     <span className="session-dm__section-title">Reference</span>
                                     <p className="session-dm__panel-subtitle">
@@ -128,7 +188,8 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                     ].filter(Boolean).join(" ")}
                                     onClick={() => setActiveTab("players")}
                                 >
-                                    Players ({players.length})
+                                    <span>Players</span>
+                                    <span className="session-dm__tab-count">({players.length})</span>
                                 </button>
                                 <button
                                     type="button"
@@ -138,7 +199,8 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                     ].filter(Boolean).join(" ")}
                                     onClick={() => setActiveTab("enemies")}
                                 >
-                                    Enemies ({enemies.length})
+                                    <span>Enemies</span>
+                                    <span className="session-dm__tab-count">({enemies.length})</span>
                                 </button>
                                 <button
                                     type="button"
@@ -148,7 +210,8 @@ function SessionLeftPanel({ isCollapsed, onToggle, turns = [], entities = [] }) 
                                     ].filter(Boolean).join(" ")}
                                     onClick={() => setActiveTab("npcs")}
                                 >
-                                    NPCs ({npcs.length})
+                                    <span>NPCs</span>
+                                    <span className="session-dm__tab-count">({npcs.length})</span>
                                 </button>
                             </div>
                             {activeTab === "players" && (

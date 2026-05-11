@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext.jsx";
 
 const formatStartDate = (value) => {
   if (!value) return "TBD";
@@ -7,11 +8,7 @@ const formatStartDate = (value) => {
   return Number.isNaN(date.getTime()) ? "TBD" : date.toLocaleDateString();
 };
 
-const formatQuestUpdated = (value) => {
-  if (!value) return null;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleDateString();
-};
+
 
 const getPrimarySessionDate = (session) =>
   session?.startedAt || session?.scheduledFor || session?.createdAt || null;
@@ -27,13 +24,75 @@ const formatSessionWindow = (session) => {
   return endedLabel ? `${startedLabel} • ${endedLabel}` : startedLabel;
 };
 
-function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null }) {
+function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null, onSessionsChanged = null }) {
+  const { token } = useAuth();
+  const navigate = useNavigate();
   const currentQuest = campaign.currentQuest;
   const npcs = campaign.npcs || [];
   const enemies = campaign.enemies || [];
   const loot = campaign.loot || [];
   const members = campaign.members || [];
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState("");
+
+  const navigateToSession = (sessionId) => {
+    const params = new URLSearchParams();
+    if (campaign._id) params.set("campaignId", campaign._id);
+    params.set("sessionId", sessionId);
+    navigate(`/session/dm?${params.toString()}`);
+  };
+
+  const handleStartSession = async (sessionId) => {
+    if (actionLoading) return;
+    setActionLoading(true);
+    setActionError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/start`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+       const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start session");
+      }
+      const code = data?.party?.lobbyCode;
+      if (code) {
+        window.alert(`Session started!\n\nLobby Code: ${code}\n\nShare this code with players so they can join from the Party Finder page.`);
+      }
+      navigateToSession(sessionId);
+    } catch (err) {
+      setActionError(err.message || "Failed to start session");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResumeSession = (sessionId) => {
+    navigateToSession(sessionId);
+  };
+
+  const handleEndSession = async (sessionId) => {
+    if (actionLoading) return;
+    if (!window.confirm("End this session? Players will be disconnected from the lobby.")) return;
+    setActionLoading(true);
+    setActionError("");
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/end`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to end session");
+      }
+      onSessionsChanged?.();
+    } catch (err) {
+      setActionError(err.message || "Failed to end session");
+    } finally {
+      setActionLoading(false);
+    }
+  };
   const hasQuest = Boolean(currentQuest?.title || currentQuest?.objective);
   const sortedSessions = [...sessions].sort((a, b) => {
     const aTime = getPrimarySessionDate(a) ? new Date(getPrimarySessionDate(a)).getTime() : 0;
@@ -328,11 +387,48 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
                     <h3 className="campaign-resource-title campaign-session-detail-title">
                       {selectedSession.title || "Untitled Session"}
                     </h3>
+                    <p className="campaign-resource-meta">Status: {selectedSession.status || "Planned"}</p>
                     <div className="campaign-session-summary-scroll">
                       <p className="campaign-resource-notes campaign-session-detail-summary">
                         {selectedSession.summary || "No session summary has been recorded yet."}
                       </p>
                     </div>
+                    {isDM && selectedSession.status !== "In Progress" && (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        disabled={actionLoading}
+                        onClick={() => handleStartSession(selectedSession._id)}
+                      >
+                        {actionLoading ? "Starting..." : "Start Session"}
+                      </button>
+                    )}
+                    {isDM && selectedSession.status === "In Progress" && (
+                      <>
+                        <button
+                          type="button"
+                          className="btn-primary"
+                          disabled={actionLoading}
+                          onClick={() => handleResumeSession(selectedSession._id)}
+                        >
+                          Resume Session
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          disabled={actionLoading}
+                          onClick={() => handleEndSession(selectedSession._id)}
+                        >
+                          {actionLoading ? "Ending..." : "End Session"}
+                        </button>
+                      </>
+                    )}
+                    {!isDM && selectedSession.status === "In Progress" && (
+                      <p className="campaign-resource-notes">
+                        🟢 This session is live. Player Join button coming in the next step.
+                      </p>
+                    )}
+                    {actionError && <p className="campaign-error-text">{actionError}</p>}
                     <button
                       type="button"
                       className="btn-ghost"

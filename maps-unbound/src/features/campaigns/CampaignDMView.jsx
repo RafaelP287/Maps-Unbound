@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
@@ -273,37 +273,50 @@ function CampaignDMView({ campaign, setCampaign }) {
     try {
       const nextSessionNumber = (sessions?.length || 0) + 1;
       const title = `Session ${nextSessionNumber}`;
-      const createdAt = new Date().toISOString();
-      const payload = {
-        campaignId: campaign._id,
-        title,
-        sessionNumber: nextSessionNumber,
-        status: "In Progress",
-        startedAt: createdAt,
-        participants: campaign.members.map((member) => ({
-          userId: member.userId?._id || member.userId,
-          role: member.role,
-        })),
-      };
 
-      const res = await fetch("/api/sessions", {
+      // 1. Create a new Planned session record.
+      const createRes = await fetch("/api/sessions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          campaignId: campaign._id,
+          title,
+          sessionNumber: nextSessionNumber,
+          status: "Planned",
+          participants: campaign.members.map((member) => ({
+            userId: member.userId?._id || member.userId,
+            role: member.role,
+          })),
+        }),
       });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to start session");
+      if (!createRes.ok) {
+        const data = await createRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create session");
+      }
+      const createdSession = await createRes.json();
+
+      // 2. Start it — flips status to In Progress and creates the Party with a lobby code.
+      const startRes = await fetch(`/api/sessions/${createdSession._id}/start`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const startData = await startRes.json().catch(() => ({}));
+      if (!startRes.ok) {
+        throw new Error(startData.error || "Failed to start session");
       }
 
-      const createdSession = await res.json();
+      const code = startData?.party?.lobbyCode;
+      if (code) {
+        window.alert(
+          `Session started!\n\nLobby Code: ${code}\n\nShare this code with players so they can join from the Party Finder page.`
+        );
+      }
+
       await refetchSessions();
-      navigate(
-        `/session?campaignId=${campaign._id}&sessionId=${createdSession._id}&sessionName=${encodeURIComponent(createdSession.title)}`
-      );
+      navigate(`/session/dm?campaignId=${campaign._id}&sessionId=${createdSession._id}`);
     } catch (err) {
       setSaveError(err.message || "Failed to start session.");
     } finally {
@@ -669,6 +682,7 @@ function CampaignDMView({ campaign, setCampaign }) {
               sessions={sessions}
               isDM
               onStartEditing={startEditing}
+              onSessionsChanged={refetchSessions}
             />
           )}
 

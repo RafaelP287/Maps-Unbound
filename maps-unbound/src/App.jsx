@@ -3,13 +3,14 @@ import React, { useState, useRef, useCallback, useEffect } from "react";
 import { ThreeDDice } from "dddice-js";
 import AppLayout from "./layout/AppLayout.jsx";
 import SessionLayout from "./layout/SessionLayout.jsx";
+import Projector from "./features/maps/Projector.jsx";
 
 import Home from "./features/home/Home.jsx";
 import Maps from "./features/maps/Maps.jsx";
 
 import Session from "./features/session/Session.jsx";
 import SessionDMView from "./features/session/SessionDMView.jsx";
-
+import PlayerDashboard from "./features/player/PlayerDashboard.jsx";
 import Campaigns from "./features/campaigns/CampaignsPage.jsx";
 import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
 import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
@@ -308,9 +309,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="projector" element={<Projector />} />
         <Route path="session" element={<SessionLayout />}>
           <Route index element={<Session />} />
           <Route path="dm" element={<SessionDMView />} />
+          <Route path="player" element={<PlayerDashboard />} />
         </Route>
         <Route path="/" element={<AppLayout />}>
           {/* Home route */}
@@ -340,6 +343,7 @@ function App() {
           <Route path="session">
               <Route index element={<Session />} />
               <Route path="dm" element={<SessionDMView />} />
+              <Route path="player" element={<PlayerDashboard />} />
           </Route>
           
           {/* Character Routes */}

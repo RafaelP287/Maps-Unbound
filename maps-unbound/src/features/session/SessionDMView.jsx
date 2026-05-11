@@ -12,6 +12,8 @@ import useCampaign from "../campaigns/use-campaign";
 import useCampaignSessions from "../campaigns/use-campaign-sessions";
 import LoadingPage from "../../shared/Loading.jsx";
 import "./session.css";
+import InitiativeStrip from "./components/InitiativeStrip";
+import useLiveCombat from "./use-live-combat";
 
 function SessionDMView() {
     const navigate = useNavigate();
@@ -25,6 +27,11 @@ function SessionDMView() {
     const [endingSession, setEndingSession] = useState(false);
     const [endSessionError, setEndSessionError] = useState("");
     const [sceneName, setSceneName] = useState("");
+    const [playerCharacters, setPlayerCharacters] = useState([]);
+    // Combatant whose detail view should appear in the left "Sheets & Reference" panel.
+    // Set when DM clicks a portrait in the InitiativeStrip.
+    const [selectedCombatant, setSelectedCombatant] = useState(null);
+
     const [turns, setTurns] = useState([]);
     const [combatRound, setCombatRound] = useState(0);
     const [activeEncounterId, setActiveEncounterId] = useState(null);
@@ -41,6 +48,15 @@ function SessionDMView() {
     const sessionNameParam = searchParams.get("sessionName");
     const { campaign, loading } = useCampaign(campaignId);
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId);
+    // Live combat data — drives the InitiativeStrip and the new combat log.
+    // Must come AFTER sessionId is declared above.
+    const liveCombat = useLiveCombat({
+        sessionId,
+        token,
+        isCombatActive: isCombatState,
+    });
+
+    
 
     const orderedSessions = useMemo(() => {
         return [...sessions].sort((a, b) => {
@@ -65,6 +81,33 @@ function SessionDMView() {
         setEncounterSequence(existingEncounterCount);
         setActiveEncounterNumber(null);
     }, [currentSession?._id, existingEncounterCount]);
+    // Fetch all player characters in this campaign so the Combat Setup modal
+    // can show them with portraits, real HP, and characterId baked in.
+    // Used to spawn proper tokens with character data when combat starts.
+    useEffect(() => {
+        if (!campaignId || !token) return;
+        let cancelled = false;
+        const fetchPlayers = async () => {
+            try {
+                const res = await fetch(
+                    `${import.meta.env.VITE_API_SERVER || ""}/api/combat/campaign/${campaignId}/characters`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (!res.ok) return;
+                const data = await res.json();
+               if (!cancelled && Array.isArray(data)) {
+                    console.log("[DEBUG playerCharacters fetch]:", JSON.stringify(data, null, 2));
+                    setPlayerCharacters(data);
+                }
+            } catch (err) {
+                console.warn("Error fetching player characters:", err.message);
+            }
+        };
+        fetchPlayers();
+        return () => {
+            cancelled = true;
+        };
+    }, [campaignId, token]);
 
     const previousSessionNotes = useMemo(() => {
         if (!sessionId) {
@@ -118,17 +161,27 @@ function SessionDMView() {
                 initial: username.slice(0, 1).toUpperCase() || "",
             };
         });
-    const playerCharacterNames = players.map((player) => player.username).filter(Boolean);
+    const playerCharacterNames = playerCharacters.map((character) => character.name).filter(Boolean);
+   // Build the entity pool used by the Combat Setup modal. Players come from
+    // real Character documents (with portrait, HP, class, etc.) so DM gets a
+    // real picker instead of just usernames.
     const combatEntityPool = {
-        players: players
-            .filter((player) => player.username)
-            .map((player) => ({
-                kind: "Player",
-                name: player.username,
-                hp: null,
-                className: "",
-                level: null,
-            })),
+        players: playerCharacters.map((character) => ({
+            kind: "Player",
+            // Stable id of the row uses the Character _id so it's deduped properly.
+            characterId: character._id,
+            userId: typeof character.user === "object" ? character.user._id : character.user,
+            // Display data
+            name: character.name,
+            className: character.class?.name || "",
+            level: character.level || 1,
+            raceName: character.race?.name || "",
+            // HP for token spawn
+            hp: character.hp?.current ?? character.hp?.max ?? 10,
+            maxHp: character.hp?.max ?? 10,
+            // Portrait URL (used in modal thumbnail + Godot token texture)
+            portraitUrl: character.portrait?.url || "",
+        })),
         npcs: (campaign?.npcs || []).map((npc, idx) => ({
             kind: "NPC",
             name: npc.name || `NPC ${idx + 1}`,
@@ -169,6 +222,104 @@ function SessionDMView() {
         kind,
         createdAt: new Date().toISOString(),
     });
+    // Convert a LiveCombat.log entry into a display-friendly event object
+    // matching the shape SessionRightPanel expects.
+    const liveLogEntryToEvent = (entry, idx) => {
+        const ts = entry.timestamp || new Date().toISOString();
+        const baseId = `live-${entry.timestamp || idx}-${entry.type}-${entry.actorName || ""}-${idx}`;
+        switch (entry.type) {
+            case "round_started":
+                return {
+                    id: baseId,
+                    kind: "round",
+                    tone: "highlight",
+                    title: `Round ${entry.round}`,
+                    detail: "",
+                    createdAt: ts,
+                };
+            case "turn_started":
+                return {
+                    id: baseId,
+                    kind: "turn",
+                    tone: "neutral",
+                    title: entry.actorName || "Unknown",
+                    detail: "",
+                    createdAt: ts,
+                };
+            case "damage":
+                return {
+                    id: baseId,
+                    kind: "damage",
+                    tone: "alert",
+                    title: `${entry.targetName} took ${entry.amount} damage`,
+                    detail: entry.actorName ? `from ${entry.actorName}` : "",
+                    createdAt: ts,
+                };
+            case "heal":
+                return {
+                    id: baseId,
+                    kind: "heal",
+                    tone: "highlight",
+                    title: `${entry.targetName} healed ${entry.amount} HP`,
+                    detail: entry.actorName ? `from ${entry.actorName}` : "",
+                    createdAt: ts,
+                };
+            case "died":
+                return {
+                    id: baseId,
+                    kind: "died",
+                    tone: "muted",
+                    title: `${entry.actorName} died`,
+                    detail: "",
+                    createdAt: ts,
+                };
+            case "revived":
+                return {
+                    id: baseId,
+                    kind: "revived",
+                    tone: "highlight",
+                    title: `${entry.actorName} revived`,
+                    detail: "",
+                    createdAt: ts,
+                };
+            case "removed":
+                return {
+                    id: baseId,
+                    kind: "note",
+                    tone: "muted",
+                    title: `${entry.actorName} removed from initiative`,
+                    detail: "",
+                    createdAt: ts,
+                };
+            case "combat_started":
+                return {
+                    id: baseId,
+                    kind: "encounter-start",
+                    tone: "alert",
+                    title: "Combat Started",
+                    detail: entry.message || "",
+                    createdAt: ts,
+                };
+            case "combat_ended":
+                return {
+                    id: baseId,
+                    kind: "encounter-end",
+                    tone: "muted",
+                    title: "Combat Ended",
+                    detail: entry.message || "",
+                    createdAt: ts,
+                };
+            default:
+                return {
+                    id: baseId,
+                    kind: "note",
+                    tone: "neutral",
+                    title: entry.message || entry.type,
+                    detail: "",
+                    createdAt: ts,
+                };
+        }
+    };
 
     const pushCombatEvents = (entries) => {
         setCombatEvents((prev) => [...prev, ...entries]);
@@ -393,7 +544,22 @@ function SessionDMView() {
             });
         }
     };
-
+    // Merged event feed for the right panel — historical encounter events
+    // plus live combat log entries. Sorted oldest → newest (the panel scrolls
+    // to the bottom on update, so newest stays visible).
+    const liveLogEvents = useMemo(
+        () => (liveCombat.log || []).map(liveLogEntryToEvent),
+        [liveCombat.log]
+    );
+    const mergedEvents = useMemo(() => {
+        const all = [...combatEvents, ...liveLogEvents];
+        return all.sort(
+            (a, b) =>
+                new Date(a.createdAt || 0).getTime() -
+                new Date(b.createdAt || 0).getTime()
+        );
+       
+    }, [combatEvents, liveLogEvents]);
     const collapseClassName = [
         "session-dm",
         isLeftCollapsed ? "is-left-collapsed" : "",
@@ -498,12 +664,34 @@ function SessionDMView() {
                 isCombatState={isCombatState}
                 onPauseSession={() => setIsSessionPaused(true)}
                 onEndSession={() => setIsEndSessionConfirmOpen(true)}
+                combatStrip={
+                    isCombatState ? (
+                        <InitiativeStrip
+                            combatants={liveCombat.combatants}
+                            activeIndex={liveCombat.activeIndex}
+                            round={liveCombat.round}
+                            onNextTurn={liveCombat.nextTurn}
+                            onSelectCombatant={(c) => setSelectedCombatant(c)}
+                            isDM={true}
+                        />
+                    ) : null
+                }
             />
             <SessionLeftPanel
                 isCollapsed={isLeftCollapsed}
                 onToggle={() => setIsLeftCollapsed((prev) => !prev)}
                 turns={turns}
                 entities={sheetEntities}
+                forcedDetailEntity={selectedCombatant}
+                onClearForcedDetail={() => setSelectedCombatant(null)}
+                onToggleVisibility={(combatantId, field, value) => {
+                    liveCombat.setVisibility?.(combatantId, field, value);
+                    // Optimistic UI: update the forced detail too so the button
+                    // flips immediately without waiting for the next poll.
+                    setSelectedCombatant((prev) =>
+                        prev && prev.id === combatantId ? { ...prev, [field]: value } : prev
+                    );
+                }}
             />
             <SessionMapCanvas
                 turns={turns}
@@ -516,11 +704,13 @@ function SessionDMView() {
                 onTurnsChange={handleTurnsChange}
                 playerCharacterNames={playerCharacterNames}
                 combatEntityPool={combatEntityPool}
+                sessionId={sessionId}
+                token={token}
             />
             <SessionRightPanel
                 isCollapsed={isRightCollapsed}
                 onToggle={() => setIsRightCollapsed((prev) => !prev)}
-                events={combatEvents}
+                events={mergedEvents}
             />
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}

@@ -451,3 +451,17 @@ textarea::placeholder {
 .hero-animate-2         { animation-delay: 0.25s; }
 .hero-animate-3         { animation-delay: 0.4s; }
 .hero-animate-4         { animation-delay: 0.55s; }
+
+.session-dm__combat-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    user-select: none;
+    cursor: pointer;
+}
+.session-dm__combat-toggle-label input[type="checkbox"] {
+    accent-color: #d9a637;
+    cursor: pointer;
+}
