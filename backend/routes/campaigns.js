@@ -29,6 +29,13 @@ const isCampaignDM = (campaign, userId) =>
   campaign?.createdBy?.toString?.() === userId ||
   campaign?.members?.some((member) => getUserId(member.userId) === userId && member.role === "DM");
 
+const dmCampaignOwnershipFilter = (userId) => ({
+  $or: [
+    { createdBy: userId },
+    { members: { $elemMatch: { userId, role: "DM" } } },
+  ],
+});
+
 const populateCampaignForDetail = (query) =>
   query
     .populate("members.userId", "username email profileImageUrl")
@@ -332,12 +339,7 @@ router.get("/findable", verifyToken, async (req, res) => {
 router.get("/party-finder-requests", verifyToken, async (req, res) => {
   try {
     const campaigns = await Campaign.find({
-      members: {
-        $elemMatch: {
-          userId: req.user.userId,
-          role: "DM",
-        },
-      },
+      ...dmCampaignOwnershipFilter(req.user.userId),
       "joinRequests.status": "Pending",
     })
       .populate("joinRequests.userId", "username profileImageUrl")
@@ -371,12 +373,7 @@ router.get("/party-finder-requests", verifyToken, async (req, res) => {
 router.get("/recruiting-campaigns", verifyToken, async (req, res) => {
   try {
     const campaigns = await Campaign.find({
-      members: {
-        $elemMatch: {
-          userId: req.user.userId,
-          role: "DM",
-        },
-      },
+      ...dmCampaignOwnershipFilter(req.user.userId),
       status: { $ne: "Completed" },
     })
       .select("title maxPlayers members status updatedAt")
@@ -463,7 +460,7 @@ router.get("/invitable-campaigns", verifyToken, async (req, res) => {
     }
 
     const campaigns = await Campaign.find({
-      members: { $elemMatch: { userId: req.user.userId, role: "DM" } },
+      ...dmCampaignOwnershipFilter(req.user.userId),
       status: { $ne: "Completed" },
     })
       .select("title maxPlayers members status invitations updatedAt")
