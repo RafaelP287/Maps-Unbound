@@ -6,6 +6,18 @@ const router = Router();
 import { getUsers, getUser, deleteUser } from "../controllers/userController.js";
 import { getCharactersFromUser } from '../controllers/characterController.js';
 import User from "../models/User.js";
+import Asset from "../models/Asset.js";
+import Campaign from "../models/Campaign.js";
+import CampaignJournal from "../models/CampaignJournal.js";
+import CampaignJournalEntry from "../models/CampaignJournalEntry.js";
+import Character from "../models/Character.js";
+import Encounter from "../models/Encounter.js";
+import Guild from "../models/Guild.js";
+import { Item } from "../models/Item.js";
+import LiveCombat from "../models/LiveCombat.js";
+import SavedMap from "../models/Map.js";
+import Party from "../models/Party.js";
+import Session from "../models/Session.js";
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -21,6 +33,81 @@ const verifyToken = (req, res, next) => {
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
+};
+
+const cleanupUserData = async (user) => {
+  const userId = user._id;
+  const userIdString = String(userId);
+  const username = user.username;
+
+  const characters = await Character.find({ user: userId }).select("_id").lean();
+  const characterIds = characters.map((character) => character._id);
+
+  const dmCampaigns = await Campaign.find({
+    $or: [
+      { createdBy: userId },
+      { members: { $elemMatch: { userId, role: "DM" } } },
+    ],
+  }).select("_id").lean();
+  const dmCampaignIds = dmCampaigns.map((campaign) => campaign._id);
+  const dmSessions = dmCampaignIds.length > 0
+    ? await Session.find({ campaignId: { $in: dmCampaignIds } }).select("_id").lean()
+    : [];
+  const dmSessionIds = dmSessions.map((session) => session._id);
+
+  if (dmCampaignIds.length > 0) {
+    await Promise.all([
+      CampaignJournalEntry.deleteMany({ campaignId: { $in: dmCampaignIds } }),
+      CampaignJournal.deleteMany({ campaignId: { $in: dmCampaignIds } }),
+      LiveCombat.deleteMany({ campaignId: { $in: dmCampaignIds } }),
+      Encounter.deleteMany({ campaignId: { $in: dmCampaignIds } }),
+      Session.deleteMany({ campaignId: { $in: dmCampaignIds } }),
+      Campaign.deleteMany({ _id: { $in: dmCampaignIds } }),
+      dmSessionIds.length > 0 ? Party.deleteMany({ sessionId: { $in: dmSessionIds } }) : Promise.resolve(),
+    ]);
+  }
+
+  await Promise.all([
+    characterIds.length > 0 ? Item.deleteMany({ owner: { $in: characterIds } }) : Promise.resolve(),
+    Character.deleteMany({ user: userId }),
+    SavedMap.deleteMany({ userId: userIdString }),
+    Asset.deleteMany({ owner: username }),
+    Party.deleteMany({ owner: username }),
+    Party.updateMany({ players: username }, { $pull: { players: username } }),
+    Guild.deleteMany({ owner: userId }),
+    Guild.updateMany({ members: userId }, { $pull: { members: userId } }),
+    LiveCombat.updateMany({}, { $pull: { combatants: { userId } } }),
+    characterIds.length > 0
+      ? LiveCombat.updateMany({}, { $pull: { combatants: { characterId: { $in: characterIds } } } })
+      : Promise.resolve(),
+    Session.updateMany(
+      {},
+      {
+        $pull: {
+          participants: { userId },
+          notes: { authorId: userId },
+        },
+      }
+    ),
+    CampaignJournalEntry.updateMany(
+      { authorId: userId },
+      { $set: { authorId: null, authorRole: "System" } }
+    ),
+    Campaign.updateMany(
+      { _id: { $nin: dmCampaignIds } },
+      {
+        $pull: {
+          members: { userId },
+          joinRequests: { userId },
+          invitations: { userId },
+        },
+      }
+    ),
+    Campaign.updateMany(
+      { _id: { $nin: dmCampaignIds } },
+      { $pull: { invitations: { invitedBy: userId } } }
+    ),
+  ]);
 };
 
 // GET all users
@@ -144,6 +231,7 @@ router.delete("/me", verifyToken, async (req, res) => {
       return res.status(401).json({ error: "Password is incorrect." });
     }
 
+    await cleanupUserData(user);
     await User.findOneAndDelete({ _id: user._id });
 
     res.json({ message: "Account deleted successfully." });

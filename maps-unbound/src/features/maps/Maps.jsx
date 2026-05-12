@@ -56,7 +56,7 @@ function Maps({
     const [mode, setMode] = useState("normal"); // 'normal' | 'advantage' | 'disadvantage'
 
     // ─── Map management state ─────────────────────────────────────────────
-    const { getMap, createMap, updateMap, duplicateMap } = useMapsApi();
+    const { listMaps, getMap, createMap, updateMap, duplicateMap } = useMapsApi();
 
     // Modals — driven by Godot postMessage events and by user actions on the bridge.
     const [showLoadModal, setShowLoadModal] = useState(false);
@@ -160,12 +160,7 @@ function Maps({
                     return;
                 }
 
-                const res = await fetch(
-                    `${import.meta.env.VITE_API_SERVER || ""}/api/maps`,
-                    { headers: { Authorization: `Bearer ${localStorage.getItem("token") || ""}` } }
-                );
-                if (!res.ok) throw new Error(`Failed to list maps (${res.status})`);
-                const list = await res.json();
+                const list = await listMaps();
                 if (!Array.isArray(list) || list.length === 0) {
                     // No saved maps yet — nothing to load, just show blank canvas.
                     return;
@@ -183,7 +178,7 @@ function Maps({
                 setAutoLoading(false);
             }
         })();
-    }, [isLoggedIn, bridge.isReady, bridge, getMap, requestedMapId]);
+    }, [isLoggedIn, bridge.isReady, bridge, getMap, listMaps, requestedMapId]);
 
 
 

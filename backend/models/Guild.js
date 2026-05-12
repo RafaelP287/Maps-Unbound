@@ -1,32 +1,34 @@
 import { Schema, model } from "mongoose";
 
-const guildSchema = new Schema({
-  name: { type: String, required: true, unique: true },
-  description: { type: String, maxlength: 500 },
-  owner: {
-    type: Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-    index: true,
-  },
-  members: [
-    {
+const guildSchema = new Schema(
+  {
+    name: { type: String, required: true, unique: true },
+    description: { type: String, maxlength: 500 },
+    owner: {
       type: Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      index: true,
     },
-  ],
+    members: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
-  isPublic: { type: Boolean, required: true, index: true, default: false },
+    isPublic: { type: Boolean, required: true, index: true, default: false },
 
-  maxMembers: {
-    type: Number,
-    default: 50,
+    maxMembers: {
+      type: Number,
+      default: 50,
+    },
+
+    guildImageUrl: { type: String },
+    s3Key: { type: String },
   },
-
-  timestamps: true,
-  guildImageUrl: { type: String },
-  s3Key: { type: String },
-});
+  { timestamps: true }
+);
 
 guildSchema.index({ owner: 1, name: 1 });
 

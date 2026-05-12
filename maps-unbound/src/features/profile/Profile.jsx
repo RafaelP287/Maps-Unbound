@@ -60,6 +60,7 @@ function Profile() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteSaving, setDeleteSaving] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [profileImageDraft, setProfileImageDraft] = useState(user?.profileImageUrl || "");
   const [profileImageSaving, setProfileImageSaving] = useState(false);
   const [profileImageError, setProfileImageError] = useState("");
@@ -332,7 +333,7 @@ function Profile() {
     }
   };
 
-  const deleteAccount = async (event) => {
+  const requestDeleteAccount = (event) => {
     event.preventDefault();
     if (!token || deleteSaving) return;
 
@@ -342,6 +343,12 @@ function Profile() {
       setDeleteError("Enter your password to delete your account.");
       return;
     }
+
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const deleteAccount = async () => {
+    if (!token || deleteSaving) return;
 
     setDeleteSaving(true);
     try {
@@ -363,6 +370,7 @@ function Profile() {
       navigate("/", { replace: true });
     } catch (err) {
       setDeleteError(err.message || "Failed to delete account.");
+      setIsDeleteConfirmOpen(false);
     } finally {
       setDeleteSaving(false);
     }
@@ -517,10 +525,10 @@ function Profile() {
                     {inviteAvailabilityStatus && <p className="profile-inline-success">{inviteAvailabilityStatus}</p>}
                   </div>
 
-                  <form className="profile-settings-panel profile-danger-panel" onSubmit={deleteAccount}>
+                  <form className="profile-settings-panel profile-danger-panel" onSubmit={requestDeleteAccount}>
                     <div>
                       <h3>Delete Account</h3>
-                      <p>This permanently removes your account. Enter your password to confirm.</p>
+                      <p>This permanently removes your account and cleans up your characters, campaign links, maps, assets, and lobbies.</p>
                     </div>
                     <label className="profile-field">
                       <span>Password</span>
@@ -536,7 +544,7 @@ function Profile() {
                     </label>
                     {deleteError && <p className="profile-inline-error">{deleteError}</p>}
                     <button type="submit" className="profile-danger-button" disabled={deleteSaving}>
-                      {deleteSaving ? "Deleting..." : "Delete Account"}
+                      Delete Account
                     </button>
                   </form>
                 </div>
@@ -715,6 +723,52 @@ function Profile() {
                 disabled={!hasProfileImageChange || profileImageSaving}
               >
                 {profileImageSaving ? "Saving..." : "Save Icon"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteConfirmOpen && (
+        <div
+          className="profile-modal-backdrop"
+          role="presentation"
+          onClick={() => {
+            if (!deleteSaving) setIsDeleteConfirmOpen(false);
+          }}
+        >
+          <div
+            className="profile-modal profile-danger-confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-delete-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="profile-danger-confirm-icon" aria-hidden="true">!</div>
+            <h2 id="profile-delete-title">Delete Account?</h2>
+            <p>
+              This cannot be undone. Your profile, characters, character inventory,
+              personal maps, uploaded assets, lobbies, campaign invites, and campaign
+              memberships will be removed. Campaigns where you are the DM will be
+              deleted with their sessions, encounters, combat, and journal entries.
+            </p>
+            {deleteError && <p className="profile-inline-error">{deleteError}</p>}
+            <div className="profile-modal-actions">
+              <button
+                type="button"
+                className="profile-danger-button"
+                onClick={deleteAccount}
+                disabled={deleteSaving}
+              >
+                {deleteSaving ? "Deleting..." : "Yes, Delete My Account"}
+              </button>
+              <button
+                type="button"
+                className="profile-modal-close"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                disabled={deleteSaving}
+              >
+                Cancel
               </button>
             </div>
           </div>

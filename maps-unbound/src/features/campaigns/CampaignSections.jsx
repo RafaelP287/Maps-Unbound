@@ -49,6 +49,22 @@ function CampaignSections({
   });
   const selectedSession = sortedSessions.find((session) => session._id === selectedSessionId) || null;
   const currentUserId = user?.id;
+  const linkedCharacters = players
+    .map((player) => {
+      const characterId = getUserId(player.activeCharacterId);
+      if (!characterId) return null;
+
+      return {
+        id: characterId,
+        name: player.activeCharacterId?.name || "View character",
+        level: player.activeCharacterId?.level || 1,
+        raceName: player.activeCharacterId?.race?.name || "",
+        className: player.activeCharacterId?.class?.name || "",
+        playerName: player.userId?.username || "Unknown player",
+        isCurrentUser: getUserId(player.userId) === currentUserId,
+      };
+    })
+    .filter(Boolean);
 
   return (
     <div className="campaign-sections-stack">
@@ -171,15 +187,29 @@ function CampaignSections({
           )}
           <div className="campaign-detail-tile campaign-detail-tile-wide">
             <span className="campaign-detail-key">Player Roster</span>
-            <span className="campaign-detail-val">
-              {players.length > 0 ? players.map((p) => (
-                <span key={getUserId(p.userId)}>
-                  {p.userId?.username}
-                  {getUserId(p.userId) === currentUserId && (
-                    <span className="badge-player">You</span>
-                  )}
-                </span>
-              )).reduce((acc, el, i) => i === 0 ? [el] : [...acc, " · ", el], []) : (
+            <span className="campaign-detail-val campaign-roster-list">
+              {players.length > 0 ? players.map((p) => {
+                const activeCharacterId = getUserId(p.activeCharacterId);
+                const activeCharacterName = p.activeCharacterId?.name || "View character";
+
+                return (
+                  <span className="campaign-roster-entry" key={getUserId(p.userId)}>
+                    <span>
+                      {p.userId?.username}
+                      {getUserId(p.userId) === currentUserId && (
+                        <span className="badge-player">You</span>
+                      )}
+                    </span>
+                    {activeCharacterId ? (
+                      <Link className="campaign-roster-character-link" to={`/characters/${activeCharacterId}`}>
+                        {activeCharacterName}
+                      </Link>
+                    ) : (
+                      <span className="campaign-roster-character-empty">No character selected</span>
+                    )}
+                  </span>
+                );
+              }) : (
                 <em style={{ color: "#7a6e5e" }}>No players have joined yet</em>
               )}
             </span>
@@ -309,13 +339,30 @@ function CampaignSections({
           <p className="campaign-section-subtext">
             Character sheets and party roster for this campaign.
           </p>
-          <div className="campaign-card-frame">
-            <div className="campaign-card-scroll">
-              <div className="campaign-section-placeholder">
-                <span className="campaign-section-empty">Campaign-linked characters are not implemented yet.</span>
+          {linkedCharacters.length > 0 ? (
+            <div className="campaign-card-frame">
+              <div className="campaign-card-scroll">
+                <div className="campaign-character-list">
+                  {linkedCharacters.map((character) => (
+                    <Link className="campaign-character-item" to={`/characters/${character.id}`} key={character.id}>
+                      <div>
+                        <h3 className="campaign-resource-title">{character.name}</h3>
+                        <p className="campaign-resource-notes">
+                          Level {character.level} {[character.raceName, character.className].filter(Boolean).join(" ")}
+                        </p>
+                      </div>
+                      <span className="campaign-resource-meta">
+                        {character.playerName}
+                        {character.isCurrentUser && <span className="badge-player">You</span>}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <span className="campaign-section-empty">No players have selected campaign characters yet.</span>
+          )}
         </div>
         <div className="campaign-section-actions">
           <div className="campaign-inline-actions">

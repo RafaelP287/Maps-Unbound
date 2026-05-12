@@ -67,6 +67,14 @@ const mapSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    jsonSize: {
+      type: Number,
+      default: 0,
+    },
+    thumbnailSize: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true } // adds createdAt / updatedAt automatically
 );

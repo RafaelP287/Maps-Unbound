@@ -22,6 +22,7 @@ const CampaignJournalPage = lazy(() => import("./features/campaignjournal/Campai
 const Characters = lazy(() => import("./features/characters/Characters.jsx"));
 const CreateCharacter = lazy(() => import("./features/characters/CreateCharacter.jsx"));
 const CharacterEditor = lazy(() => import("./features/characters/CharacterEditor.jsx"));
+const CharacterOverview = lazy(() => import("./features/characters/CharacterOverview.jsx"));
 const PartyFinder = lazy(() => import("./features/partyfinder/PartyFinder.jsx"));
 const Lobby = lazy(() => import("./features/player/Lobby.jsx"));
 
@@ -356,6 +357,7 @@ function App() {
             </Route>
             {/* Character Routes */}
             <Route path="characters" element={<Characters />} />
+            <Route path="characters/:id" element={<CharacterOverview />} />
             <Route path="characters/:id/edit" element={<CharacterEditor />} />
             <Route path="create-character" element={<CreateCharacter />} />
 

@@ -78,6 +78,12 @@ export function useMyMaps() {
 export function useMapsApi() {
   const { token } = useAuth();
 
+  // GET /api/maps → metadata for the current user's maps
+  const listMaps = useCallback(
+    async () => authFetch(token, ""),
+    [token]
+  );
+
   // GET /api/maps/:id  →  full map including JSON body
   const getMap = useCallback(
     async (id) => authFetch(token, `/${id}`),
@@ -129,6 +135,7 @@ export function useMapsApi() {
   );
 
   return {
+    listMaps,
     getMap,
     createMap,
     updateMap,

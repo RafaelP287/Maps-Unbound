@@ -33,7 +33,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 app.use(urlencoded({ extended: false }));
-app.use(json({ limit: "15mb" }));
+app.use(json({ limit: "50mb" }));
 app.use(cors());
 
 import characterRoutes from './routes/characters.js';

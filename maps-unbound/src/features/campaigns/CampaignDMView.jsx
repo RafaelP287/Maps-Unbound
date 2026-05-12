@@ -9,6 +9,7 @@ import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
 import { clearCachePrefix, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 function CampaignDMView({ campaign, setCampaign }) {
   const { user, token } = useAuth();
@@ -141,9 +142,26 @@ function CampaignDMView({ campaign, setCampaign }) {
             updatedAt: new Date().toISOString(),
           }
         : null;
-      // Preserve DM membership while applying player edits; backend authorizes updates by DM role.
-      const dmEntry = { userId: dmMember.userId._id, role: "DM" };
-      const memberPayload = [dmEntry, ...editPlayers.map((p) => ({ userId: p.userId, role: "Player" }))];
+      const existingMembersByUserId = new Map(
+        (campaign.members || []).map((member) => [getUserId(member.userId), member])
+      );
+      // Preserve per-member metadata like activeCharacterId while applying roster edits.
+      const dmEntry = {
+        userId: dmMember.userId._id,
+        role: "DM",
+        activeCharacterId: dmMember.activeCharacterId || null,
+      };
+      const memberPayload = [
+        dmEntry,
+        ...editPlayers.map((p) => {
+          const existingMember = existingMembersByUserId.get(getUserId(p.userId));
+          return {
+            userId: p.userId,
+            role: "Player",
+            activeCharacterId: existingMember?.activeCharacterId || null,
+          };
+        }),
+      ];
       const res = await fetch(`/api/campaigns/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -167,10 +185,11 @@ function CampaignDMView({ campaign, setCampaign }) {
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
       const updatedCampaign = await res.json();
       const populatedMembers = [
-        { userId: dmMember.userId, role: "DM" },
+        { userId: dmMember.userId, role: "DM", activeCharacterId: dmMember.activeCharacterId || null },
         ...editPlayers.map((player) => ({
           userId: { _id: player.userId, username: player.username },
           role: "Player",
+          activeCharacterId: existingMembersByUserId.get(getUserId(player.userId))?.activeCharacterId || null,
         })),
       ];
       if (applySessionDeletes && pendingSessionDeleteIds.length > 0) {
@@ -352,7 +371,6 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
       const updatedCampaign = await res.json();
       setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
-      setEditPlayers((prev) => prev.filter((player) => player.userId !== memberToRemove.userId._id));
       setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
       clearCachePrefix("campaigns:list:");
     } catch (err) {
@@ -363,11 +381,12 @@ function CampaignDMView({ campaign, setCampaign }) {
   };
 
   const handleRemoveMember = async () => {
-    if (!memberToRemove?.userId?._id) return;
+    const memberId = getUserId(memberToRemove?.userId);
+    if (!memberId) return;
     setRemovingMember(true);
     setRemoveMemberError("");
     try {
-      const res = await fetch(`/api/campaigns/${id}/members/${memberToRemove.userId._id}`, {
+      const res = await fetch(`/api/campaigns/${id}/members/${encodeURIComponent(memberId)}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -377,6 +396,7 @@ function CampaignDMView({ campaign, setCampaign }) {
       }
       const updatedCampaign = await res.json();
       setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setEditPlayers((prev) => prev.filter((player) => getUserId(player.userId) !== memberId));
       setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
       clearCachePrefix("campaigns:list:");
       setMemberToRemove(null);
@@ -427,7 +447,7 @@ function CampaignDMView({ campaign, setCampaign }) {
               players={editPlayers}
               onAddPlayer={(p) => setEditPlayers((prev) => [...prev, p])}
               onRemovePlayer={(userId) => {
-                const existingMember = players.find((player) => player.userId?._id === userId);
+                const existingMember = players.find((player) => getUserId(player.userId) === userId);
                 if (existingMember) {
                   setRemoveMemberError("");
                   setMemberToRemove(existingMember);

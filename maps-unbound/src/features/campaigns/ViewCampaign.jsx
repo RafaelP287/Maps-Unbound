@@ -6,6 +6,7 @@ import useCampaign from "./use-campaign.js";
 import CampaignDMView from "./CampaignDMView.jsx";
 import CampaignPlayerView from "./CampaignPlayerView.jsx";
 import { getUserId } from "../../shared/getUserId.js";
+import { setCachedValue } from "../../shared/dataCache.js";
 import "./campaign.css";
 
 function ViewCampaignPage() {
@@ -42,11 +43,15 @@ function ViewCampaignPage() {
   const currentUserId = user?.id;
   const currentMember = campaign.members.find((member) => getUserId(member.userId) === currentUserId);
   const isDM = currentMember?.role === "DM" || getUserId(campaign.createdBy) === currentUserId;
+  const handleCampaignUpdate = (nextCampaign) => {
+    setCampaign(nextCampaign);
+    setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, nextCampaign);
+  };
 
   // Route users to role-specific UIs: DM gets management controls, players get read-focused view.
   return isDM
     ? <CampaignDMView campaign={campaign} setCampaign={setCampaign} />
-    : <CampaignPlayerView campaign={campaign} user={user} />;
+    : <CampaignPlayerView campaign={campaign} user={user} onCampaignUpdate={handleCampaignUpdate} />;
 }
 
 export default ViewCampaignPage;

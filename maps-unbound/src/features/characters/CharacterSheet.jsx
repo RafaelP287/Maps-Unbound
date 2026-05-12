@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
 
+const API_SERVER = import.meta.env.VITE_API_SERVER || "";
+
 const CharacterSheet = ({ characterId, onClose, embedded = false }) => {
   const { token } = useAuth();
   const [character, setCharacter] = useState(null);
@@ -17,7 +19,7 @@ const CharacterSheet = ({ characterId, onClose, embedded = false }) => {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:5001/api/characters/${characterId}`,
+          `${API_SERVER}/api/characters/${characterId}`,
           {
             method: "GET",
             headers: {
@@ -31,7 +33,7 @@ const CharacterSheet = ({ characterId, onClose, embedded = false }) => {
         }
 
         const data = await response.json();
-        setCharacter(data);
+        setCharacter(data.character || data);
       } catch (err) {
         setError(err.message || "Failed to load character");
       } finally {

@@ -9,7 +9,7 @@ import useCampaignSessions from "./use-campaign-sessions.js";
 import { getUserId } from "../../shared/getUserId.js";
 import ActiveCharacterPicker from "./ActiveCharacterPicker.jsx";
 
-function CampaignPlayerView({ campaign, user }) {
+function CampaignPlayerView({ campaign, user, onCampaignUpdate }) {
   const navigate = useNavigate();
   const { token } = useAuth();
   const dmMember = campaign.members.find((m) => m.role === "DM");
@@ -81,7 +81,7 @@ function CampaignPlayerView({ campaign, user }) {
         <CampaignHero campaign={campaign} />
 
         <div className="campaign-card-panel">
-          <ActiveCharacterPicker campaign={campaign} user={user} />
+          <ActiveCharacterPicker campaign={campaign} user={user} onCampaignUpdate={onCampaignUpdate} />
 
           {openLobby && (
             <section className="campaign-player-lobby-panel">

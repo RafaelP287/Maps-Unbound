@@ -248,6 +248,36 @@
   white-space: nowrap;
 }
 
+.profile-danger-confirm-modal {
+  width: min(560px, 100%);
+  border-color: rgba(192, 57, 43, 0.48);
+}
+
+.profile-danger-confirm-modal h2 {
+  margin: 0.55rem 0 0.4rem;
+  color: #f2aaa2;
+}
+
+.profile-danger-confirm-modal p {
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.profile-danger-confirm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  border: 1px solid rgba(192, 57, 43, 0.46);
+  background: rgba(192, 57, 43, 0.16);
+  color: #f2aaa2;
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
 .profile-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

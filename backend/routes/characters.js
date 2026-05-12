@@ -8,6 +8,7 @@ import {
   streamPortraitImage,
 } from "../controllers/portraitController.js";
 import requireAuth from "../middleware/auth.js";
+import Campaign from "../models/Campaign.js";
 import {
   DEFAULT_RACES,
   DEFAULT_CLASSES,
@@ -176,13 +177,27 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET a single character by characterId or Mongo _id
-router.get("/:id", async (req, res) => {
+// GET a single character by characterId or Mongo _id.
+// Owners can view their own sheets; campaign members can view characters
+// selected by players in campaigns they share.
+router.get("/:id", requireAuth, async (req, res) => {
   try {
     const character = await getCharacter(req.params.id);
 
     if (!character) {
       return res.status(404).json({ error: "Character not found." });
+    }
+
+    const ownsCharacter = String(character.user) === String(req.user.userId);
+    const sharesCampaign = ownsCharacter
+      ? true
+      : await Campaign.exists({
+          "members.userId": req.user.userId,
+          "members.activeCharacterId": character._id,
+        });
+
+    if (!sharesCampaign) {
+      return res.status(403).json({ error: "You can only view characters in your campaigns." });
     }
 
     res.status(200).json({
@@ -231,8 +246,17 @@ router.post("/", async (req, res) => {
 });
 
 // PUT update an existing character
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAuth, async (req, res) => {
   try {
+    const existingCharacter = await getCharacter(req.params.id);
+    if (!existingCharacter) {
+      return res.status(404).json({ error: "Character not found." });
+    }
+
+    if (String(existingCharacter.user) !== String(req.user.userId)) {
+      return res.status(403).json({ error: "You can only edit your own characters." });
+    }
+
     const { name, raceObj, classObj, backgroundObj, alignmentObj, sheetData } =
       normalizeCharacterPayload(req.body);
 
@@ -266,9 +290,9 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE a character owned by the requesting user
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
-    const user = String(req.body?.user || req.query?.user || "").trim();
+    const user = String(req.user?.username || req.body?.user || req.query?.user || "").trim();
 
     if (!user) {
       return res.status(400).json({ error: "A username is required to delete a character." });

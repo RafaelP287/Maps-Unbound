@@ -39,6 +39,7 @@ const dmCampaignOwnershipFilter = (userId) => ({
 const populateCampaignForDetail = (query) =>
   query
     .populate("members.userId", "username email profileImageUrl")
+    .populate("members.activeCharacterId", "name race class level portrait")
     .populate("joinRequests.userId", "username email profileImageUrl")
     .populate("invitations.userId", "username email profileImageUrl");
 
@@ -304,9 +305,11 @@ router.get("/findable", verifyToken, async (req, res) => {
       .lean();
 
     const userId = req.user.userId;
-    const visibleCampaigns = campaigns.map((campaign) => {
+    const visibleCampaigns = campaigns.flatMap((campaign) => {
       const players = (campaign.members || []).filter((member) => member.role === "Player");
       const isMember = (campaign.members || []).some((member) => getUserId(member.userId) === userId);
+      if (isMember) return [];
+
       const request = (campaign.joinRequests || [])
         .slice()
         .reverse()
@@ -966,7 +969,7 @@ router.put("/:id/active-character", verifyToken, async (req, res) => {
     const populated = await Campaign.findById(req.params.id).populate(
       "members.userId",
       "username email"
-    );
+    ).populate("members.activeCharacterId", "name race class level portrait");
     res.json(populated);
   } catch (err) {
     console.error("Active character update error:", err);

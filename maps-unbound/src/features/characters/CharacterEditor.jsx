@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
+import { getUserId } from "../../shared/getUserId.js";
 import { clearCachePrefix, getCachedValue, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
 import {
   ABILITY_FIELDS,
@@ -48,6 +49,7 @@ function CharacterEditor() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [characterOwnerId, setCharacterOwnerId] = useState("");
   const [pendingNavigation, setPendingNavigation] = useState(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const allowNavigationRef = useRef(false);
@@ -79,6 +81,7 @@ function CharacterEditor() {
       const cachedForm = characterToForm(cachedCharacter);
       setFormData(cachedForm);
       setInitialSnapshot(JSON.stringify(cachedForm));
+      setCharacterOwnerId(getUserId(cachedCharacter.user));
       setIsLoading(false);
     } else {
       setIsLoading(true);
@@ -88,7 +91,11 @@ function CharacterEditor() {
       setError("");
 
       try {
-        const response = await fetch(`${API_SERVER}/api/characters/${id}`);
+        const response = await fetch(`${API_SERVER}/api/characters/${id}`, {
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
@@ -100,6 +107,7 @@ function CharacterEditor() {
         const nextForm = characterToForm(nextCharacter);
         setFormData(nextForm);
         setInitialSnapshot(JSON.stringify(nextForm));
+        setCharacterOwnerId(getUserId(nextCharacter.user));
         setCachedValue(cacheKey, nextCharacter);
         setPortraitUrl(nextCharacter.portrait?.url || "");
       } catch (err) {
@@ -114,7 +122,7 @@ function CharacterEditor() {
     };
 
     fetchCharacter();
-  }, [id, isLoggedIn, user?.username]);
+  }, [id, isLoggedIn, token, user?.username]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {
@@ -159,6 +167,26 @@ function CharacterEditor() {
 
   if (!isLoggedIn) {
     return <Gate>Sign in to access your characters.</Gate>;
+  }
+
+  if (!isLoading && characterOwnerId && user?.id && characterOwnerId !== getUserId(user.id)) {
+    return (
+      <div className="character-page">
+        <div className="character-shell">
+          <div className="character-error">You can only edit characters you own.</div>
+          <div className="character-action-group">
+            <button
+              type="button"
+              className="character-button character-btn-secondary"
+              onClick={() => navigate(`/characters/${id}`, { replace: true })}
+            >
+              <ArrowLeft aria-hidden="true" />
+              View Overview
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const updateField = (name, value) => {

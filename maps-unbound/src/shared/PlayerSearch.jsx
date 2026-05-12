@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getUserId } from "./getUserId.js";
 
 function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
   // Destructured logout to handle expired tokens
@@ -49,7 +50,7 @@ function PlayerSearch({ players, onAddPlayer, onRemovePlayer }) {
         const data = await res.json();
         
         // Filter out players that are already in the party
-        const addedIds = players.map((p) => p.userId);
+        const addedIds = players.map((p) => getUserId(p.userId));
         setSearchResults(data.filter((u) => !addedIds.includes(u._id)));
         
       } catch (err) {

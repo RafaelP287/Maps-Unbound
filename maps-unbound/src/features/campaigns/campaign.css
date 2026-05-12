@@ -297,6 +297,70 @@
   align-items: center;
 }
 
+.campaign-roster-list {
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.campaign-roster-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 34px;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(201, 168, 76, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.campaign-roster-character-link {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.campaign-roster-character-link:hover {
+  color: #fff2c2;
+  text-decoration: underline;
+}
+
+.campaign-roster-character-empty {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.campaign-character-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.campaign-character-item {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.16);
+  border-radius: 8px;
+  color: inherit;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  min-height: 76px;
+  padding: 0.85rem;
+  text-decoration: none;
+}
+
+.campaign-character-item:hover {
+  background: rgba(201, 168, 76, 0.08);
+  border-color: rgba(201, 168, 76, 0.38);
+}
+
+.campaign-character-item .campaign-resource-notes {
+  margin: 0.25rem 0 0;
+}
+
 .campaign-join-code-value {
   color: var(--gold-light);
   font-family: var(--font-heading);
@@ -1824,6 +1888,43 @@ textarea.campaign-quest-objective {
     color: rgba(255, 245, 220, 0.6);
     font-style: italic;
     font-size: 0.95rem;
+}
+
+.campaign-active-character-picker__confirm {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+.campaign-active-character-picker__button {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 8px;
+    color: #f0e0a0;
+    cursor: pointer;
+    display: inline-flex;
+    font-family: "Cinzel", serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    justify-content: center;
+    letter-spacing: 0.08em;
+    min-height: 34px;
+    padding: 0.35rem 0.75rem;
+    text-transform: uppercase;
+}
+
+.campaign-active-character-picker__button.is-primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-color: rgba(212, 175, 55, 0.7);
+    color: var(--bg-deep);
+}
+
+.campaign-active-character-picker__button:disabled {
+    cursor: not-allowed;
+    opacity: 0.62;
 }
 
 .campaign-active-character-picker__error {

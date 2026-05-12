@@ -256,6 +256,8 @@ export const createMap = async (req, res) => {
       jsonData: HAS_S3_CONFIG ? null : json,
       thumbnailDataUrl: !HAS_S3_CONFIG && thumbnailB64 ? `data:image/png;base64,${thumbnailB64}` : "",
       size: jsonSize + thumbnailSize,
+      jsonSize,
+      thumbnailSize,
     });
 
     res.status(201).json({
@@ -311,26 +313,20 @@ export const updateMap = async (req, res) => {
       willRewriteThumb = true;
     }
 
+    const oldJsonSize = Number.isFinite(map.jsonSize) && map.jsonSize > 0
+      ? map.jsonSize
+      : Math.max(0, map.size - (Number.isFinite(map.thumbnailSize) ? map.thumbnailSize : 0));
+    const oldThumbSize = Number.isFinite(map.thumbnailSize) && map.thumbnailSize > 0
+      ? map.thumbnailSize
+      : Math.max(0, map.size - oldJsonSize);
+    const projectedMapSize =
+      (willRewriteJson ? newJsonSize : oldJsonSize) +
+      (willRewriteThumb ? newThumbSize : oldThumbSize);
+
     if (willRewriteJson || willRewriteThumb) {
       // Subtract the old size from total usage, then add the new size, then check.
       const currentUsage = await getUserStorageUsage(userId, username);
       const oldContribution = map.size;
-      const newContribution =
-        (willRewriteJson ? newJsonSize : 0) +
-        (willRewriteThumb ? newThumbSize : 0) +
-        // Carry over whichever side isn't being rewritten this call.
-        (willRewriteJson ? 0 : Math.max(0, map.size - 0)) * 0; // (no-op placeholder)
-
-      // Simpler: project size = newJson + newThumb if both rewritten,
-      // or partial: keep old json size if only thumb is rewriting, etc.
-      // To compute that cleanly we'd need stored per-piece sizes; we don't, so
-      // approximate by keeping old size when only one piece changes.
-      const projectedMapSize = willRewriteJson && willRewriteThumb
-        ? newJsonSize + newThumbSize
-        : willRewriteJson
-          ? newJsonSize + Math.max(0, map.size - 0) // can't precisely subtract old json; treat as new
-          : Math.max(0, map.size - 0) + newThumbSize;
-
       const projectedTotal = currentUsage - oldContribution + projectedMapSize;
       if (projectedTotal > ONE_GB) {
         return res.status(403).json({ error: "Update exceeds 1GB total storage limit" });
@@ -382,17 +378,10 @@ export const updateMap = async (req, res) => {
       }
     }
 
-    // Recalculate size. If we only rewrote one piece, the other piece's size is unknown
-    // from this request — keep the document's previous size as a rough proxy and just
-    // overwrite both when both pieces are rewritten.
-    if (willRewriteJson && willRewriteThumb) {
-      map.size = newJsonSize + newThumbSize;
-    } else if (willRewriteJson) {
-      // Best effort: replace the json portion. Without per-piece sizes stored, we can't
-      // be exact — we treat newJsonSize as the new total minus an estimated thumb size.
-      map.size = newJsonSize + Math.max(0, map.size - 0); // simple approximation
-    } else if (willRewriteThumb) {
-      map.size = Math.max(0, map.size - 0) + newThumbSize;
+    if (willRewriteJson || willRewriteThumb) {
+      map.jsonSize = willRewriteJson ? newJsonSize : oldJsonSize;
+      map.thumbnailSize = willRewriteThumb ? newThumbSize : oldThumbSize;
+      map.size = map.jsonSize + map.thumbnailSize;
     }
 
     await map.save();
@@ -478,10 +467,12 @@ export const duplicateMap = async (req, res) => {
     }
     const jsonString = JSON.stringify(json);
     const estJsonSize = Buffer.byteLength(jsonString, "utf-8");
+    const originalJsonSize = original.jsonSize || estJsonSize;
+    const originalThumbnailSize = original.thumbnailSize || Math.max(0, original.size - originalJsonSize);
 
     // Quota check (count the duplicate against the user's budget).
     const currentUsage = await getUserStorageUsage(userId, username);
-    if (currentUsage + estJsonSize + (original.size - estJsonSize) > ONE_GB) {
+    if (currentUsage + estJsonSize + originalThumbnailSize > ONE_GB) {
       return res.status(403).json({ error: "Duplicate exceeds 1GB total storage limit" });
     }
 
@@ -490,6 +481,8 @@ export const duplicateMap = async (req, res) => {
 
     let newThumbKey = "";
     let thumbnailDataUrl = "";
+
+    let copiedThumbnailSize = originalThumbnailSize;
 
     if (HAS_S3_CONFIG && !original.jsonKey?.startsWith("local:")) {
       await s3Client.send(
@@ -507,6 +500,7 @@ export const duplicateMap = async (req, res) => {
           new GetObjectCommand({ Bucket: BUCKET_NAME, Key: original.thumbnailKey })
         );
         const thumbBytes = await thumbResult.Body.transformToByteArray();
+        copiedThumbnailSize = thumbBytes.byteLength;
         await s3Client.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -536,7 +530,9 @@ export const duplicateMap = async (req, res) => {
         : "",
       jsonData: HAS_S3_CONFIG && !original.jsonKey?.startsWith("local:") ? null : json,
       thumbnailDataUrl,
-      size: original.size, // close enough; gets corrected on next update
+      size: estJsonSize + copiedThumbnailSize,
+      jsonSize: estJsonSize,
+      thumbnailSize: copiedThumbnailSize,
     });
 
     res.status(201).json({

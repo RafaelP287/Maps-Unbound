@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { getUserId } from "../../shared/getUserId.js";
 
 const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 
@@ -12,7 +13,7 @@ const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 //   campaign — the populated campaign doc (with members.userId populated)
 //   user     — current user (from useAuth, has .id, .username)
 //
-function ActiveCharacterPicker({ campaign, user }) {
+function ActiveCharacterPicker({ campaign, user, onCampaignUpdate }) {
     const { token } = useAuth();
     const [myCharacters, setMyCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -59,12 +60,15 @@ function ActiveCharacterPicker({ campaign, user }) {
     // it a safe default — the early-return below means non-players don't
     // actually use it, but the hook MUST be called every render.
     const [activeId, setActiveId] = useState(
-        myMembership?.activeCharacterId?.toString() || ""
+        getUserId(myMembership?.activeCharacterId)
     );
+    const [pendingId, setPendingId] = useState(getUserId(myMembership?.activeCharacterId));
 
     // If the parent campaign reloads with a different value, sync to it.
     useEffect(() => {
-        setActiveId(myMembership?.activeCharacterId?.toString() || "");
+        const nextActiveId = getUserId(myMembership?.activeCharacterId);
+        setActiveId(nextActiveId);
+        setPendingId(nextActiveId);
     }, [myMembership?.activeCharacterId]);
 
     // Only Players see this picker — DM doesn't pick a character for themselves.
@@ -72,8 +76,20 @@ function ActiveCharacterPicker({ campaign, user }) {
         return null;
     }
 
-    const handleChange = async (event) => {
-        const characterId = event.target.value || null;
+    const handleChange = (event) => {
+        setError("");
+        setStatus("");
+        setPendingId(event.target.value || "");
+    };
+
+    const handleCancel = () => {
+        setError("");
+        setStatus("");
+        setPendingId(activeId);
+    };
+
+    const handleConfirm = async () => {
+        const characterId = pendingId || null;
         setError("");
         setStatus("");
         setSaving(true);
@@ -93,11 +109,11 @@ function ActiveCharacterPicker({ campaign, user }) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to update character");
             }
+            const updatedCampaign = await res.json();
             setStatus("Saved.");
-            // Update local state so the dropdown reflects the new pick instantly.
-            // (Also mutate the membership row so the warning state recomputes.)
             setActiveId(characterId || "");
-            myMembership.activeCharacterId = characterId;
+            setPendingId(characterId || "");
+            onCampaignUpdate?.(updatedCampaign);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -106,6 +122,11 @@ function ActiveCharacterPicker({ campaign, user }) {
     };
 
     const needsToPick = !activeId && myCharacters.length > 0;
+    const hasPendingChange = pendingId !== activeId;
+    const pendingCharacter = myCharacters.find((char) => char._id === pendingId);
+    const pendingLabel = pendingCharacter
+        ? `${pendingCharacter.name} (Lv ${pendingCharacter.level || 1} ${pendingCharacter.race?.name || ""} ${pendingCharacter.class?.name || ""})`
+        : "No character selected";
 
     return (
         <div
@@ -129,7 +150,7 @@ function ActiveCharacterPicker({ campaign, user }) {
                 ) : (
                     <select
                         className="campaign-active-character-picker__select"
-                        value={activeId}
+                        value={pendingId}
                         onChange={handleChange}
                         disabled={saving}
                     >
@@ -140,6 +161,29 @@ function ActiveCharacterPicker({ campaign, user }) {
                             </option>
                         ))}
                     </select>
+                )}
+                {hasPendingChange && (
+                    <div className="campaign-active-character-picker__confirm">
+                        <span className="campaign-active-character-picker__hint">
+                            Confirm change to {pendingLabel}.
+                        </span>
+                        <button
+                            type="button"
+                            className="campaign-active-character-picker__button is-primary"
+                            onClick={handleConfirm}
+                            disabled={saving}
+                        >
+                            {saving ? "Saving..." : "Confirm"}
+                        </button>
+                        <button
+                            type="button"
+                            className="campaign-active-character-picker__button"
+                            onClick={handleCancel}
+                            disabled={saving}
+                        >
+                            Cancel
+                        </button>
+                    </div>
                 )}
                 {error && <span className="campaign-active-character-picker__error">{error}</span>}
                 {status && !error && (
