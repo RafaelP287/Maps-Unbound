@@ -22,7 +22,7 @@ function SessionMapCanvas({
     turns = [],
     round = 0,
     readOnly = false,
-    onAdvanceTurn,
+    onAdvanceTurn: _onAdvanceTurn,
     onCombatStateChange,
     onCombatStart,
     onCombatEnd,
@@ -39,8 +39,7 @@ function SessionMapCanvas({
     const [combatSetupError, setCombatSetupError] = useState("");
     const [draftParticipants, setDraftParticipants] = useState([]);
     const rowIdRef = useRef(0);
-    const [draftParticipants, setDraftParticipants] = useState([]);
-    const rowIdRef = useRef(0);
+
 
     // Helper: post a message into the Godot iframe (it listens via window.addEventListener('message'))
     const sendToGodot = useCallback((type, data = {}) => {
