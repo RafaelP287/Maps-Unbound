@@ -20,16 +20,23 @@ const router = express.Router();
 const STATUSES = new Set(["Planned", "In Progress", "Completed", "Archived"]);
 const NOTE_ROLES = new Set(["DM", "Player"]);
 
-const sanitizeSessionNotesForViewer = (notes, isDM) =>
+const getNoteAuthorId = (note) => note?.authorId?.toString?.() || note?.authorId || "";
+
+const sanitizeSessionNotesForViewer = (notes, isDM, viewerId) =>
   (Array.isArray(notes) ? notes : []).filter((note) =>
-    isDM || note?.authorRole !== "DM" || Boolean(note?.visibleToPlayers)
+    isDM ||
+    getNoteAuthorId(note) === viewerId ||
+    (note?.authorRole === "DM" && Boolean(note?.visibleToPlayers))
   );
 
-const serializeSessionForViewer = (sessionDoc, isDM) => {
+const serializeSessionForViewer = (sessionDoc, isDM, viewerId) => {
   const session = typeof sessionDoc?.toObject === "function" ? sessionDoc.toObject() : { ...sessionDoc };
-  session.notes = sanitizeSessionNotesForViewer(session.notes, isDM);
+  session.notes = sanitizeSessionNotesForViewer(session.notes, isDM, viewerId);
   return session;
 };
+
+const getCampaignMembership = (campaign, userId) =>
+  campaign?.members?.find((m) => m.userId.toString() === userId) || null;
 
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -54,7 +61,7 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(400).json({ error: "campaignId is required" });
     }
 
-    const campaign = await Campaign.findById(campaignId);
+    const campaign = await Campaign.findById(campaignId).select("members sessionIds");
     if (!campaign) {
       return res.status(404).json({ error: "Campaign not found" });
     }
@@ -66,7 +73,7 @@ router.post("/", verifyToken, async (req, res) => {
       return res.status(403).json({ error: "Only the DM can create sessions" });
     }
 
-    const title = req.body.title?.trim();
+    let title = req.body.title?.trim();
     if (!title || title.length < 3) {
       return res.status(400).json({ error: "Title must be at least 3 characters" });
     }
@@ -77,9 +84,20 @@ router.post("/", verifyToken, async (req, res) => {
     }
 
     const sessionNumberValue = Number(req.body.sessionNumber);
-    const sessionNumber = Number.isFinite(sessionNumberValue)
+    let sessionNumber = Number.isFinite(sessionNumberValue)
       ? Math.max(1, Math.trunc(sessionNumberValue))
       : undefined;
+
+    if (!sessionNumber) {
+      const latestSession = await Session.findOne({ campaignId })
+        .select("sessionNumber")
+        .sort({ sessionNumber: -1, createdAt: -1 })
+        .lean();
+      sessionNumber = (Number(latestSession?.sessionNumber) || 0) + 1;
+    }
+    if (title === "Session") {
+      title = `Session ${sessionNumber}`;
+    }
 
     const scheduledFor = req.body.scheduledFor ? new Date(req.body.scheduledFor) : undefined;
     if (scheduledFor && Number.isNaN(scheduledFor.getTime())) {
@@ -141,10 +159,17 @@ router.put("/:id", verifyToken, async (req, res) => {
       return res.status(404).json({ error: "Campaign not found" });
     }
 
-    const isDM = campaign.members.some(
-      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
+    const membership = getCampaignMembership(campaign, req.user.userId);
+    if (!membership) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+    const isDM = membership.role === "DM";
+    const hasSessionNoteContent = Object.prototype.hasOwnProperty.call(req.body, "sessionNoteContent");
+    const requestedFields = Object.keys(req.body || {});
+    const noteOnlyUpdate = requestedFields.every((field) =>
+      ["sessionNoteContent", "sessionNoteVisibleToPlayers"].includes(field)
     );
-    if (!isDM) {
+    if (!isDM && (!hasSessionNoteContent || !noteOnlyUpdate)) {
       return res.status(403).json({ error: "Only the DM can update this session" });
     }
 
@@ -201,15 +226,18 @@ router.put("/:id", verifyToken, async (req, res) => {
       }
       noteToAppend = {
         authorId: req.user.userId,
-        authorRole: "DM",
+        authorRole: isDM ? "DM" : "Player",
         content,
-        visibleToPlayers: Boolean(req.body.sessionNoteVisibleToPlayers),
+        visibleToPlayers: isDM ? Boolean(req.body.sessionNoteVisibleToPlayers) : true,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
     }
 
     if (Object.prototype.hasOwnProperty.call(req.body, "noteVisibilityIndex")) {
+      if (!isDM) {
+        return res.status(403).json({ error: "Only the DM can change note visibility" });
+      }
       const noteIndex = Number(req.body.noteVisibilityIndex);
       if (!Number.isInteger(noteIndex) || noteIndex < 0 || noteIndex >= session.notes.length) {
         return res.status(400).json({ error: "Invalid noteVisibilityIndex" });
@@ -218,7 +246,7 @@ router.put("/:id", verifyToken, async (req, res) => {
       session.notes[noteIndex].visibleToPlayers = Boolean(req.body.noteVisibleToPlayers);
       session.notes[noteIndex].updatedAt = new Date();
       await session.save();
-      return res.json(serializeSessionForViewer(session, true));
+      return res.json(serializeSessionForViewer(session, true, req.user.userId));
     }
 
     const updatePayload = noteToAppend
@@ -231,7 +259,7 @@ router.put("/:id", verifyToken, async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    res.json(updatedSession);
+    res.json(serializeSessionForViewer(updatedSession, isDM, req.user.userId));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -241,11 +269,12 @@ router.put("/:id", verifyToken, async (req, res) => {
 router.get("/", verifyToken, async (req, res) => {
   try {
     const { campaignId } = req.query;
+    const includeNotes = req.query.includeNotes === "true";
     if (!campaignId) {
       return res.status(400).json({ error: "campaignId is required" });
     }
 
-    const campaign = await Campaign.findById(campaignId);
+    const campaign = await Campaign.findById(campaignId).select("members").lean();
     if (!campaign) {
       return res.status(404).json({ error: "Campaign not found" });
     }
@@ -259,8 +288,57 @@ router.get("/", verifyToken, async (req, res) => {
     }
     const isDM = membership.role === "DM";
 
-    const sessions = await Session.find({ campaignId }).sort({ sessionNumber: 1, createdAt: 1 });
-    res.json(sessions.map((session) => serializeSessionForViewer(session, isDM)));
+    const sessionFields = includeNotes
+      ? "campaignId title sessionNumber status scheduledFor startedAt endedAt summary notes participants tags createdAt updatedAt"
+      : "campaignId title sessionNumber status scheduledFor startedAt endedAt summary participants tags createdAt updatedAt";
+    const sessions = await Session.find({ campaignId })
+      .select(sessionFields)
+      .sort({ sessionNumber: 1, createdAt: 1 })
+      .lean();
+    res.json(sessions.map((session) => serializeSessionForViewer(session, isDM, req.user.userId)));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get journal-ready campaign activity in one request (members only)
+router.get("/journal/:campaignId", verifyToken, async (req, res) => {
+  try {
+    const { campaignId } = req.params;
+    const campaign = await Campaign.findById(campaignId).select("members").lean();
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const membership = getCampaignMembership(campaign, req.user.userId);
+    if (!membership) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const isDM = membership.role === "DM";
+    const [sessions, encounters] = await Promise.all([
+      Session.find({ campaignId })
+        .select("campaignId title sessionNumber status scheduledFor startedAt endedAt summary notes participants tags createdAt updatedAt")
+        .sort({ sessionNumber: 1, createdAt: 1 })
+        .lean(),
+      Encounter.find({ campaignId })
+        .select("campaignId sessionId name status startedAt endedAt rounds relatedMap initiative summary notes createdAt updatedAt")
+        .sort({ sessionId: 1, createdAt: 1 })
+        .lean(),
+    ]);
+
+    const encountersBySession = encounters.reduce((groups, encounter) => {
+      const key = encounter.sessionId?.toString();
+      if (!key) return groups;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(encounter);
+      return groups;
+    }, {});
+
+    res.json({
+      sessions: sessions.map((session) => serializeSessionForViewer(session, isDM, req.user.userId)),
+      encountersBySession,
+    });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -269,10 +347,10 @@ router.get("/", verifyToken, async (req, res) => {
 // Get a session by ID (members only)
 router.get("/:id", verifyToken, async (req, res) => {
   try {
-    const session = await Session.findById(req.params.id);
+    const session = await Session.findById(req.params.id).lean();
     if (!session) return res.status(404).json({ error: "Session not found" });
 
-    const campaign = await Campaign.findById(session.campaignId);
+    const campaign = await Campaign.findById(session.campaignId).select("members").lean();
     if (!campaign) {
       return res.status(404).json({ error: "Campaign not found" });
     }
@@ -286,7 +364,46 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
     const isDM = membership.role === "DM";
 
-    res.json(serializeSessionForViewer(session, isDM));
+    res.json(serializeSessionForViewer(session, isDM, req.user.userId));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Join a session lobby or active session (campaign members only)
+router.post("/:id/join", verifyToken, async (req, res) => {
+  try {
+    const session = await Session.findById(req.params.id);
+    if (!session) return res.status(404).json({ error: "Session not found" });
+
+    if (["Completed", "Archived"].includes(session.status)) {
+      return res.status(400).json({ error: "This session is no longer open" });
+    }
+
+    const campaign = await Campaign.findById(session.campaignId).select("members").lean();
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    const membership = getCampaignMembership(campaign, req.user.userId);
+    if (!membership) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const alreadyJoined = session.participants.some(
+      (participant) => participant.userId.toString() === req.user.userId
+    );
+
+    if (!alreadyJoined) {
+      session.participants.push({
+        userId: req.user.userId,
+        role: membership.role,
+      });
+      await session.save();
+    }
+
+    const updatedSession = await Session.findById(session._id).lean();
+    res.json(serializeSessionForViewer(updatedSession, membership.role === "DM", req.user.userId));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -1,306 +1,177 @@
 import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  BookOpenText,
+  Boxes,
+  Compass,
+  Map,
+  ScrollText,
+  UsersRound,
+} from "lucide-react";
 import mapIMG from "./images/home1.jpg";
 import characterIMG from "./images/home2.jpg";
 import campaignIMG from "./images/home3.jpg";
 import partyFinderIMG from "./images/home4.jpg";
+import assetFinderIMG from "./images/home5.jpg";
+import compendiumIMG from "./images/home6.jpg";
+import "./home.css";
 
-const services = [
+const features = [
   {
+    eyebrow: "Build the world",
     title: "Map Editor",
-    description: "Craft immersive worlds with our intuitive map editor — draw terrain, place landmarks, and bring your realm to life.",
+    description: "Sketch regions, frame encounters, and keep tactical spaces ready before the table asks what they see.",
     image: mapIMG,
     path: "/maps",
+    icon: Map,
+    meta: "Battlefields and regions",
+    isFeatured: true,
   },
   {
-    title: "Character Management",
-    description: "Forge heroes and track their legend with comprehensive character sheets, inventory, and progression tools.",
+    eyebrow: "Track the party",
+    title: "Characters",
+    description: "Manage heroes, sheets, inventory, and progression without scattering player details across tabs.",
     image: characterIMG,
     path: "/characters",
+    icon: UsersRound,
+    meta: "Roster and sheets",
   },
   {
-    title: "Campaign Management",
-    description: "Orchestrate your saga — organize sessions, track party progress, and chronicle every chapter of your adventure.",
+    eyebrow: "Run the saga",
+    title: "Campaigns",
+    description: "Connect sessions, quests, NPCs, loot, and notes to the campaign they belong to.",
     image: campaignIMG,
     path: "/campaigns",
+    icon: ScrollText,
+    meta: "Sessions and journals",
   },
   {
+    eyebrow: "Fill the table",
     title: "Party Finder",
-    description: "Venture forth together. Find fellow adventurers, assemble a party, or open your table to new heroes.",
+    description: "Open a campaign to new players or find available tables when the next adventure needs a crew.",
     image: partyFinderIMG,
     path: "/party-finder",
+    icon: Compass,
+    meta: "Players and games",
+  },
+  {
+    eyebrow: "Dress the scene",
+    title: "Asset Library",
+    description: "Browse tokens, tiles, props, and scene material that can give your maps more life.",
+    image: assetFinderIMG,
+    path: "/asset-finder",
+    icon: Boxes,
+    meta: "Tokens and props",
+  },
+  {
+    eyebrow: "Reference rules",
+    title: "Compendium",
+    description: "Pull up rules, lore, and inspiration while planning or resolving a call at the table.",
+    image: compendiumIMG,
+    path: "/ruleset",
+    icon: BookOpenText,
+    meta: "Rules and lore",
+  },
+];
+
+const workflow = [
+  {
+    number: "01",
+    title: "Prepare",
+    text: "Create the campaign, gather the roster, and shape the places your players will explore.",
+  },
+  {
+    number: "02",
+    title: "Play",
+    text: "Move from planning into sessions, encounters, maps, character choices, and table flow.",
+  },
+  {
+    number: "03",
+    title: "Remember",
+    text: "Carry forward what happened through journals, notes, quests, NPCs, loot, and party history.",
   },
 ];
 
 function Home() {
   return (
-    <div style={pageStyle}>
+    <main className="home-page">
+      <section className="home-hero">
+        <div className="home-hero-bg" aria-hidden="true" />
+        <div className="home-hero-shell">
+          <div className="home-hero-copy">
+            <div className="hero-animate hero-animate-1 home-ornament-row">
+              <span />
+              <b>✦ ✦ ✦</b>
+              <span />
+            </div>
 
-      {/* ── Hero ── */}
-      <section style={heroStyle}>
-        <div style={heroInnerStyle}>
-          {/* Ornamental top line */}
-          <div className="hero-animate hero-animate-1" style={ornamentRowStyle}>
-            <div style={ornamentLineStyle} />
-            <span style={ornamentRuneStyle}>✦ ✦ ✦</span>
-            <div style={ornamentLineStyle} />
-          </div>
+            <p className="hero-animate hero-animate-1 home-kicker">Welcome to</p>
+            <h1 className="hero-animate hero-animate-2">Maps Unbound</h1>
+            <p className="hero-animate hero-animate-3 home-hero-subtitle">
+              A virtual tabletop workspace for building worlds, running campaigns, managing heroes, and keeping the story moving.
+            </p>
 
-          <p className="hero-animate hero-animate-1" style={welcomeTextStyle}>
-            Welcome to
-          </p>
-
-          <h1 className="hero-animate hero-animate-2" style={heroTitleStyle}>
-            Maps Unbound
-          </h1>
-
-          <p className="hero-animate hero-animate-3" style={heroSubtextStyle}>
-            Your personal virtual tabletop RPG destination — forge worlds, build legends, and gather your party.
-          </p>
-
-          <div className="hero-animate hero-animate-4" style={heroCtaWrapStyle}>
-            <Link to="/signup" className="hero-cta">
-              Begin Your Journey
-            </Link>
-            <Link to="/login" style={secondaryCtaStyle}>
-              Already a member? Sign in →
-            </Link>
-          </div>
-
-          {/* Ornamental bottom line */}
-          <div className="hero-animate hero-animate-4" style={{ ...ornamentRowStyle, marginTop: "3rem" }}>
-            <div style={ornamentLineStyle} />
-            <span style={ornamentRuneStyle}>✦</span>
-            <div style={ornamentLineStyle} />
+            <div className="hero-animate hero-animate-4 home-hero-actions">
+              <div className="home-hero-action-row">
+                <Link to="/signup" className="hero-cta">Begin Your Journey</Link>
+              </div>
+              <div className="home-hero-action-row">
+                <Link to="/login" className="home-secondary-link">Already a member? Sign in <ArrowRight size={14} /></Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ── Services ── */}
-      <section style={servicesStyle}>
-        <div style={sectionHeaderStyle}>
-          <div style={sectionDivStyle} />
-          <h2 style={sectionTitleStyle}>What Awaits You</h2>
-          <div style={sectionDivStyle} />
+      <section className="home-suite">
+        <div className="home-suite-header">
+          <div>
+            <h2>Everything after session zero</h2>
+            <p>Move from idea to active campaign with tools that stay close to the way tabletop groups actually play.</p>
+          </div>
         </div>
-        <p style={sectionSubtextStyle}>
-          Everything you need to run, play, and chronicle your tabletop adventures.
-        </p>
 
-        <div style={cardsWrapStyle}>
-          {services.map((service) => (
-            <Link
-              key={service.title}
-              to={service.path}
-              className="service-card"
-              style={{ backgroundImage: `url(${service.image})`, textDecoration: "none" }}
-            >
-              {/* Scrim */}
-              <div
-                className="service-card-overlay"
-                style={cardOverlayStyle}
-              />
-              {/* Content */}
-              <div style={cardContentStyle}>
-                <div style={cardHeaderRowStyle}>
-                  <h3 style={cardTitleStyle}>{service.title}</h3>
+        <div className="home-suite-grid">
+          {features.map((feature) => {
+            const Icon = feature.icon;
+
+            return (
+              <Link
+                key={feature.title}
+                to={feature.path}
+                className={`home-feature-card ${feature.isFeatured ? "home-feature-card-large" : ""}`}
+                style={{ backgroundImage: `url(${feature.image})` }}
+              >
+                <span className="home-feature-scrim" />
+                <span className="home-feature-meta">
+                  <Icon size={16} aria-hidden="true" />
+                  {feature.meta}
+                </span>
+                <div className="home-feature-copy">
+                  <p>{feature.eyebrow}</p>
+                  <h3>{feature.title}</h3>
+                  <span>{feature.description}</span>
                 </div>
-                <p style={cardDescStyle}>{service.description}</p>
-                <span style={cardLinkStyle}>Explore →</span>
-              </div>
-            </Link>
+                <span className="home-feature-action">
+                  Open <ArrowRight size={15} aria-hidden="true" />
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="home-play-strip">
+          {workflow.map((step) => (
+            <div key={step.number}>
+              <span>{step.number}</span>
+              <strong>{step.title}</strong>
+              <p>{step.text}</p>
+            </div>
           ))}
         </div>
       </section>
-    </div>
+    </main>
   );
 }
-
-/* ── Styles ── */
-const pageStyle = {
-  minHeight: "100vh",
-};
-
-/* Hero */
-const heroStyle = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: "92vh",
-  padding: "6rem 2rem 4rem",
-  textAlign: "center",
-};
-
-const heroInnerStyle = {
-  maxWidth: "680px",
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "1rem",
-};
-
-const ornamentRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "1rem",
-  width: "100%",
-  maxWidth: "420px",
-};
-
-const ornamentLineStyle = {
-  flex: 1,
-  height: "1px",
-  background: `linear-gradient(to right, transparent, rgba(201,168,76,0.4))`,
-};
-
-const ornamentRuneStyle = {
-  color: "var(--gold)",
-  fontSize: "0.7rem",
-  letterSpacing: "0.5em",
-  opacity: 0.6,
-};
-
-const welcomeTextStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "0.9rem",
-  letterSpacing: "0.3em",
-  textTransform: "uppercase",
-  color: "var(--gold)",
-  margin: 0,
-  opacity: 0.8,
-};
-
-const heroTitleStyle = {
-  fontFamily: "'Cinzel Decorative', serif",
-  fontSize: "clamp(2.5rem, 8vw, 5rem)",
-  color: "var(--gold-light)",
-  margin: 0,
-  letterSpacing: "0.04em",
-  textShadow: `0 0 60px rgba(201,168,76,0.25), 0 2px 4px rgba(0,0,0,0.8)`,
-  lineHeight: 1.1,
-};
-
-const heroSubtextStyle = {
-  fontFamily: "'Crimson Text', serif",
-  fontSize: "1.2rem",
-  fontStyle: "italic",
-  color: "#b0a08a",
-  maxWidth: "500px",
-  margin: 0,
-  lineHeight: 1.6,
-};
-
-const heroCtaWrapStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "1rem",
-  marginTop: "0.5rem",
-};
-
-const secondaryCtaStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "0.72rem",
-  letterSpacing: "0.1em",
-  textTransform: "uppercase",
-  color: "#7a6e5e",
-  textDecoration: "none",
-  transition: "color 0.2s",
-};
-
-/* Services section */
-const servicesStyle = {
-  padding: "2rem 2rem 6rem",
-  maxWidth: "960px",
-  margin: "0 auto",
-};
-
-const sectionHeaderStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "1rem",
-  marginBottom: "0.6rem",
-};
-
-const sectionDivStyle = {
-  flex: 1,
-  height: "1px",
-  background: `linear-gradient(to right, transparent, rgba(201,168,76,0.3))`,
-};
-
-const sectionTitleStyle = {
-  fontFamily: "'Cinzel Decorative', serif",
-  fontSize: "clamp(1.2rem, 3vw, 1.7rem)",
-  color: "var(--gold-light)",
-  margin: 0,
-  whiteSpace: "nowrap",
-  textShadow: `0 0 30px rgba(201,168,76,0.15)`,
-};
-
-const sectionSubtextStyle = {
-  fontFamily: "'Crimson Text', serif",
-  fontStyle: "italic",
-  color: "#7a6e5e",
-  textAlign: "center",
-  marginBottom: "2.5rem",
-};
-
-const cardsWrapStyle = {
-  display: "flex",
-  flexDirection: "column",
-  gap: "16px",
-  alignItems: "center",
-};
-
-/* Card */
-const cardOverlayStyle = {
-  position: "absolute",
-  inset: 0,
-  background: "linear-gradient(to top, rgba(8,6,3,0.92) 0%, rgba(8,6,3,0.4) 55%, transparent 100%)",
-  transition: "background 0.3s",
-};
-
-const cardContentStyle = {
-  position: "relative",
-  zIndex: 1,
-  padding: "1.5rem 2rem",
-  display: "flex",
-  flexDirection: "column",
-  gap: "0.4rem",
-};
-
-const cardHeaderRowStyle = {
-  display: "flex",
-  alignItems: "center",
-  gap: "0.7rem",
-};
-
-const cardTitleStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "1.1rem",
-  fontWeight: "700",
-  color: "var(--gold-light)",
-  margin: 0,
-  letterSpacing: "0.06em",
-};
-
-const cardDescStyle = {
-  fontFamily: "'Crimson Text', serif",
-  fontSize: "1rem",
-  color: "#b0a08a",
-  fontStyle: "italic",
-  margin: 0,
-  lineHeight: 1.5,
-  maxWidth: "560px",
-};
-
-const cardLinkStyle = {
-  fontFamily: "'Cinzel', serif",
-  fontSize: "0.68rem",
-  letterSpacing: "0.12em",
-  textTransform: "uppercase",
-  color: "var(--gold)",
-  marginTop: "0.25rem",
-};
 
 export default Home;

@@ -1,24 +1,43 @@
 import { Link } from "react-router-dom";
+import { getUserId } from "../../shared/getUserId.js";
 import placeholderImage from "./images/DnD.jpg";
 
-const CampaignCard = ({ campaign, currentUser }) => {
+const CampaignCard = ({ campaign, currentUser, activeSession = null }) => {
   // Determine user's role in the campaign and total members
-  const member = campaign.members.find((m) => m.userId === currentUser);
-  const isDM = member && member.role === "DM";
+  const member = campaign.members.find((m) => {
+    return getUserId(m.userId) === getUserId(currentUser);
+  });
+  const isDM = member?.role === "DM" || getUserId(campaign.createdBy) === getUserId(currentUser);
   // Card count reflects everyone in campaign (DM + players).
   const totalPlayers = campaign.members.length;
   const status = campaign.status || "Planning";
+  const sessionStarted = Boolean(activeSession?.startedAt);
+  const activeSessionLabel = sessionStarted ? "Session Live" : "Lobby Open";
+  const activeSessionTitle = activeSession?.title || "Active Session";
 
   return (
     <Link
       to={`/campaigns/${campaign._id}`}
       className="campaign-card"
-      style={{ backgroundImage: `url(${campaign.image || placeholderImage})` }}
     >
+      <img
+        className="campaign-card-image"
+        src={campaign.image || placeholderImage}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        aria-hidden="true"
+      />
       {/* Role badge */}
-      {member && (
+      {(member || isDM) && (
         <div style={isDM ? dmBadgeStyle : playerBadgeStyle}>
           {isDM ? "DM" : "Player"}
+        </div>
+      )}
+      {activeSession && (
+        <div style={sessionNotifierStyle}>
+          <span style={sessionDotStyle} />
+          <span>{activeSessionLabel}</span>
         </div>
       )}
 
@@ -29,6 +48,9 @@ const CampaignCard = ({ campaign, currentUser }) => {
         </div>
         <h3 style={titleStyle}>{campaign.title}</h3>
         <p style={descStyle}>{campaign.description}</p>
+        {activeSession && (
+          <p style={sessionTextStyle}>{activeSessionTitle}</p>
+        )}
         <div style={footerRowStyle}>
           <span style={playerCountStyle}>
             {totalPlayers} {totalPlayers === 1 ? "member" : "members"}
@@ -75,6 +97,40 @@ const playerBadgeStyle = {
   border: `1px solid var(--border)`,
 };
 
+const sessionNotifierStyle = {
+  position: "absolute",
+  top: "42px",
+  right: "10px",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  maxWidth: "calc(100% - 20px)",
+  background: "rgba(34, 92, 68, 0.92)",
+  color: "#f3ffe9",
+  border: "1px solid rgba(151, 222, 167, 0.75)",
+  boxShadow: "0 8px 20px rgba(0,0,0,0.35)",
+  padding: "4px 9px",
+  borderRadius: "999px",
+  fontSize: "0.58rem",
+  fontFamily: "'Cinzel', serif",
+  fontWeight: "700",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  zIndex: 2,
+};
+
+const sessionDotStyle = {
+  width: "7px",
+  height: "7px",
+  borderRadius: "50%",
+  background: "#a7f3a2",
+  boxShadow: "0 0 10px rgba(167,243,162,0.9)",
+  flex: "0 0 auto",
+};
+
 const titleStyle = {
   margin: 0,
   fontFamily: "'Cinzel', serif",
@@ -119,6 +175,19 @@ const descStyle = {
   overflow: "hidden",
   lineHeight: 1.4,
   textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+};
+
+const sessionTextStyle = {
+  margin: "-1px 0 0",
+  fontFamily: "'Cinzel', serif",
+  fontSize: "0.6rem",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#d7f9ca",
+  textShadow: "0 2px 8px rgba(0,0,0,0.8)",
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
 };
 
 const footerRowStyle = {

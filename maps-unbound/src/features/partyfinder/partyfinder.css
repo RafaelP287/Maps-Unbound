@@ -1,0 +1,557 @@
+.pf-page {
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 20% 0%, var(--bg-warm) 0%, var(--bg-deep) 60%);
+  padding: 2.5rem 1.2rem 4rem;
+}
+
+.pf-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.section-page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1.8rem;
+}
+
+.section-header-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border), transparent);
+  margin: 0.7rem 0;
+}
+
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+}
+
+.section-header-rune {
+  color: var(--gold);
+  font-size: 1.15rem;
+  opacity: 0.72;
+}
+
+.section-page-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  color: var(--gold-light);
+  margin: 0;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 30px rgba(201, 168, 76, 0.25);
+  text-align: center;
+}
+
+.pf-subtitle {
+  color: var(--text-muted);
+  margin: 0.4rem 0 0;
+  text-align: center;
+}
+
+.pf-mode-selector {
+  display: flex;
+  justify-content: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.3rem;
+}
+
+.pf-mode-btn {
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.pf-mode-btn.is-active {
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: var(--bg-deep);
+  border-color: transparent;
+}
+
+.pf-alert {
+  border-radius: 8px;
+  padding: 0.65rem 0.9rem;
+  margin: 0 auto 1rem;
+  max-width: 760px;
+  border: 1px solid;
+}
+
+.pf-alert-error {
+  background: rgba(192, 57, 43, 0.12);
+  border-color: rgba(192, 57, 43, 0.5);
+  color: #f0c6be;
+}
+
+.pf-alert-success {
+  background: rgba(76, 175, 130, 0.14);
+  border-color: rgba(76, 175, 130, 0.45);
+  color: #c6e7d7;
+}
+
+.pf-alert-warn {
+  background: rgba(201, 168, 76, 0.14);
+  border-color: rgba(201, 168, 76, 0.45);
+  color: #ebdebc;
+}
+
+.pf-loading,
+.pf-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 1rem;
+}
+
+.pf-campaign-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-code-panel {
+  align-items: center;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 1rem;
+}
+
+.pf-code-panel h2 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  margin: 0 0 0.25rem;
+}
+
+.pf-code-panel p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.pf-code-form {
+  display: flex;
+  gap: 0.6rem;
+  min-width: min(360px, 100%);
+}
+
+.pf-code-input {
+  flex: 1;
+  text-transform: uppercase;
+}
+
+.pf-request-panel {
+  background: var(--panel-bg);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  margin-bottom: 1.4rem;
+  padding: 1rem;
+}
+
+.pf-section-heading-row {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  margin-bottom: 0.7rem;
+}
+
+.pf-section-heading-row h2 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  margin: 0;
+}
+
+.pf-section-heading-row span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.pf-request-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.pf-recruiting-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.pf-recruit-controls {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: minmax(240px, 1fr);
+  margin-bottom: 1rem;
+}
+
+.pf-helper-copy {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0 0 0.8rem;
+}
+
+.pf-recruit-controls label {
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+
+.pf-recruit-controls span {
+  color: var(--gold);
+  font-family: var(--font-heading);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pf-recruit-controls select,
+.pf-recruit-controls input {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-base);
+  font: inherit;
+  padding: 0.65rem 0.8rem;
+}
+
+.pf-player-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.pf-player-card {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: auto 1fr auto;
+  padding: 0.7rem;
+}
+
+.pf-player-card h3 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  margin: 0 0 0.2rem;
+}
+
+.pf-player-card p {
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.pf-player-avatar {
+  align-items: center;
+  background: rgba(201, 168, 76, 0.15);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 50%;
+  color: var(--gold);
+  display: inline-flex;
+  font-family: var(--font-heading);
+  height: 42px;
+  justify-content: center;
+  overflow: hidden;
+  width: 42px;
+}
+
+.pf-player-avatar img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.pf-campaign-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+}
+
+.pf-campaign-card p {
+  margin: 0;
+}
+
+.pf-campaign-image {
+  width: 100%;
+  height: 100%;
+  min-height: 190px;
+  object-fit: cover;
+  display: block;
+}
+
+.pf-campaign-card-body {
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pf-campaign-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pf-campaign-card-header h2 {
+  color: var(--gold-light);
+  margin: 0 0 0.4rem;
+  font-family: var(--font-heading);
+}
+
+.pf-campaign-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+}
+
+.pf-campaign-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: auto;
+}
+
+.pf-request-status {
+  border-radius: 8px;
+  padding: 0.55rem 0.75rem;
+  font-weight: 600;
+}
+
+.pf-request-status-approved {
+  background: rgba(76, 175, 130, 0.16);
+  color: #9fd8be;
+  border: 1px solid rgba(76, 175, 130, 0.3);
+}
+
+.pf-request-status-pending {
+  background: rgba(201, 168, 76, 0.16);
+  color: #e8d9ae;
+  border: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+.pf-request-status-rejected {
+  background: rgba(192, 57, 43, 0.16);
+  color: #e8b0a8;
+  border: 1px solid rgba(192, 57, 43, 0.3);
+}
+
+.pf-join-requests {
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.26);
+  padding: 0.8rem;
+}
+
+.pf-request-item {
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem;
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+.pf-request-item h3 {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+  margin: 0 0 0.25rem;
+}
+
+.pf-request-item p {
+  color: var(--text-muted);
+  margin: 0.15rem 0 0;
+}
+
+.pf-request-checkbox-wrap {
+  margin-top: 0.4rem;
+}
+
+.pf-request-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.pf-request-checkbox-label input[type="checkbox"] {
+  width: auto;
+}
+
+.pf-request-actions {
+  display: flex;
+  gap: 0.45rem;
+}
+
+.pf-approve-btn,
+.pf-reject-btn,
+.pf-host-toggle-btn,
+.pf-cancel-btn {
+  font-size: 0.68rem;
+  padding: 0.5rem 0.8rem;
+}
+
+.pf-approve-btn {
+  background: linear-gradient(135deg, #4caf82, #7dd1aa);
+  color: #0d0b08;
+}
+
+.pf-reject-btn {
+  background: linear-gradient(135deg, #c0392b, #df6659);
+  color: #fff;
+}
+
+.pf-host-toggle-btn {
+  margin-top: 0.35rem;
+}
+
+.pf-host-toggle-btn.is-start {
+  background: linear-gradient(135deg, #4caf82, #6ac996);
+  color: #0d0b08;
+}
+
+.pf-host-toggle-btn.is-stop {
+  background: linear-gradient(135deg, #b9862f, #e2b255);
+  color: #0d0b08;
+}
+
+.pf-enter-lobby-wrap {
+  margin-top: 0.45rem;
+}
+
+.pf-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 3, 2, 0.7);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+  padding: 1rem;
+}
+
+.pf-modal-content {
+  width: min(460px, 100%);
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.2rem;
+}
+
+.pf-invite-modal {
+  width: min(540px, 100%);
+}
+
+.pf-invite-modal .pf-helper-copy {
+  margin-bottom: 0;
+}
+
+.pf-invite-campaign-list {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.pf-invite-campaign-option {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: auto 1fr;
+  padding: 0.75rem;
+}
+
+.pf-invite-campaign-option.is-selected {
+  background: rgba(201, 168, 76, 0.12);
+  border-color: rgba(201, 168, 76, 0.55);
+}
+
+.pf-invite-campaign-option input {
+  accent-color: var(--gold);
+}
+
+.pf-invite-campaign-option span {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pf-invite-campaign-option strong {
+  color: var(--gold-light);
+  font-family: var(--font-heading);
+}
+
+.pf-invite-campaign-option small {
+  color: var(--text-muted);
+}
+
+.pf-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0.8rem 0;
+  color: var(--text-muted);
+}
+
+.pf-input {
+  margin-top: 0.15rem;
+}
+
+.pf-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+
+.pf-cancel-btn {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-base);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 720px) {
+  .pf-campaign-card {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-campaign-image {
+    max-height: 220px;
+  }
+
+  .pf-campaign-card-header,
+  .pf-campaign-actions,
+  .pf-code-panel,
+  .pf-code-form,
+  .pf-request-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pf-recruit-controls,
+  .pf-player-card {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-code-form {
+    min-width: 0;
+  }
+}

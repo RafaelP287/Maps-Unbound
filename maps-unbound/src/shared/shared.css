@@ -8,14 +8,14 @@
     border: none;
     outline: none;
     border-radius: 4px;
-    background: #007272;
-    color: #fff;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: var(--bg-deep);
     font-family: inherit;
     font-size: 16px;
     cursor: pointer;
 }
 
 .button:hover {
-    background: #992400;
+    opacity: 0.88;
     transition: all 0.3s ease;
 }

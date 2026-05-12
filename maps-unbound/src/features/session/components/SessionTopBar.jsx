@@ -7,12 +7,14 @@ function SessionTopBar({
     players = [],
     sceneName = "SCENE",
     isCombatState = false,
+    role = "dm",
+    onLeaveSession,
     onPauseSession,
     onEndSession,
     combatStrip = null,
 }) {
-    const fallbackPlayers = ["?", "?", "?", "?"].map((initial) => ({ initial, username: "Unknown" }));
-    const renderedPlayers = players.length > 0 ? players : fallbackPlayers;
+    const renderedPlayers = players.length > 0 ? players : [];
+    const isDM = role === "dm";
     return (
         <header className="session-dm__top">
             <div className="session-dm__top-group">
@@ -39,22 +41,41 @@ function SessionTopBar({
 
             <div className="session-dm__top-group">
                 <div className="session-dm__top-players" aria-label="Players">
-                    {renderedPlayers.map((player, idx) => (
-                        <span
-                            key={`${player.username}-${idx}`}
-                            className="session-dm__player-avatar"
-                            data-username={player.username}
-                        >
-                            {player.initial}
-                        </span>
-                    ))}
+                    {renderedPlayers.length > 0 ? (
+                        renderedPlayers.map((player, idx) => (
+                            <span
+                                key={`${player.userId || player.username}-${idx}`}
+                                className={[
+                                    "session-dm__player-avatar",
+                                    player.role === "DM" ? "is-dm" : "is-player",
+                                ].join(" ")}
+                                data-username={player.username || "Unknown"}
+                            >
+                                {player.profileImageUrl ? (
+                                    <img src={player.profileImageUrl} alt="" />
+                                ) : (
+                                    player.initial
+                                )}
+                            </span>
+                        ))
+                    ) : (
+                        <span className="session-dm__player-empty">No one joined</span>
+                    )}
                 </div>
-                <button type="button" className="session-dm__exit session-dm__pause" onClick={onPauseSession}>
-                    Pause Session
-                </button>
-                <button type="button" className="session-dm__exit" onClick={onEndSession}>
-                    End Session
-                </button>
+                {isDM ? (
+                    <>
+                        <button type="button" className="session-dm__exit session-dm__pause" onClick={onPauseSession}>
+                            Pause Session
+                        </button>
+                        <button type="button" className="session-dm__exit" onClick={onEndSession}>
+                            End Session
+                        </button>
+                    </>
+                ) : (
+                    <button type="button" className="session-dm__exit session-dm__pause" onClick={onLeaveSession}>
+                        Leave Session
+                    </button>
+                )}
             </div>
         </header>
     );

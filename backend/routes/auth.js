@@ -56,10 +56,10 @@ router.post('/signup', async (req, res) => {
       password: hashedPassword,
     });
 
-    // Generate token
+    // Generate JWT token for authentication
     const token = jwt.sign(
       { userId: user._id, username: user.username },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'maps-unbound-secret-key',
       { expiresIn: '7d' }
     );
 
@@ -67,8 +67,11 @@ router.post('/signup', async (req, res) => {
       message: 'User created successfully',
       user: {
         id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
       },
       token,
     });
@@ -118,6 +121,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || 'maps-unbound-secret-key',
@@ -128,8 +132,11 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       user: {
         id: user._id,
+        _id: user._id,
         username: user.username,
         email: user.email,
+        profileImageUrl: user.profileImageUrl || '',
+        openToCampaignInvites: Boolean(user.openToCampaignInvites),
       },
       token,
     });

@@ -2,6 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
+// Inline helper to replace main's `shared/getUserId.js` (file may or may not
+// exist after this pull; this avoids the dependency either way). userId can
+// come back from the API as a raw id string or a populated user object.
+const getUserId = (userId) =>
+  typeof userId === "string" ? userId : userId?._id;
+
 const formatStartDate = (value) => {
   if (!value) return "TBD";
   const date = new Date(value);
@@ -24,7 +30,20 @@ const formatSessionWindow = (session) => {
   return endedLabel ? `${startedLabel} • ${endedLabel}` : startedLabel;
 };
 
-function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, user = null, onStartEditing = null, onSessionsChanged = null }) {
+function CampaignSections({
+  campaign,
+  dm,
+  players,
+  sessions = [],
+  sessionsLoading = false,
+  isDM = false,
+  user = null,
+  onStartEditing = null,
+  onSessionsChanged = null,
+  onJoinCodeUpdate = null,
+  joinCodeSaving = false,
+  joinCodeError = "",
+}) {
   const { token } = useAuth();
   const navigate = useNavigate();
   const currentQuest = campaign.currentQuest;
@@ -100,6 +119,7 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
     return bTime - aTime;
   });
   const selectedSession = sortedSessions.find((session) => session._id === selectedSessionId) || null;
+  const currentUserId = user?.id;
 
   return (
     <div className="campaign-sections-stack">
@@ -145,47 +165,88 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           <span className="campaign-details-heading">Important Details</span>
           <span className="campaign-details-icon">✦</span>
         </div>
-        <div className="campaign-details-grid">
-          <div className="campaign-detail-row">
+        <div className="campaign-details-grid campaign-details-grid-overhauled">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Dungeon Master</span>
             <span className="campaign-detail-val">
               {dm}
               {isDM && <span className="badge-dm">You</span>}
             </span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Style</span>
             <span className="campaign-detail-val">{campaign.playStyle || "Online"}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Status</span>
             <span className="campaign-detail-val">{campaign.status || "Planning"}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
+            <span className="campaign-detail-key">Party Finder</span>
+            <span className="campaign-detail-val">{campaign.isHosting ? "Findable" : "Hidden"}</span>
+          </div>
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Start Date</span>
             <span className="campaign-detail-val">{formatStartDate(campaign.startDate)}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Campaign Members</span>
             <span className="campaign-detail-val">{members.length}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          <div className="campaign-detail-tile">
             <span className="campaign-detail-key">Player Slots Filled</span>
             <span className="campaign-detail-val">{players.length}/{campaign.maxPlayers || 5}</span>
           </div>
-          <div className="campaign-detail-divider" />
-          <div className="campaign-detail-row">
+          {isDM && (
+            <div className="campaign-detail-tile campaign-detail-tile-wide">
+              <div>
+                <span className="campaign-detail-key">Private Join Code</span>
+                <span className="campaign-detail-val campaign-join-code-value">
+                  {campaign.accessCode || "Disabled"}
+                </span>
+                <span className="campaign-helper-text">Code holders can join immediately while seats are open.</span>
+              </div>
+              <div className="campaign-btn-row">
+                {campaign.accessCode ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn-edit"
+                      disabled={joinCodeSaving}
+                      onClick={() => onJoinCodeUpdate?.(true)}
+                    >
+                      Regenerate
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-cancel"
+                      disabled={joinCodeSaving}
+                      onClick={() => onJoinCodeUpdate?.(false)}
+                    >
+                      Disable
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={joinCodeSaving}
+                    onClick={() => onJoinCodeUpdate?.(true)}
+                  >
+                    Generate Join Code
+                  </button>
+                )}
+              </div>
+              {joinCodeError && <p className="campaign-error-text">{joinCodeError}</p>}
+            </div>
+          )}
+          <div className="campaign-detail-tile campaign-detail-tile-wide">
             <span className="campaign-detail-key">Player Roster</span>
             <span className="campaign-detail-val">
               {players.length > 0 ? players.map((p) => (
-                <span key={p.userId._id}>
+                <span key={getUserId(p.userId)}>
                   {p.userId?.username}
-                  {p.userId?._id?.toString() === user?.id?.toString() && (
+                  {getUserId(p.userId) === currentUserId && (
                     <span className="badge-player">You</span>
                   )}
                 </span>
@@ -379,7 +440,11 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           <p className="campaign-section-subtext">
             A record of all sessions held for this campaign.
           </p>
-          {sortedSessions.length > 0 ? (
+          {sessionsLoading ? (
+            <div className="campaign-timeline-item">
+              <span className="campaign-section-empty">Loading session records...</span>
+            </div>
+          ) : sortedSessions.length > 0 ? (
             <div className="campaign-card-frame">
               <div className="campaign-card-scroll">
                 {selectedSession ? (
@@ -464,7 +529,9 @@ function CampaignSections({ campaign, dm, players, sessions = [], isDM = false, 
           )}
         </div>
         <div className="campaign-section-actions">
-          <span className="campaign-resource-count">{sortedSessions.length} session records</span>
+          <span className="campaign-resource-count">
+            {sessionsLoading ? "Loading sessions" : `${sortedSessions.length} session records`}
+          </span>
           <div className="campaign-inline-actions">
             {isDM ? (
               <button className="btn-ghost" onClick={() => onStartEditing?.("sessions")} type="button">

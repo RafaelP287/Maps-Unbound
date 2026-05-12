@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { Plus, ScrollText } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
+import LoadingPage from "../../shared/Loading.jsx";
 import CharacterCard from "./CharacterCard.jsx";
+import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
 
 const API_SERVER = import.meta.env.VITE_API_SERVER || "";
 
@@ -19,8 +21,17 @@ function Characters() {
       return;
     }
 
-    const fetchCharacters = async () => {
+    const cacheKey = `characters:list:${user.username}`;
+    const cachedCharacters = getCachedValue(cacheKey);
+    const hasCachedCharacters = Boolean(cachedCharacters);
+    if (cachedCharacters) {
+      setCharacters(cachedCharacters);
+      setIsLoading(false);
+    } else {
       setIsLoading(true);
+    }
+
+    const fetchCharacters = async () => {
       setError("");
 
       try {
@@ -31,9 +42,14 @@ function Characters() {
         }
 
         const data = await response.json();
-        setCharacters(Array.isArray(data.characters) ? data.characters : []);
+        const nextCharacters = Array.isArray(data.characters) ? data.characters : [];
+        setCharacters(nextCharacters);
+        setCachedValue(cacheKey, nextCharacters);
       } catch (err) {
-        setError(err.message || "Could not load your characters.");
+        if (!hasCachedCharacters) {
+          setError(err.message || "Could not load your characters.");
+          setCharacters([]);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -43,7 +59,11 @@ function Characters() {
   }, [isLoggedIn, user?.username]);
 
   if (authLoading) {
-    return <div className="character-status">Loading your character vault...</div>;
+    return (
+      <div className="character-page">
+        <LoadingPage>Loading your character vault...</LoadingPage>
+      </div>
+    );
   }
 
   if (!isLoggedIn) {
@@ -68,7 +88,7 @@ function Characters() {
 
         <div className="character-divider" />
 
-        {isLoading && <div className="character-status">Loading your heroes...</div>}
+        {isLoading && <LoadingPage>Loading your heroes...</LoadingPage>}
         {error && <div className="character-error">{error}</div>}
 
         {!isLoading && !error && (

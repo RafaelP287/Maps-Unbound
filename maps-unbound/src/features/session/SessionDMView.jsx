@@ -5,15 +5,29 @@ import SessionLeftPanel from "./components/SessionLeftPanel";
 import SessionMapCanvas from "./components/SessionMapCanvas";
 import SessionRightPanel from "./components/SessionRightPanel";
 import SessionBottomPanel from "./components/SessionBottomPanel";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { io } from "socket.io-client";
 import { useAuth } from "../../context/AuthContext.jsx";
 import useCampaign from "../campaigns/use-campaign";
 import useCampaignSessions from "../campaigns/use-campaign-sessions";
 import LoadingPage from "../../shared/Loading.jsx";
+import { clearCachePrefix, removeCachedValue } from "../../shared/dataCache.js";
 import "./session.css";
 import InitiativeStrip from "./components/InitiativeStrip";
 import useLiveCombat from "./use-live-combat";
+
+const SOCKET_SERVER = import.meta.env.VITE_API_URL || "http://localhost:5001";
+
+const getUserId = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    if (value._id) return getUserId(value._id);
+    if (value.id) return getUserId(value.id);
+    if (value.$oid) return value.$oid;
+    const stringValue = value.toString?.();
+    return stringValue && stringValue !== "[object Object]" ? stringValue : "";
+};
 
 function SessionDMView() {
     const navigate = useNavigate();
@@ -42,10 +56,19 @@ function SessionDMView() {
     const [notesSaving, setNotesSaving] = useState(false);
     const [notesError, setNotesError] = useState("");
     const [notesStatus, setNotesStatus] = useState("");
+    const [socketConnected, setSocketConnected] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState("");
+    const [chatError, setChatError] = useState("");
+    const socketRef = useRef(null);
+    const allowSessionExitRef = useRef(false);
+    const sessionExitCleanupSentRef = useRef(false);
+    const sessionExitCleanupRef = useRef(null);
     const [searchParams] = useSearchParams();
     const campaignId = searchParams.get("campaignId");
     const sessionId = searchParams.get("sessionId");
     const sessionNameParam = searchParams.get("sessionName");
+    const userId = user?.id || "";
     const { campaign, loading } = useCampaign(campaignId);
     const { sessions, loading: sessionsLoading, refetch: refetchSessions } = useCampaignSessions(campaignId);
     // Live combat data — drives the InitiativeStrip and the new combat log.
@@ -109,6 +132,99 @@ function SessionDMView() {
         };
     }, [campaignId, token]);
 
+    useEffect(() => {
+        if (!campaignId || !userId) {
+            setSocketConnected(false);
+            return;
+        }
+
+        const socket = io(SOCKET_SERVER, {
+            transports: ["websocket"],
+            withCredentials: true,
+            auth: { token },
+        });
+        socketRef.current = socket;
+
+        socket.on("connect", () => {
+            setSocketConnected(true);
+            setChatError("");
+            socket.emit("join-room", { campaignId, userId });
+            if (sessionId) {
+                socket.emit("session:state-load", { campaignId, sessionId, userId });
+            }
+        });
+
+        socket.on("room-joined", () => {
+            setChatError("");
+        });
+
+        socket.on("player-joined", (payload) => {
+            if (payload?.userId === userId) return;
+            setCombatEvents((prev) => [
+                ...prev,
+                createCombatEvent("Player Connected", "A player joined the live session room.", "highlight", "note"),
+            ]);
+        });
+
+        socket.on("chat-message", (payload) => {
+            const createdAt = payload?.timestamp || new Date().toISOString();
+            setChatMessages((prev) => [
+                ...prev,
+                {
+                    id: `${createdAt}-${payload?.userId || "system"}-${Math.random()}`,
+                    userId: payload?.userId || "",
+                    username: payload?.username || "Table",
+                    message: payload?.message || "",
+                    timestamp: new Date(createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+                },
+            ].slice(-120));
+        });
+
+        socket.on("room-error", (payload) => {
+            setChatError(payload?.message || "Unable to join live session room.");
+        });
+
+        socket.on("connect_error", (err) => {
+            setChatError(err.message || "Unable to connect to live session chat.");
+        });
+
+        socket.on("disconnect", () => {
+            setSocketConnected(false);
+        });
+
+        return () => {
+            socket.off("connect");
+            socket.off("room-joined");
+            socket.off("player-joined");
+            socket.off("chat-message");
+            socket.off("room-error");
+            socket.off("connect_error");
+            socket.off("disconnect");
+            socket.disconnect();
+            socketRef.current = null;
+        };
+    }, [campaignId, sessionId, token, userId]);
+
+    useEffect(() => {
+        if (!socketRef.current || !socketConnected || !campaignId || !sessionId || !userId) {
+            return;
+        }
+
+        socketRef.current.emit("session:state-update", {
+            campaignId,
+            sessionId,
+            userId,
+            state: {
+                sceneName,
+                isSessionPaused,
+                isCombatState,
+                combatRound,
+                turns,
+                events: combatEvents,
+            },
+        });
+    }, [campaignId, combatEvents, combatRound, isCombatState, isSessionPaused, sceneName, sessionId, socketConnected, turns, userId]);
+
     const previousSessionNotes = useMemo(() => {
         if (!sessionId) {
             return [];
@@ -152,15 +268,36 @@ function SessionDMView() {
 
     const campaignName = loading ? "Loading..." : campaign?.title || "";
     const sessionName = currentSession?.title || sessionNameParam || "";
-    const players = (campaign?.members || [])
-        .filter((member) => member.role === "Player")
-        .map((member) => {
-            const username = member.userId?.username || "";
-            return {
-                username,
-                initial: username.slice(0, 1).toUpperCase() || "",
-            };
-        });
+    const currentUserMembership = useMemo(() => {
+        if (!campaign?.members || !userId) return null;
+        return campaign.members.find((member) => getUserId(member.userId) === getUserId(userId)) || null;
+    }, [campaign?.members, userId]);
+    const isCurrentUserDM = currentUserMembership?.role === "DM";
+    const campaignMembersById = useMemo(() => {
+        return new Map(
+            (campaign?.members || []).map((member) => [getUserId(member.userId), member])
+        );
+    }, [campaign?.members]);
+    const sessionParticipants = useMemo(() => {
+        const participants = Array.isArray(currentSession?.participants) ? currentSession.participants : [];
+        return participants
+            .map((participant) => {
+                const userId = getUserId(participant.userId || participant);
+                const campaignMember = campaignMembersById.get(userId);
+                const username = campaignMember?.userId?.username || participant.userId?.username || "";
+                const profileImageUrl = campaignMember?.userId?.profileImageUrl || participant.userId?.profileImageUrl || "";
+                const role = participant.role || campaignMember?.role || "Player";
+                return {
+                    userId,
+                    username,
+                    profileImageUrl,
+                    role,
+                    initial: username.slice(0, 1).toUpperCase() || (role === "DM" ? "D" : "?"),
+                };
+            })
+            .filter((participant) => participant.userId);
+    }, [campaignMembersById, currentSession?.participants]);
+
     const playerCharacterNames = playerCharacters.map((character) => character.name).filter(Boolean);
    // Build the entity pool used by the Combat Setup modal. Players come from
     // real Character documents (with portrait, HP, class, etc.) so DM gets a
@@ -568,13 +705,98 @@ function SessionDMView() {
     ].filter(Boolean).join(" ");
     const exitLink = campaignId ? `/campaigns/${campaignId}` : "/session";
 
+    useEffect(() => {
+        if (loading || !campaign || !userId || isCurrentUserDM) {
+            return;
+        }
+
+        const query = new URLSearchParams();
+        if (campaignId) query.set("campaignId", campaignId);
+        if (sessionId) query.set("sessionId", sessionId);
+        query.set("sessionName", sessionName || "Session");
+        navigate(`/session/player?${query.toString()}`, { replace: true });
+    }, [campaign, campaignId, isCurrentUserDM, loading, navigate, sessionId, sessionName, userId]);
+
+    useEffect(() => {
+        sessionExitCleanupRef.current = {
+            activeEncounterId,
+            campaignId,
+            combatRound,
+            sceneName,
+            sessionId,
+            shouldEndOnExit: Boolean(sessionId && token && currentSession?.startedAt && !["Completed", "Archived"].includes(currentSession?.status)),
+            token,
+            turns,
+            userId: userId || "current",
+        };
+    }, [activeEncounterId, campaignId, combatRound, currentSession, sceneName, sessionId, token, turns, userId]);
+
+    useEffect(() => {
+        const endSessionOnExit = () => {
+            const cleanup = sessionExitCleanupRef.current;
+            if (!cleanup?.shouldEndOnExit || allowSessionExitRef.current) return;
+            if (sessionExitCleanupSentRef.current) return;
+            sessionExitCleanupSentRef.current = true;
+
+            if (cleanup.activeEncounterId && cleanup.turns.length > 0) {
+                fetch(`/api/encounters/${cleanup.activeEncounterId}`, {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${cleanup.token}`,
+                    },
+                    body: JSON.stringify({
+                        initiative: cleanup.turns.map((turn) => ({
+                            name: turn.name || "",
+                            kind: turn.kind || "Enemy",
+                            hp: turn.hp !== undefined && turn.hp !== null ? String(turn.hp) : "",
+                            initiative: Number.isFinite(Number(turn.initiative)) ? Number(turn.initiative) : 0,
+                        })),
+                        activeTurnIndex: Math.max(0, cleanup.turns.findIndex((turn) => turn.isActive)),
+                        rounds: Math.max(0, cleanup.combatRound + 1),
+                        relatedMap: cleanup.sceneName || "",
+                        status: "Completed",
+                        endedAt: new Date().toISOString(),
+                        summary: cleanup.sceneName ? `Scene: ${cleanup.sceneName}` : "",
+                    }),
+                    keepalive: true,
+                }).catch(() => {});
+            }
+
+            fetch(`/api/sessions/${cleanup.sessionId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${cleanup.token}`,
+                },
+                body: JSON.stringify({
+                    status: "Completed",
+                    endedAt: new Date().toISOString(),
+                    summary: cleanup.sceneName ? `Scene: ${cleanup.sceneName}` : undefined,
+                }),
+                keepalive: true,
+            }).catch(() => {});
+
+            if (cleanup.campaignId) {
+                clearCachePrefix(`campaign:sessions:${cleanup.userId}:${cleanup.campaignId}`);
+                removeCachedValue(`campaign:journal:${cleanup.userId}:${cleanup.campaignId}`);
+            }
+        };
+
+        window.addEventListener("pagehide", endSessionOnExit);
+        return () => {
+            window.removeEventListener("pagehide", endSessionOnExit);
+            endSessionOnExit();
+        };
+    }, []);
+
     const handleEndSession = async () => {
         if (endingSession) {
             return;
         }
 
         if (!sessionId || !token) {
-            navigate(exitLink);
+            navigate(exitLink, { replace: true });
             return;
         }
 
@@ -601,7 +823,11 @@ function SessionDMView() {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to end session");
             }
-            navigate(exitLink);
+            clearCachePrefix(`campaign:sessions:${userId || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${userId || "current"}:${campaignId}`);
+            allowSessionExitRef.current = true;
+            sessionExitCleanupSentRef.current = true;
+            navigate(exitLink, { replace: true });
         } catch (err) {
             setEndSessionError(err.message || "Failed to end session.");
         } finally {
@@ -627,22 +853,29 @@ function SessionDMView() {
         setNotesStatus("");
         try {
             const res = await fetch(`/api/sessions/${sessionId}`, {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                    sessionNoteContent: content,
-                }),
-            });
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ sessionNoteContent: content }),
+        });
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || "Failed to save note");
             }
             setNotesDraft("");
             setNotesStatus("Session note saved.");
+            clearCachePrefix(`campaign:sessions:${userId || "current"}:${campaignId}`);
+            removeCachedValue(`campaign:journal:${userId || "current"}:${campaignId}`);
             await refetchSessions();
+            if (socketRef.current && campaignId && sessionId) {
+                socketRef.current.emit("session:notes-updated", {
+                    campaignId,
+                    sessionId,
+                    userId: userId || "current",
+                });
+            }
         } catch (err) {
             setNotesError(err.message || "Failed to save note.");
         } finally {
@@ -650,15 +883,19 @@ function SessionDMView() {
         }
     };
 
-    if (loading || sessionsLoading) {
+    if (loading || (sessionsLoading && sessions.length === 0)) {
         return <LoadingPage>Preparing the session board...</LoadingPage>;
+    }
+
+    if (campaign && userId && !isCurrentUserDM) {
+        return <LoadingPage>Redirecting to player session...</LoadingPage>;
     }
 
     return (
         <div className={collapseClassName}>
             <SessionTopBar
                 campaignName={campaignName}
-                players={players}
+                players={sessionParticipants}
                 sceneName={sceneName}
                 sessionName={sessionName}
                 isCombatState={isCombatState}
@@ -715,6 +952,30 @@ function SessionDMView() {
             <SessionBottomPanel
                 isCollapsed={isBottomCollapsed}
                 onToggle={() => setIsBottomCollapsed((prev) => !prev)}
+                chatMessages={chatError ? [
+                    {
+                        id: "chat-error",
+                        username: "Live Chat",
+                        message: chatError,
+                        timestamp: "",
+                    },
+                    ...chatMessages,
+                ] : chatMessages}
+                chatInput={chatInput}
+                onChatInputChange={setChatInput}
+                onSendChat={(event) => {
+                    event.preventDefault();
+                    const message = chatInput.trim();
+                    if (!message || !socketRef.current || !campaignId || !userId) return;
+                    socketRef.current.emit("send-message", {
+                        campaignId,
+                        userId,
+                        username: user?.username || "DM",
+                        message,
+                    });
+                    setChatInput("");
+                }}
+                chatConnected={socketConnected}
                 notesDraft={notesDraft}
                 onNotesDraftChange={(value) => {
                     setNotesDraft(value);

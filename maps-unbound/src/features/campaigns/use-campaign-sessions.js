@@ -1,18 +1,32 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
-function useCampaignSessions(campaignId) {
-  const { token } = useAuth();
+function useCampaignSessions(campaignId, options = {}) {
+  const includeNotes = Boolean(options.includeNotes);
+  const { user, token } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const currentUserId = user?.id;
 
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     if (!token || !campaignId) return;
-    setLoading(true);
+    const cacheKey = `campaign:sessions:${currentUserId || "current"}:${campaignId}:${includeNotes ? "notes" : "summary"}`;
+    const cachedSessions = getCachedValue(cacheKey);
+    const hasCachedSessions = Boolean(cachedSessions);
+    if (cachedSessions) {
+      setSessions(cachedSessions);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError("");
     try {
-      const res = await fetch(`/api/sessions?campaignId=${campaignId}`, {
+      const query = new URLSearchParams({ campaignId });
+      if (includeNotes) query.set("includeNotes", "true");
+      const res = await fetch(`/api/sessions?${query.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
@@ -20,18 +34,20 @@ function useCampaignSessions(campaignId) {
         throw new Error(data.error || "Failed to load sessions");
       }
       const data = await res.json();
-      setSessions(Array.isArray(data) ? data : []);
+      const nextSessions = Array.isArray(data) ? data : [];
+      setSessions(nextSessions);
+      setCachedValue(cacheKey, nextSessions);
     } catch (err) {
       setError(err.message || "Failed to load sessions");
+      if (!hasCachedSessions) setSessions([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [campaignId, currentUserId, includeNotes, token]);
 
   useEffect(() => {
     fetchSessions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaignId, token]);
+  }, [fetchSessions]);
 
   return { sessions, loading, error, refetch: fetchSessions };
 }

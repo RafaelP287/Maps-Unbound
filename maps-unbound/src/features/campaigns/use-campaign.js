@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { setCachedValue, getCachedValue } from "../../shared/dataCache.js";
+import { getUserId } from "../../shared/getUserId.js";
 
 const getCampaignFetchError = (status, fallbackMessage) => {
   if (status === 401) return "Your session expired. Please sign in again.";
@@ -9,17 +11,26 @@ const getCampaignFetchError = (status, fallbackMessage) => {
 };
 
 function useCampaign(id) {
-  const { token, isLoggedIn } = useAuth();
+  const { user, token, isLoggedIn } = useAuth();
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const currentUserId = user?.id;
 
   const fetchCampaign = useCallback(async () => {
     // Guard against invalid navigation states before hitting the API.
     if (!id) { setError("No campaign ID provided."); setLoading(false); return; }
     if (!isLoggedIn) { setError("Please sign in to view campaign details."); setLoading(false); return; }
+    const cacheKey = `campaign:detail:${currentUserId || "current"}:${id}`;
+    const cachedCampaign = getCachedValue(cacheKey);
+    const hasCachedCampaign = Boolean(cachedCampaign);
+    if (cachedCampaign) {
+      setCampaign(cachedCampaign);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     setError(null);
-    setLoading(true);
     try {
       // Request campaign by id; response includes populated member user objects for display.
       const res = await fetch(`/api/campaigns/${id}`, {
@@ -32,15 +43,20 @@ function useCampaign(id) {
       }
       const data = await res.json();
       if (!data || !data._id) setError("Campaign not found.");
-      else setCampaign(data);
+      else {
+        setCampaign(data);
+        setCachedValue(cacheKey, data);
+      }
     } catch (err) {
       console.error(err);
-      setCampaign(null);
-      if (err instanceof TypeError) setError("Unable to reach the server. Check your connection and try again.");
-      else setError(err.message || "Failed to load campaign.");
+      if (!hasCachedCampaign) setCampaign(null);
+      if (!hasCachedCampaign) {
+        if (err instanceof TypeError) setError("Unable to reach the server. Check your connection and try again.");
+        else setError(err.message || "Failed to load campaign.");
+      }
     }
     finally { setLoading(false); }
-  }, [id, token, isLoggedIn]);
+  }, [currentUserId, id, token, isLoggedIn]);
 
   useEffect(() => { fetchCampaign(); }, [fetchCampaign]);
 

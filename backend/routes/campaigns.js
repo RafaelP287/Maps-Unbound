@@ -1,12 +1,63 @@
 import express from "express";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import Campaign from "../models/Campaign.js";
+import Session from "../models/Session.js";
 import User from "../models/User.js";
 
 const router = express.Router();
 const PLAY_STYLES = new Set(["Online", "In Person", "Hybrid"]);
 const STATUSES = new Set(["Planning", "Active", "On Hold", "Completed"]);
 const QUEST_STATUSES = new Set(["In Progress", "Blocked", "Completed"]);
+const JOIN_REQUEST_STATUSES = new Set(["Pending", "Approved", "Rejected"]);
+const INVITATION_STATUSES = new Set(["Pending", "Accepted", "Declined"]);
+const JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+const getUserId = (value) => {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  if (value.$oid) return value.$oid;
+  if (value._id && value._id !== value) return getUserId(value._id);
+  const stringValue = value.toString?.();
+  if (stringValue && stringValue !== "[object Object]") return stringValue;
+  if (typeof value.id === "string") return value.id;
+  if (value.id && value.id !== value) return getUserId(value.id);
+  return "";
+};
+
+const isCampaignDM = (campaign, userId) =>
+  campaign?.createdBy?.toString?.() === userId ||
+  campaign?.members?.some((member) => getUserId(member.userId) === userId && member.role === "DM");
+
+const dmCampaignOwnershipFilter = (userId) => ({
+  $or: [
+    { createdBy: userId },
+    { members: { $elemMatch: { userId, role: "DM" } } },
+  ],
+});
+
+const populateCampaignForDetail = (query) =>
+  query
+    .populate("members.userId", "username email profileImageUrl")
+    .populate("joinRequests.userId", "username email profileImageUrl")
+    .populate("invitations.userId", "username email profileImageUrl");
+
+const generateJoinCode = () => {
+  let code = "";
+  for (let i = 0; i < 8; i += 1) {
+    code += JOIN_CODE_CHARS[crypto.randomInt(0, JOIN_CODE_CHARS.length)];
+  }
+  return code;
+};
+
+const generateUniqueJoinCode = async () => {
+  for (let attempts = 0; attempts < 12; attempts += 1) {
+    const code = generateJoinCode();
+    const existing = await Campaign.exists({ accessCode: code });
+    if (!existing) return code;
+  }
+  throw new Error("Failed to generate a unique join code");
+};
 
 const normalizeCurrentQuest = (input) => {
   if (!input) return null;
@@ -152,10 +203,13 @@ router.post("/", verifyToken, async (req, res) => {
       title,
       description: req.body.description?.trim(),
       image: req.body.image,
+      createdBy: req.user.userId,
       playStyle,
       maxPlayers,
       startDate,
       status,
+      isPublic: req.body.isPublic !== undefined ? Boolean(req.body.isPublic) : true,
+      isHosting: Boolean(req.body.isHosting),
       currentQuest: normalizeCurrentQuest(req.body.currentQuest),
       npcs: normalizeNpcs(req.body.npcs),
       enemies: normalizeEnemies(req.body.enemies),
@@ -172,8 +226,617 @@ router.post("/", verifyToken, async (req, res) => {
 // Get all campaigns where the logged-in user is a member
 router.get("/", verifyToken, async (req, res) => {
   try {
-    const campaigns = await Campaign.find({ "members.userId": req.user.userId });
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title description image playStyle maxPlayers startDate status isPublic isHosting accessCode members joinRequests createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
     res.json(campaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get active sessions for campaigns where the logged-in user is a member
+router.get("/active-sessions", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({ "members.userId": req.user.userId })
+      .select("title status members")
+      .lean();
+    const campaignIds = campaigns.map((campaign) => campaign._id);
+    if (campaignIds.length === 0) {
+      return res.json([]);
+    }
+
+    const sessions = await Session.find({
+      campaignId: { $in: campaignIds },
+      status: "In Progress",
+    })
+      .select("campaignId title status startedAt createdAt")
+      .sort({ startedAt: -1, createdAt: -1 })
+      .lean();
+
+    const campaignById = new Map(campaigns.map((campaign) => [campaign._id.toString(), campaign]));
+    const seenCampaignIds = new Set();
+    const activeCampaigns = [];
+
+    for (const session of sessions) {
+      const campaignId = session.campaignId?.toString();
+      if (!campaignId || seenCampaignIds.has(campaignId)) continue;
+
+      const campaign = campaignById.get(campaignId);
+      if (!campaign) continue;
+
+      seenCampaignIds.add(campaignId);
+      activeCampaigns.push({
+        campaign: {
+          _id: campaign._id,
+          title: campaign.title,
+          status: campaign.status,
+        },
+        session: {
+          _id: session._id,
+          title: session.title,
+          status: session.status,
+          startedAt: session.startedAt,
+          createdAt: session.createdAt,
+        },
+      });
+    }
+
+    res.json(activeCampaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Discover campaigns that have opted into Party Finder.
+router.get("/findable", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({
+      isPublic: true,
+      isHosting: true,
+      status: { $ne: "Completed" },
+    })
+      .populate("members.userId", "username profileImageUrl")
+      .populate("joinRequests.userId", "username profileImageUrl")
+      .select("title description image playStyle maxPlayers startDate status isHosting members joinRequests updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const userId = req.user.userId;
+    const visibleCampaigns = campaigns.map((campaign) => {
+      const players = (campaign.members || []).filter((member) => member.role === "Player");
+      const isMember = (campaign.members || []).some((member) => getUserId(member.userId) === userId);
+      const request = (campaign.joinRequests || [])
+        .slice()
+        .reverse()
+        .find((joinRequest) => getUserId(joinRequest.userId) === userId);
+
+      return {
+        _id: campaign._id,
+        title: campaign.title,
+        description: campaign.description,
+        image: campaign.image,
+        playStyle: campaign.playStyle,
+        maxPlayers: campaign.maxPlayers,
+        startDate: campaign.startDate,
+        status: campaign.status,
+        isHosting: campaign.isHosting,
+        playerCount: players.length,
+        dm: (campaign.members || []).find((member) => member.role === "DM")?.userId || null,
+        isMember,
+        requestStatus: request?.status || null,
+      };
+    });
+
+    res.json(visibleCampaigns);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Pending Party Finder requests for campaigns run by the logged-in DM.
+router.get("/party-finder-requests", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({
+      ...dmCampaignOwnershipFilter(req.user.userId),
+      "joinRequests.status": "Pending",
+    })
+      .populate("joinRequests.userId", "username profileImageUrl")
+      .select("title maxPlayers members joinRequests isHosting updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const requests = campaigns.flatMap((campaign) => {
+      const playerCount = (campaign.members || []).filter((member) => member.role === "Player").length;
+      return (campaign.joinRequests || [])
+        .filter((request) => request.status === "Pending")
+        .map((request) => ({
+          _id: request._id,
+          campaignId: campaign._id,
+          campaignTitle: campaign.title,
+          campaignIsHosting: Boolean(campaign.isHosting),
+          playerCount,
+          maxPlayers: campaign.maxPlayers,
+          user: request.userId,
+          requestedAt: request.requestedAt,
+        }));
+    });
+
+    res.json(requests);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Campaigns the logged-in user runs, for Party Finder invitations.
+router.get("/recruiting-campaigns", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({
+      ...dmCampaignOwnershipFilter(req.user.userId),
+      status: { $ne: "Completed" },
+    })
+      .select("title maxPlayers members status updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    res.json(campaigns.map((campaign) => ({
+      _id: campaign._id,
+      title: campaign.title,
+      status: campaign.status,
+      maxPlayers: campaign.maxPlayers,
+      playerCount: (campaign.members || []).filter((member) => member.role === "Player").length,
+    })));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Opt-in players who can be invited. If campaignId is provided, filter out users
+// who are already in or pending for that campaign for backwards compatibility.
+router.get("/invitable-players", verifyToken, async (req, res) => {
+  try {
+    const campaignId = req.query.campaignId;
+    let memberIds = new Set();
+    let latestInviteByUser = new Map();
+
+    if (campaignId) {
+      const campaign = await Campaign.findById(campaignId).select("members invitations createdBy");
+      if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+      if (!isCampaignDM(campaign, req.user.userId)) {
+        return res.status(403).json({ error: "Only the DM can find players for this campaign" });
+      }
+
+      memberIds = new Set((campaign.members || []).map((member) => getUserId(member.userId)));
+      latestInviteByUser = new Map();
+      for (const invitation of campaign.invitations || []) {
+        latestInviteByUser.set(getUserId(invitation.userId), invitation.status);
+      }
+    }
+
+    const username = String(req.query.username || "").trim();
+    const query = {
+      openToCampaignInvites: true,
+      _id: { $ne: req.user.userId },
+    };
+    if (username.length >= 2) {
+      query.username = { $regex: username, $options: "i" };
+    }
+
+    const users = await User.find(query)
+      .select("_id username profileImageUrl openToCampaignInvites")
+      .sort({ username: 1 })
+      .limit(20)
+      .lean();
+
+    res.json(users
+      .filter((user) => !memberIds.has(getUserId(user._id)))
+      .map((user) => ({
+        _id: user._id,
+        username: user.username,
+        profileImageUrl: user.profileImageUrl || "",
+        inviteStatus: latestInviteByUser.get(getUserId(user._id)) || null,
+      })));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DM campaigns that a selected opt-in player can be invited to.
+router.get("/invitable-campaigns", verifyToken, async (req, res) => {
+  try {
+    const inviteeId = getUserId(req.query.userId);
+    if (!inviteeId) {
+      return res.status(400).json({ error: "userId is required" });
+    }
+    if (inviteeId === req.user.userId) {
+      return res.status(400).json({ error: "You cannot invite yourself" });
+    }
+
+    const invitee = await User.findById(inviteeId).select("_id username openToCampaignInvites").lean();
+    if (!invitee) return res.status(404).json({ error: "Player not found" });
+    if (!invitee.openToCampaignInvites) {
+      return res.status(400).json({ error: "This player is not open to campaign invites" });
+    }
+
+    const campaigns = await Campaign.find({
+      ...dmCampaignOwnershipFilter(req.user.userId),
+      status: { $ne: "Completed" },
+    })
+      .select("title maxPlayers members status invitations updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    res.json(campaigns
+      .filter((campaign) => {
+        const members = campaign.members || [];
+        const memberIds = new Set(members.map((member) => getUserId(member.userId)));
+        const playerCount = members.filter((member) => member.role === "Player").length;
+        const hasPendingInvite = (campaign.invitations || []).some((invitation) => (
+          getUserId(invitation.userId) === inviteeId && invitation.status === "Pending"
+        ));
+
+        return !memberIds.has(inviteeId)
+          && playerCount < (campaign.maxPlayers || 5)
+          && !hasPendingInvite;
+      })
+      .map((campaign) => ({
+        _id: campaign._id,
+        title: campaign.title,
+        status: campaign.status,
+        maxPlayers: campaign.maxPlayers,
+        playerCount: (campaign.members || []).filter((member) => member.role === "Player").length,
+      })));
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invitations sent to the logged-in player.
+router.get("/my-invitations", verifyToken, async (req, res) => {
+  try {
+    const campaigns = await Campaign.find({
+      "invitations.userId": req.user.userId,
+      "invitations.status": "Pending",
+    })
+      .populate("members.userId", "username profileImageUrl")
+      .populate("invitations.invitedBy", "username profileImageUrl")
+      .select("title description image playStyle maxPlayers startDate status members invitations updatedAt")
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const invitations = campaigns.flatMap((campaign) => {
+      const dm = (campaign.members || []).find((member) => member.role === "DM")?.userId || null;
+      const playerCount = (campaign.members || []).filter((member) => member.role === "Player").length;
+      return (campaign.invitations || [])
+        .filter((invitation) => getUserId(invitation.userId) === req.user.userId && invitation.status === "Pending")
+        .map((invitation) => ({
+          _id: invitation._id,
+          campaignId: campaign._id,
+          campaignTitle: campaign.title,
+          campaignDescription: campaign.description,
+          campaignImage: campaign.image,
+          playStyle: campaign.playStyle,
+          startDate: campaign.startDate,
+          status: campaign.status,
+          playerCount,
+          maxPlayers: campaign.maxPlayers,
+          dm,
+          invitedBy: invitation.invitedBy,
+          invitedAt: invitation.invitedAt,
+        }));
+    });
+
+    res.json(invitations);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DM invites an opt-in player to a campaign.
+router.post("/:id/invitations", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!isCampaignDM(campaign, req.user.userId)) {
+      return res.status(403).json({ error: "Only the DM can invite players" });
+    }
+    if (campaign.status === "Completed") {
+      return res.status(400).json({ error: "This campaign is completed" });
+    }
+
+    const userId = getUserId(req.body?.userId);
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+
+    const invitedUser = await User.findById(userId).select("username openToCampaignInvites");
+    if (!invitedUser) return res.status(404).json({ error: "Player not found" });
+    if (!invitedUser.openToCampaignInvites) {
+      return res.status(400).json({ error: "This player is not open to campaign invites" });
+    }
+
+    const isMember = campaign.members.some((member) => getUserId(member.userId) === userId);
+    if (isMember) {
+      return res.status(400).json({ error: "This player is already in the campaign" });
+    }
+
+    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+    if (playerCount >= campaign.maxPlayers) {
+      return res.status(400).json({ error: "This campaign is full" });
+    }
+
+    const pendingInvite = campaign.invitations.find(
+      (invitation) => getUserId(invitation.userId) === userId && invitation.status === "Pending"
+    );
+    if (pendingInvite) {
+      return res.status(400).json({ error: "This player already has a pending invite" });
+    }
+
+    campaign.invitations.push({
+      userId,
+      invitedBy: req.user.userId,
+      status: "Pending",
+      invitedAt: new Date(),
+    });
+    await campaign.save();
+
+    res.status(201).json({ message: `Invite sent to ${invitedUser.username}` });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Invited player accepts or declines an invitation.
+router.put("/:id/invitations/:invitationId", verifyToken, async (req, res) => {
+  try {
+    const status = req.body?.status;
+    if (!INVITATION_STATUSES.has(status) || status === "Pending") {
+      return res.status(400).json({ error: "Invitation status must be Accepted or Declined" });
+    }
+
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const invitation = campaign.invitations.id(req.params.invitationId);
+    if (!invitation) return res.status(404).json({ error: "Invitation not found" });
+    if (getUserId(invitation.userId) !== req.user.userId) {
+      return res.status(403).json({ error: "You can only respond to your own invitations" });
+    }
+    if (invitation.status !== "Pending") {
+      return res.status(400).json({ error: "This invitation has already been resolved" });
+    }
+
+    if (status === "Accepted") {
+      const isMember = campaign.members.some((member) => getUserId(member.userId) === req.user.userId);
+      if (isMember) {
+        return res.status(400).json({ error: "You are already a member of this campaign" });
+      }
+
+      const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+      if (playerCount >= campaign.maxPlayers) {
+        return res.status(400).json({ error: "This campaign is full" });
+      }
+
+      campaign.members.push({ userId: req.user.userId, role: "Player" });
+    }
+
+    invitation.status = status;
+    invitation.resolvedAt = new Date();
+    await campaign.save();
+
+    res.json({
+      message: status === "Accepted" ? `Joined ${campaign.title}` : "Invitation declined",
+      campaignId: campaign._id,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Request DM approval to join a findable campaign.
+router.post("/:id/join-requests", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!campaign.isPublic || !campaign.isHosting) {
+      return res.status(400).json({ error: "This campaign is not accepting join requests" });
+    }
+    if (campaign.status === "Completed") {
+      return res.status(400).json({ error: "This campaign is completed" });
+    }
+
+    const isMember = campaign.members.some((member) => getUserId(member.userId) === req.user.userId);
+    if (isMember) {
+      return res.status(400).json({ error: "You are already a member of this campaign" });
+    }
+
+    const players = campaign.members.filter((member) => member.role === "Player");
+    if (players.length >= campaign.maxPlayers) {
+      return res.status(400).json({ error: "This campaign is full" });
+    }
+
+    const existingPending = campaign.joinRequests.find(
+      (joinRequest) => getUserId(joinRequest.userId) === req.user.userId && joinRequest.status === "Pending"
+    );
+    if (existingPending) {
+      return res.status(400).json({ error: "You already have a pending request for this campaign" });
+    }
+
+    campaign.joinRequests.push({
+      userId: req.user.userId,
+      status: "Pending",
+      requestedAt: new Date(),
+    });
+    await campaign.save();
+
+    res.status(201).json({ message: "Join request sent" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Join immediately with a DM-issued private campaign code.
+router.post("/join-code", verifyToken, async (req, res) => {
+  try {
+    const code = req.body?.code?.trim?.().toUpperCase();
+    if (!code) {
+      return res.status(400).json({ error: "Join code is required" });
+    }
+
+    const campaign = await Campaign.findOne({ accessCode: code });
+    if (!campaign) {
+      return res.status(404).json({ error: "No campaign found for that join code" });
+    }
+    if (campaign.status === "Completed") {
+      return res.status(400).json({ error: "This campaign is completed" });
+    }
+
+    const isMember = campaign.members.some((member) => getUserId(member.userId) === req.user.userId);
+    if (isMember) {
+      return res.status(400).json({ error: "You are already a member of this campaign" });
+    }
+
+    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+    if (playerCount >= campaign.maxPlayers) {
+      return res.status(400).json({ error: "This campaign is full" });
+    }
+
+    campaign.members.push({ userId: req.user.userId, role: "Player" });
+    campaign.joinRequests = campaign.joinRequests.map((request) => {
+      if (getUserId(request.userId) === req.user.userId && request.status === "Pending") {
+        request.status = "Approved";
+        request.resolvedAt = new Date();
+      }
+      return request;
+    });
+    await campaign.save();
+
+    res.json({
+      message: `Joined ${campaign.title}`,
+      campaignId: campaign._id,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DM enables, regenerates, or disables the private campaign join code.
+router.put("/:id/join-code", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!isCampaignDM(campaign, req.user.userId)) {
+      return res.status(403).json({ error: "Only the DM can manage this campaign's join code" });
+    }
+
+    const enabled = Boolean(req.body.enabled);
+    campaign.accessCode = enabled ? await generateUniqueJoinCode() : null;
+    await campaign.save();
+
+    const updatedCampaign = await populateCampaignForDetail(Campaign.findById(campaign._id)).lean();
+    res.json(updatedCampaign);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DM resolves a pending join request. Approval adds the user as a Player.
+router.put("/:id/join-requests/:requestId", verifyToken, async (req, res) => {
+  try {
+    const status = req.body.status;
+    if (!JOIN_REQUEST_STATUSES.has(status) || status === "Pending") {
+      return res.status(400).json({ error: "Request status must be Approved or Rejected" });
+    }
+
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+    if (!isCampaignDM(campaign, req.user.userId)) {
+      return res.status(403).json({ error: "Only the DM can manage join requests" });
+    }
+
+    const joinRequest = campaign.joinRequests.id(req.params.requestId);
+    if (!joinRequest) return res.status(404).json({ error: "Join request not found" });
+    if (joinRequest.status !== "Pending") {
+      return res.status(400).json({ error: "This join request has already been resolved" });
+    }
+
+    const requestedUserId = getUserId(joinRequest.userId);
+    const isAlreadyMember = campaign.members.some((member) => getUserId(member.userId) === requestedUserId);
+    const playerCount = campaign.members.filter((member) => member.role === "Player").length;
+    if (status === "Approved") {
+      if (isAlreadyMember) {
+        return res.status(400).json({ error: "This user is already a campaign member" });
+      }
+      if (playerCount >= campaign.maxPlayers) {
+        return res.status(400).json({ error: "Party size exceeds max players" });
+      }
+      campaign.members.push({ userId: joinRequest.userId, role: "Player" });
+    }
+
+    joinRequest.status = status;
+    joinRequest.resolvedAt = new Date();
+    await campaign.save();
+
+    const updatedCampaign = await populateCampaignForDetail(Campaign.findById(campaign._id)).lean();
+    res.json(updatedCampaign);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/:id/encounter-ready", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const isDM = isCampaignDM(campaign, req.user.userId);
+    if (!isDM) {
+      return res.status(403).json({ error: "Only the DM can change encounter readiness" });
+    }
+
+    if (!campaign.encounter) campaign.encounter = {};
+    campaign.encounter.isReady = Boolean(req.body?.isReady);
+    campaign.markModified("encounter");
+    await campaign.save();
+
+    res.json({
+      message: campaign.encounter.isReady ? "Encounter opened to players" : "Encounter locked for DM prep",
+      isReady: campaign.encounter.isReady,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Remove a player from a campaign. DMs can kick players; players can leave themselves.
+router.delete("/:id/members/:memberId", verifyToken, async (req, res) => {
+  try {
+    const campaign = await Campaign.findById(req.params.id);
+    if (!campaign) return res.status(404).json({ error: "Campaign not found" });
+
+    const memberId = req.params.memberId;
+    const isSelf = memberId === req.user.userId;
+    const isDM = isCampaignDM(campaign, req.user.userId);
+    if (!isSelf && !isDM) {
+      return res.status(403).json({ error: "Only the DM can remove another player" });
+    }
+
+    const targetMember = campaign.members.find((member) => getUserId(member.userId) === memberId);
+    if (!targetMember) {
+      return res.status(404).json({ error: "Campaign member not found" });
+    }
+    if (targetMember.role === "DM") {
+      return res.status(400).json({ error: "The DM cannot be removed from the campaign" });
+    }
+
+    campaign.members = campaign.members.filter((member) => getUserId(member.userId) !== memberId);
+    await campaign.save();
+
+    if (isSelf) {
+      return res.json({ message: "You left the campaign" });
+    }
+
+    const updatedCampaign = await populateCampaignForDetail(Campaign.findById(campaign._id)).lean();
+    res.json(updatedCampaign);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -182,14 +845,11 @@ router.get("/", verifyToken, async (req, res) => {
 // Get a campaign by ID — only if the user is a member
 router.get("/:id", verifyToken, async (req, res) => {
   try {
-    const campaign = await Campaign.findById(req.params.id).populate(
-      "members.userId",
-      "username email"
-    );
+    const campaign = await populateCampaignForDetail(Campaign.findById(req.params.id)).lean();
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
     const isMember = campaign.members.some(
-      (m) => m.userId._id.toString() === req.user.userId
+      (m) => getUserId(m.userId) === req.user.userId
     );
     if (!isMember) {
       return res.status(403).json({ error: "Access denied" });
@@ -207,9 +867,7 @@ router.put("/:id", verifyToken, async (req, res) => {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isDM = campaign.members.some(
-      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
-    );
+    const isDM = isCampaignDM(campaign, req.user.userId);
     if (!isDM) {
       return res.status(403).json({ error: "Only the DM can update this campaign" });
     }
@@ -234,6 +892,14 @@ router.put("/:id", verifyToken, async (req, res) => {
     if (Object.prototype.hasOwnProperty.call(req.body, "loot")) {
       req.body.loot = normalizeLoot(req.body.loot);
     }
+    if (Object.prototype.hasOwnProperty.call(req.body, "isPublic")) {
+      req.body.isPublic = Boolean(req.body.isPublic);
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "isHosting")) {
+      req.body.isHosting = Boolean(req.body.isHosting);
+    }
+    delete req.body.joinRequests;
+    delete req.body.accessCode;
 
     const incomingMembers = Array.isArray(req.body.members) ? req.body.members : campaign.members;
     const incomingMaxPlayersRaw = req.body.maxPlayers ?? campaign.maxPlayers ?? 5;
@@ -313,9 +979,7 @@ router.delete("/:id", verifyToken, async (req, res) => {
     const campaign = await Campaign.findById(req.params.id);
     if (!campaign) return res.status(404).json({ error: "Campaign not found" });
 
-    const isDM = campaign.members.some(
-      (m) => m.userId.toString() === req.user.userId && m.role === "DM"
-    );
+    const isDM = isCampaignDM(campaign, req.user.userId);
     if (!isDM) {
       return res.status(403).json({ error: "Only the DM can delete this campaign" });
     }

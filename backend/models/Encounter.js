@@ -34,6 +34,8 @@ const encounterSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+encounterSchema.index({ campaignId: 1, sessionId: 1, createdAt: 1 });
+
 const Encounter = mongoose.model("Encounter", encounterSchema);
 
 export default Encounter;

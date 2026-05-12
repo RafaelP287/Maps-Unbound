@@ -21,7 +21,8 @@ import ConfirmDiscardModal from "../../maps/ConfirmDiscardModal.jsx";
 function SessionMapCanvas({
     turns = [],
     round = 0,
-    onAdvanceTurn: _onAdvanceTurn,
+    readOnly = false,
+    onAdvanceTurn,
     onCombatStateChange,
     onCombatStart,
     onCombatEnd,
@@ -38,6 +39,9 @@ function SessionMapCanvas({
     const [combatSetupError, setCombatSetupError] = useState("");
     const [draftParticipants, setDraftParticipants] = useState([]);
     const rowIdRef = useRef(0);
+    const [draftParticipants, setDraftParticipants] = useState([]);
+    const rowIdRef = useRef(0);
+
     // Helper: post a message into the Godot iframe (it listens via window.addEventListener('message'))
     const sendToGodot = useCallback((type, data = {}) => {
         const iframe = iframeRef.current;
@@ -51,6 +55,11 @@ function SessionMapCanvas({
             console.warn("Failed to post to Godot:", err.message);
         }
     }, []);
+
+    // Players don't run combat setup, but they still need to know combat is
+    // happening so the map gets the `.is-combat-state` class. They infer it
+    // from the turns prop passed down from the parent.
+    const isLiveCombatState = isCombatState || (readOnly && turns.length > 0);
 
     const nextRowId = () => {
         rowIdRef.current += 1;
@@ -677,7 +686,7 @@ function SessionMapCanvas({
 
     // ─── Render ───────────────────────────────────────────────────────────
     return (
-        <main className={["session-dm__map", isCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
+        <main className={["session-dm__map", isLiveCombatState ? "is-combat-state" : ""].filter(Boolean).join(" ")}>
             {/* Godot iframe — mounts only after the user picks/creates a map */}
             {hasOpenedMap && (
                 <iframe
@@ -701,129 +710,129 @@ function SessionMapCanvas({
             {!hasOpenedMap && (
                 <div className="session-dm__map-overlay">
                     <div>
-                        <h2>{isCombatState ? "Combat State" : "Map Canvas"}</h2>
+                        <h2>{isLiveCombatState ? "Combat State" : "Map Canvas"}</h2>
                         <p>
-                            {isCombatState
+                            {isLiveCombatState
                                 ? "Initiative is live. Keep turns visible and track movement."
                                 : "Choose a map to fill the canvas."}
                         </p>
                     </div>
                 </div>
             )}
-
-
-            {/* Phase 1 prototype — visible only when combat is active.
-                Uses test data for now; we'll wire real LiveCombat data in the next file. */}
-
-            {/* Phase 1 prototype — visible only when combat is active.
-                Uses test data for now; we'll wire real LiveCombat data in the next file. */}
-
-
-            <div className="session-dm__map-controls" aria-label="Map quick tools">
-                <button
-                    type="button"
-                    className="session-dm__map-btn"
-                    onClick={() => setShowLoadModal(true)}
-                >
-                    Maps
-                </button>
+<div className="session-dm__map-controls" aria-label="Map quick tools">
+                {!readOnly && (
+                    <button
+                        type="button"
+                        className="session-dm__map-btn"
+                        onClick={() => setShowLoadModal(true)}
+                    >
+                        Maps
+                    </button>
+                )}
                 <button type="button" className="session-dm__map-btn">Roll Dice</button>
                 <button type="button" className="session-dm__map-btn">Ping</button>
-                <button type="button" className="session-dm__map-btn">Hitbox</button>
-                <button
-                    type="button"
-                    className={[
-                        "session-dm__map-btn",
-                        isCombatState ? "session-dm__map-btn--danger" : "",
-                    ].filter(Boolean).join(" ")}
-                    onClick={async () => {
-                        if (isCombatState) {
-                            // Call the historical Encounter end (existing flow).
-                            if (onCombatEnd) {
-                                onCombatEnd({
-                                    turns,
-                                    round: turns.length > 0 ? round + 1 : 0,
-                                    mapName: bridge.currentMapName || "",
-                                });
-                            }
-                            // Also end the LiveCombat doc so the strip disappears
-                            // and the doc gets cleaned up from the DB.
-                            if (sessionId && token) {
-                                try {
-                                    const apiBase = import.meta.env.VITE_API_SERVER || "";
-                                    await fetch(
-                                        `${apiBase}/api/combat/session/${sessionId}/end`,
-                                        {
-                                            method: "POST",
-                                            headers: { Authorization: `Bearer ${token}` },
-                                        }
-                                    );
-                                } catch (err) {
-                                    console.warn("Failed to end LiveCombat:", err.message);
+                {!readOnly && <button type="button" className="session-dm__map-btn">Hitbox</button>}
+                {!readOnly && (
+                    <button
+                        type="button"
+                        className={[
+                            "session-dm__map-btn",
+                            isCombatState ? "session-dm__map-btn--danger" : "",
+                        ].filter(Boolean).join(" ")}
+                        onClick={async () => {
+                            if (isCombatState) {
+                                // Call the historical Encounter end (existing flow).
+                                if (onCombatEnd) {
+                                    onCombatEnd({
+                                        turns,
+                                        round: turns.length > 0 ? round + 1 : 0,
+                                        mapName: bridge.currentMapName || "",
+                                    });
                                 }
+                                // End the LiveCombat doc so the strip disappears.
+                                if (sessionId && token) {
+                                    try {
+                                        const apiBase = import.meta.env.VITE_API_SERVER || "";
+                                        await fetch(
+                                            `${apiBase}/api/combat/session/${sessionId}/end`,
+                                            {
+                                                method: "POST",
+                                                headers: { Authorization: `Bearer ${token}` },
+                                            }
+                                        );
+                                    } catch (err) {
+                                        console.warn("Failed to end LiveCombat:", err.message);
+                                    }
+                                }
+                                // Tell Godot to despawn combat tokens.
+                                sendToGodot("mu:clear_combat_tokens", {});
+                                setIsCombatState(false);
+                                if (onTurnsChange) onTurnsChange([]);
+                                if (onCombatStateChange) onCombatStateChange(false);
+                                return;
                             }
-                            // Tell Godot to despawn combat tokens (manual tokens stay)
-                            sendToGodot("mu:clear_combat_tokens", {});
-                            setIsCombatState(false);
-                            if (onTurnsChange) onTurnsChange([]);
-                            if (onCombatStateChange) onCombatStateChange(false);
-                            return;
-                        }
-                        openCombatSetup();
-                    }}
-                    aria-pressed={isCombatState}
-                >
-                    {isCombatState ? "End Combat" : "Start Combat"}
-                </button>
+                            openCombatSetup();
+                        }}
+                        aria-pressed={isCombatState}
+                    >
+                        {isCombatState ? "End Combat" : "Start Combat"}
+                    </button>
+                )}
             </div>
 
-            <EncounterOverlay
-                isOpen={isCombatSetupOpen}
-                draftParticipants={draftParticipants}
-                combatSetupError={combatSetupError}
-                onClose={() => setIsCombatSetupOpen(false)}
-                onAddCustomEntity={addCustomEntity}
-                onAddParticipantFromPool={addParticipantFromPool}
-                entityPool={combatEntityPool}
-                onKindChange={updateParticipantKind}
-                onNameChange={updateParticipantName}
-                onInitiativeChange={updateParticipantInitiative}
-                onHpChange={updateParticipantHp}
-                onHiddenMapChange={updateParticipantHiddenMap}
-                onHiddenInitChange={updateParticipantHiddenInit}
-                onRemove={removeParticipant}
-                onApply={applyCombatSetup}
-            />
+            {!readOnly && (
+                <EncounterOverlay
+                    isOpen={isCombatSetupOpen}
+                    draftParticipants={draftParticipants}
+                    combatSetupError={combatSetupError}
+                    onClose={() => setIsCombatSetupOpen(false)}
+                    onAddCustomEntity={addCustomEntity}
+                    onAddParticipantFromPool={addParticipantFromPool}
+                    entityPool={combatEntityPool}
+                    onKindChange={updateParticipantKind}
+                    onNameChange={updateParticipantName}
+                    onInitiativeChange={updateParticipantInitiative}
+                    onHpChange={updateParticipantHp}
+                    onHiddenMapChange={updateParticipantHiddenMap}
+                    onHiddenInitChange={updateParticipantHiddenInit}
+                    onRemove={removeParticipant}
+                    onApply={applyCombatSetup}
+                />
+            )}
 
             {/* Map management modals — same components used by standalone Maps.jsx */}
-            <MapLoadModal
-                isOpen={showLoadModal}
-                onClose={() => setShowLoadModal(false)}
-                onPickMap={handlePickMap}
-                onCreateNew={handleCreateNewFromLoad}
-            />
+            {!readOnly && (
+                <>
+                    <MapLoadModal
+                        isOpen={showLoadModal}
+                        onClose={() => setShowLoadModal(false)}
+                        onPickMap={handlePickMap}
+                        onCreateNew={handleCreateNewFromLoad}
+                    />
 
-            <MapNamingModal
-                isOpen={namingModal.open}
-                mode={namingModal.mode}
-                initialName={namingModal.initial}
-                submitting={namingSubmitting}
-                onCancel={() => !namingSubmitting && setNamingModal({ open: false, mode: "save", initial: "" })}
-                onSubmit={(name) => {
-                    if (namingModal.mode === "save-as") {
-                        performSaveAs(name);
-                    } else {
-                        performFirstSave(name);
-                    }
-                }}
-            />
+                    <MapNamingModal
+                        isOpen={namingModal.open}
+                        mode={namingModal.mode}
+                        initialName={namingModal.initial}
+                        submitting={namingSubmitting}
+                        onCancel={() => !namingSubmitting && setNamingModal({ open: false, mode: "save", initial: "" })}
+                        onSubmit={(name) => {
+                            if (namingModal.mode === "save-as") {
+                                performSaveAs(name);
+                            } else {
+                                performFirstSave(name);
+                            }
+                        }}
+                    />
 
-            <ConfirmDiscardModal
-                isOpen={showDiscardModal}
-                mapName={bridge.currentMapName}
-                onCancel={() => setShowDiscardModal(false)}
-                onConfirm={handleConfirmDiscard}
-            />
+                    <ConfirmDiscardModal
+                        isOpen={showDiscardModal}
+                        mapName={bridge.currentMapName}
+                        onCancel={() => setShowDiscardModal(false)}
+                        onConfirm={handleConfirmDiscard}
+                    />
+                </>
+            )}
         </main>
     );
 }

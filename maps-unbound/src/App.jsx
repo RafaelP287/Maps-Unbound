@@ -1,33 +1,38 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import React, { useState, useRef, useCallback, useEffect } from "react";
-import { ThreeDDice } from "dddice-js";
+import React, { Suspense, lazy, useState, useRef, useCallback, useEffect } from "react";
 import AppLayout from "./layout/AppLayout.jsx";
 import SessionLayout from "./layout/SessionLayout.jsx";
 import Projector from "./features/maps/Projector.jsx";
 
-import Home from "./features/home/Home.jsx";
-import Maps from "./features/maps/Maps.jsx";
+import LoadingPage from "./shared/Loading.jsx";
 
-import Session from "./features/session/Session.jsx";
-import SessionDMView from "./features/session/SessionDMView.jsx";
-import PlayerDashboard from "./features/player/PlayerDashboard.jsx";
-import Campaigns from "./features/campaigns/CampaignsPage.jsx";
-import CreateCampaign from "./features/campaigns/CreateCampaign.jsx";
-import ViewCampaign from "./features/campaigns/ViewCampaign.jsx";
-import CampaignJournalPage from "./features/campaignjournal/CampaignJournalPage.jsx";
+// Lazy-loaded routes (code-split to keep the initial bundle small)
+const Home = lazy(() => import("./features/home/Home.jsx"));
+const Maps = lazy(() => import("./features/maps/Maps.jsx"));
+const MapsPage = lazy(() => import("./features/maps/MapsPage.jsx"));
 
-import Characters from "./features/characters/Characters.jsx";
-import CreateCharacter from "./features/characters/CreateCharacter.jsx";
-import CharacterEditor from "./features/characters/CharacterEditor.jsx";
-import PartyFinder from "./features/partyfinder/PartyFinder.jsx";
+const Session = lazy(() => import("./features/session/Session.jsx"));
+const SessionDMView = lazy(() => import("./features/session/SessionDMView.jsx"));
+const PlayerDashboard = lazy(() => import("./features/player/PlayerDashboard.jsx"));
 
-import AssetFinder from "./features/assetfinder/AssetFinder.jsx";
+const Campaigns = lazy(() => import("./features/campaigns/CampaignsPage.jsx"));
+const CreateCampaign = lazy(() => import("./features/campaigns/CreateCampaign.jsx"));
+const ViewCampaign = lazy(() => import("./features/campaigns/ViewCampaign.jsx"));
+const CampaignJournalPage = lazy(() => import("./features/campaignjournal/CampaignJournalPage.jsx"));
 
-import RulesetReader from "./features/ruleset/RulesetReader.jsx";
+const Characters = lazy(() => import("./features/characters/Characters.jsx"));
+const CreateCharacter = lazy(() => import("./features/characters/CreateCharacter.jsx"));
+const CharacterEditor = lazy(() => import("./features/characters/CharacterEditor.jsx"));
+const PartyFinder = lazy(() => import("./features/partyfinder/PartyFinder.jsx"));
+const Lobby = lazy(() => import("./features/player/Lobby.jsx"));
 
-import Profile from "./features/profile/Profile.jsx";
-import Signup from "./features/auth/Signup.jsx";
-import Login from "./features/auth/Login.jsx";
+const AssetFinder = lazy(() => import("./features/assetfinder/AssetFinder.jsx"));
+
+const RulesetReader = lazy(() => import("./features/ruleset/RulesetReader.jsx"));
+
+const Profile = lazy(() => import("./features/profile/Profile.jsx"));
+const Signup = lazy(() => import("./features/auth/Signup.jsx"));
+const Login = lazy(() => import("./features/auth/Login.jsx"));
 
 const DDDICE_API_KEY = import.meta.env.VITE_DDDICE_API_KEY;
 
@@ -46,17 +51,13 @@ function App() {
     const isInitializingRef = useRef(false);
     const canvasRef         = useRef(null);
     const seenRollsRef      = useRef(new Set());
-    // Stores the mode ('normal'|'advantage'|'disadvantage') of the roll
-    // currently in-flight so roll:finished can use it.
     const nextRollModeRef   = useRef('normal');
-    // Track when tab was hidden so we know if the device likely slept
     const hiddenAtRef       = useRef(null);
 
     const [isDiceReady, setIsDiceReady] = useState(false);
     const [diceError,   setDiceError]   = useState(null);
     const [rollNotifs,  setRollNotifs]  = useState([]);
 
-    // ── Helpers ────────────────────────────────────────────────────────────
     const deleteRoom = useCallback(async (slug) => {
         if (!slug) return;
         try {
@@ -64,12 +65,18 @@ function App() {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${DDDICE_API_KEY}` },
             });
-        } catch (e) { /* best-effort */ }
+        } catch {
+            return;
+        }
     }, []);
 
     const stopRenderer = useCallback(async () => {
         if (dddiceRef.current) {
-            try { dddiceRef.current.stop(); } catch (_) {}
+            try {
+                dddiceRef.current.stop();
+            } catch {
+                console.warn("[dddice] Failed to stop renderer cleanly");
+            }
             dddiceRef.current = null;
             await sleep(50);
         }
@@ -82,7 +89,6 @@ function App() {
         }, NOTIF_LIFETIME);
     }, []);
 
-    // ── Roll event handler ─────────────────────────────────────────────────
     const subscribeToRolls = useCallback((instance) => {
         if (!instance) return;
 
@@ -96,9 +102,8 @@ function App() {
                 if (values.length === 0) return;
 
                 const mode = nextRollModeRef.current;
-                nextRollModeRef.current = 'normal'; // consume
+                nextRollModeRef.current = 'normal';
 
-                // ── d% ────────────────────────────────────────────────────
                 const isPercentRoll = values.some(d => d.type === 'd10x');
                 if (isPercentRoll) {
                     const tensDie  = values.find(d => d.type === 'd10x');
@@ -118,7 +123,6 @@ function App() {
                     return;
                 }
 
-                // ── Advantage / Disadvantage ──────────────────────────────
                 if ((mode === 'advantage' || mode === 'disadvantage') && values.length === 2) {
                     const [a, b] = values;
                     const chosen = mode === 'advantage'
@@ -135,7 +139,6 @@ function App() {
                     return;
                 }
 
-                // ── Normal ────────────────────────────────────────────────
                 const total = values.reduce((s, d) => s + (d.value ?? 0), 0);
                 pushNotif({
                     id: Date.now() + Math.random(),
@@ -150,10 +153,10 @@ function App() {
         });
     }, [pushNotif]);
 
-    // ── Renderer lifecycle ─────────────────────────────────────────────────
     const startRenderer = useCallback(async (canvasElement) => {
         if (!canvasElement) return;
         await stopRenderer();
+        const { ThreeDDice } = await import("dddice-js");
         canvasRef.current = canvasElement;
         dddiceRef.current = new ThreeDDice(canvasElement, DDDICE_API_KEY);
         dddiceRef.current.start();
@@ -193,7 +196,6 @@ function App() {
         setIsDiceReady(false);
 
         try {
-            // Create a fresh dddice room if we don't already have one
             if (!roomSlugRef.current) {
                 const res = await fetch("https://dddice.com/api/1.0/room", {
                     method: "POST",
@@ -224,7 +226,6 @@ function App() {
         await initializeDice(canvasElement);
     }, [cleanupDice, initializeDice]);
 
-    // ── Tab close ──────────────────────────────────────────────────────────
     useEffect(() => {
         const onUnload = () => {
             const slug = roomSlugRef.current;
@@ -239,10 +240,6 @@ function App() {
         return () => window.removeEventListener("beforeunload", onUnload);
     }, []);
 
-    // ── Sleep / wake handling ──────────────────────────────────────────────
-    // When laptop sleeps, the WebSocket to dddice dies and the room may expire.
-    // We track how long the tab was hidden; if it was > 30s we do a full reinit.
-    // If it was brief (just switching tabs), we just try a quick reconnect.
     useEffect(() => {
         const onVisibility = async () => {
             if (document.visibilityState === 'hidden') {
@@ -250,19 +247,16 @@ function App() {
                 return;
             }
 
-            // Tab became visible
             const hiddenMs = hiddenAtRef.current ? Date.now() - hiddenAtRef.current : 0;
             hiddenAtRef.current = null;
 
             if (!canvasRef.current) return;
 
             if (hiddenMs > 30_000 || !dddiceRef.current) {
-                // Device likely slept or connection fully dropped — full reinit
                 console.log("[dddice] Wake after sleep, reinitializing...");
                 await cleanupDice();
                 await initializeDice(canvasRef.current);
             } else {
-                // Short absence — try a quick reconnect
                 try {
                     await dddiceRef.current.connect(roomSlugRef.current);
                     setIsDiceReady(true);
@@ -280,7 +274,6 @@ function App() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cleanupDice]);
 
-    // ── Roll ───────────────────────────────────────────────────────────────
     const rollDice = useCallback((diceType = "d20", quantity = 1, mode = 'normal') => {
         if (!dddiceRef.current || !roomSlugRef.current) return;
 
@@ -288,13 +281,11 @@ function App() {
 
         let dice;
         if (diceType === 'd10x') {
-            // d% is always exactly 2 dice — one d10x (tens) + one d10 (ones)
             dice = [
                 { type: 'd10x', theme: 'dddice-bees' },
                 { type: 'd10',  theme: 'dddice-bees' },
             ];
         } else if (mode === 'advantage' || mode === 'disadvantage') {
-            // Always roll exactly 2 dice regardless of quantity setting
             dice = [
                 { type: diceType, theme: 'dddice-bees' },
                 { type: diceType, theme: 'dddice-bees' },
@@ -308,75 +299,67 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="projector" element={<Projector />} />
-        <Route path="session" element={<SessionLayout />}>
-          <Route index element={<Session />} />
-          <Route path="dm" element={<SessionDMView />} />
-          <Route path="player" element={<PlayerDashboard />} />
-        </Route>
-        <Route path="/" element={<AppLayout />}>
-          {/* Home route */}
-          <Route index element={<Home />} />
+      <Suspense fallback={<LoadingPage>Loading...</LoadingPage>}>
+        <Routes>
+          {/* Projector — standalone window, no AppLayout chrome */}
+          <Route path="projector" element={<Projector />} />
 
-          {/* Profile route */}
-          <Route path="profile" element={<Profile />} />
-          
-          {/* Map routes */}
-          <Route 
-            path="maps" 
-            element={
-              <Maps 
-                initializeDice={initializeDice}
-                cleanupDice={cleanupDice}
-                retryDice={retryDice}
-                resizeDice={resizeDice}
-                rollDice={rollDice}
-                isDiceReady={isDiceReady}
-                diceError={diceError}
-                pixelRatio={PIXEL_RATIO}
-                rollNotifs={rollNotifs}
+          {/* Session — DM and player views share the SessionLayout */}
+          <Route path="session" element={<SessionLayout />}>
+            <Route index element={<Session />} />
+            <Route path="dm" element={<SessionDMView />} />
+            <Route path="player" element={<PlayerDashboard />} />
+          </Route>
+
+          {/* Everything else lives under the main app shell */}
+          <Route path="/" element={<AppLayout />}>
+            <Route index element={<Home />} />
+
+            <Route path="profile" element={<Profile />} />
+
+            <Route path="maps">
+              <Route index element={<MapsPage />} />
+              <Route
+                path="create"
+                element={
+                  <Maps
+                    initializeDice={initializeDice}
+                    cleanupDice={cleanupDice}
+                    retryDice={retryDice}
+                    resizeDice={resizeDice}
+                    rollDice={rollDice}
+                    isDiceReady={isDiceReady}
+                    diceError={diceError}
+                    pixelRatio={PIXEL_RATIO}
+                    rollNotifs={rollNotifs}
+                  />
+                }
               />
-            } 
-          />
-          {/* Session Route */}
-          <Route path="session">
-              <Route index element={<Session />} />
-              <Route path="dm" element={<SessionDMView />} />
-              <Route path="player" element={<PlayerDashboard />} />
+            </Route>
+
+            <Route path="characters" element={<Characters />} />
+            <Route path="characters/:id/edit" element={<CharacterEditor />} />
+            <Route path="create-character" element={<CreateCharacter />} />
+
+            <Route path="campaigns">
+              <Route index element={<Campaigns />} />
+              <Route path="new" element={<CreateCampaign />} />
+              <Route path=":id" element={<ViewCampaign />} />
+              <Route path=":id/journal" element={<CampaignJournalPage />} />
+            </Route>
+
+            <Route path="party-finder" element={<PartyFinder />} />
+            <Route path="campaign/:campaignId/lobby" element={<Lobby />} />
+
+            <Route path="asset-finder" element={<AssetFinder />} />
+
+            <Route path="ruleset" element={<RulesetReader />} />
+
+            <Route path="signup" element={<Signup />} />
+            <Route path="login" element={<Login />} />
           </Route>
-          
-          {/* Character Routes */}
-          <Route path="characters" element={<Characters />} />
-          <Route path="characters/:id/edit" element={<CharacterEditor />} />
-          <Route path="create-character" element={<CreateCharacter />} />
-
-
-          {/* Campaign routes */}
-          <Route path="campaigns">
-            <Route index element={<Campaigns />} />
-            <Route path="new" element={<CreateCampaign />} />
-            <Route path=":id" element={<ViewCampaign />} />
-            <Route path=":id/journal" element={<CampaignJournalPage />} />
-          </Route>
-
-          {/* Party Finder route */}
-          <Route path="party-finder" element={<PartyFinder />} />
-
-          {/* Asset Finder route */}
-          <Route path="asset-finder" element={<AssetFinder />} />
-
-          {/* Ruleset Reader route */}
-          <Route path="ruleset" element={<RulesetReader />} />
-
-          {/* Profile route */}
-          <Route path="profile" element={<Profile />} />
-
-          {/* Auth routes */}
-          <Route path="signup" element={<Signup />} />
-          <Route path="login" element={<Login />} />
-        </Route>
-      </Routes>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }

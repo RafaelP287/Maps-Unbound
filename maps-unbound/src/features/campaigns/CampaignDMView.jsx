@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 import placeholderImage from "./images/DnD.jpg";
 import ImageDrop from "../../shared/ImageDrop.jsx";
 import PlayerSearch from "../../shared/PlayerSearch.jsx";
-import LoadingPage from "../../shared/Loading.jsx";
 import CampaignHero from "./CampaignHero.jsx";
 import CampaignSections from "./CampaignSections.jsx";
 import useCampaignSessions from "./use-campaign-sessions.js";
+import { clearCachePrefix, removeCachedValue, setCachedValue } from "../../shared/dataCache.js";
 
 function CampaignDMView({ campaign, setCampaign }) {
-  const { token } = useAuth();
+  const { user, token } = useAuth();
   const navigate = useNavigate();
   const id = campaign._id;
+  const currentUserId = user?.id;
   const editFocusRef = useRef(null);
   const editSectionRefs = useRef({});
 
@@ -33,6 +34,7 @@ function CampaignDMView({ campaign, setCampaign }) {
     campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : ""
   );
   const [editStatus, setEditStatus] = useState(campaign.status || "Planning");
+  const [editIsHosting, setEditIsHosting] = useState(Boolean(campaign.isHosting));
   const [editCurrentQuestTitle, setEditCurrentQuestTitle] = useState(campaign.currentQuest?.title || "");
   const [editCurrentQuestObjective, setEditCurrentQuestObjective] = useState(campaign.currentQuest?.objective || "");
   const [editCurrentQuestStatus, setEditCurrentQuestStatus] = useState(campaign.currentQuest?.status || "In Progress");
@@ -68,6 +70,11 @@ function CampaignDMView({ campaign, setCampaign }) {
   const [pendingSessionDeleteIds, setPendingSessionDeleteIds] = useState([]);
   const [showSessionDeleteConfirmOnSave, setShowSessionDeleteConfirmOnSave] = useState(false);
   const [sessionActionError, setSessionActionError] = useState("");
+  const [joinCodeSaving, setJoinCodeSaving] = useState(false);
+  const [joinCodeError, setJoinCodeError] = useState("");
+  const [memberToRemove, setMemberToRemove] = useState(null);
+  const [removingMember, setRemovingMember] = useState(false);
+  const [removeMemberError, setRemoveMemberError] = useState("");
 
   // Delete state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -93,10 +100,6 @@ function CampaignDMView({ campaign, setCampaign }) {
 
     return () => cancelAnimationFrame(frame);
   }, [editSection, isEditing]);
-
-  if (sessionsLoading) {
-    return <LoadingPage>Unravelling the scroll...</LoadingPage>;
-  }
 
   const executeSave = async ({ applySessionDeletes = false } = {}) => {
     setSaving(true); setSaveError(null);
@@ -152,6 +155,8 @@ function CampaignDMView({ campaign, setCampaign }) {
           maxPlayers,
           startDate: editStartDate || undefined,
           status: editStatus,
+          isHosting: editIsHosting,
+          isPublic: true,
           currentQuest,
           npcs,
           enemies,
@@ -183,15 +188,20 @@ function CampaignDMView({ campaign, setCampaign }) {
         }
         await refetchSessions();
       }
-      setCampaign((prev) => ({
-        ...prev,
+      const nextCampaign = {
+        ...campaign,
         ...updatedCampaign,
         currentQuest,
         npcs,
         enemies,
         loot,
+        isHosting: editIsHosting,
+        isPublic: true,
         members: populatedMembers,
-      }));
+      };
+      setCampaign((prev) => ({ ...prev, ...nextCampaign }));
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, nextCampaign);
+      clearCachePrefix("campaigns:list:");
       setPendingSessionDeleteIds([]);
       setShowSessionDeleteConfirmOnSave(false);
       setEditSection("general");
@@ -217,6 +227,7 @@ function CampaignDMView({ campaign, setCampaign }) {
     setEditMaxPlayers(campaign.maxPlayers || 5);
     setEditStartDate(campaign.startDate ? new Date(campaign.startDate).toISOString().split("T")[0] : "");
     setEditStatus(campaign.status || "Planning");
+    setEditIsHosting(Boolean(campaign.isHosting));
     setEditCurrentQuestTitle(campaign.currentQuest?.title || "");
     setEditCurrentQuestObjective(campaign.currentQuest?.objective || "");
     setEditCurrentQuestStatus(campaign.currentQuest?.status || "In Progress");
@@ -261,7 +272,11 @@ function CampaignDMView({ campaign, setCampaign }) {
       // Hard delete campaign and return to list after successful API confirmation.
       const res = await fetch(`/api/campaigns/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || `Status ${res.status}`); }
-      navigate("/campaigns");
+      removeCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`);
+      clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${id}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${id}`);
+      clearCachePrefix("campaigns:list:");
+      navigate("/campaigns", { replace: true });
     } catch (err) { setDeleteError(err.message || "Failed to delete campaign."); setDeleting(false); setShowDeleteConfirm(false); }
   };
 
@@ -271,7 +286,9 @@ function CampaignDMView({ campaign, setCampaign }) {
     setSaveError(null);
     setSessionActionError("");
     try {
-      const nextSessionNumber = (sessions?.length || 0) + 1;
+      const nextSessionNumber = Array.isArray(sessions)
+        ? Math.max(0, ...sessions.map((session) => Number(session.sessionNumber) || 0)) + 1
+        : 1;
       const title = `Session ${nextSessionNumber}`;
 
       // 1. Create a new Planned session record.
@@ -315,6 +332,8 @@ function CampaignDMView({ campaign, setCampaign }) {
         );
       }
 
+  clearCachePrefix(`campaign:sessions:${currentUserId || "current"}:${campaign._id}`);
+      removeCachedValue(`campaign:journal:${currentUserId || "current"}:${campaign._id}`);
       await refetchSessions();
       navigate(`/session/dm?campaignId=${campaign._id}&sessionId=${createdSession._id}`);
     } catch (err) {
@@ -330,6 +349,56 @@ function CampaignDMView({ campaign, setCampaign }) {
         ? prev.filter((id) => id !== sessionId)
         : [...prev, sessionId]
     );
+  };
+
+  const handleJoinCodeUpdate = async (enabled) => {
+    setJoinCodeSaving(true);
+    setJoinCodeError("");
+    try {
+      const res = await fetch(`/api/campaigns/${id}/join-code`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Status ${res.status}`);
+      }
+      const updatedCampaign = await res.json();
+      setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setEditPlayers((prev) => prev.filter((player) => player.userId !== memberToRemove.userId._id));
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
+      clearCachePrefix("campaigns:list:");
+    } catch (err) {
+      setJoinCodeError(err.message || "Failed to update join code.");
+    } finally {
+      setJoinCodeSaving(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove?.userId?._id) return;
+    setRemovingMember(true);
+    setRemoveMemberError("");
+    try {
+      const res = await fetch(`/api/campaigns/${id}/members/${memberToRemove.userId._id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Status ${res.status}`);
+      }
+      const updatedCampaign = await res.json();
+      setCampaign((prev) => ({ ...prev, ...updatedCampaign }));
+      setCachedValue(`campaign:detail:${currentUserId || "current"}:${id}`, updatedCampaign);
+      clearCachePrefix("campaigns:list:");
+      setMemberToRemove(null);
+    } catch (err) {
+      setRemoveMemberError(err.message || "Failed to remove player.");
+    } finally {
+      setRemovingMember(false);
+    }
   };
 
   return (
@@ -350,7 +419,7 @@ function CampaignDMView({ campaign, setCampaign }) {
           onDescriptionChange={setEditDescription}
         />
 
-        <div className="campaign-card-panel">
+        <div className={`campaign-card-panel ${isEditing ? "campaign-card-panel-editing" : ""}`}>
           {/* Image editor */}
           {isEditing && (
             <div
@@ -371,7 +440,15 @@ function CampaignDMView({ campaign, setCampaign }) {
             <PlayerSearch
               players={editPlayers}
               onAddPlayer={(p) => setEditPlayers((prev) => [...prev, p])}
-              onRemovePlayer={(userId) => setEditPlayers((prev) => prev.filter((p) => p.userId !== userId))}
+              onRemovePlayer={(userId) => {
+                const existingMember = players.find((player) => player.userId?._id === userId);
+                if (existingMember) {
+                  setRemoveMemberError("");
+                  setMemberToRemove(existingMember);
+                  return;
+                }
+                setEditPlayers((prev) => prev.filter((p) => p.userId !== userId));
+              }}
             />
           )}
 
@@ -393,6 +470,14 @@ function CampaignDMView({ campaign, setCampaign }) {
                   <option value="On Hold">On Hold</option>
                   <option value="Completed">Completed</option>
                 </select>
+              </div>
+              <div className="campaign-field-group">
+                <span className="campaign-field-label">Party Finder</span>
+                <select className="campaign-select" value={editIsHosting ? "true" : "false"} onChange={(e) => setEditIsHosting(e.target.value === "true")}>
+                  <option value="false">Hidden</option>
+                  <option value="true">Findable</option>
+                </select>
+                <span className="campaign-helper-text">Findable campaigns can receive join requests.</span>
               </div>
               <div className="campaign-field-group">
                 <span className="campaign-field-label">Max Players</span>
@@ -461,16 +546,18 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel campaign-edit-panel-sessions"
               ref={(node) => { editSectionRefs.current.sessions = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Session Records</span>
+                <span className="campaign-edit-count">{sessions.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
-                {sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
+              <div className="campaign-edit-list campaign-edit-list-scroll">
+                {sessionsLoading && <p className="campaign-helper-text">Loading session records...</p>}
+                {!sessionsLoading && sessions.length === 0 && <p className="campaign-helper-text">No sessions recorded yet.</p>}
                 {sessions.map((session) => (
                   <div className="campaign-edit-item" key={session._id}>
                     <div className="campaign-resource-title-row">
@@ -504,15 +591,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.enemies = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Enemy Tracker</span>
+                <span className="campaign-edit-count">{editEnemies.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editEnemies.length === 0 && <p className="campaign-helper-text">No enemies added yet.</p>}
                 {editEnemies.map((enemy, idx) => (
                   <div className="campaign-edit-item" key={`enemy-${idx}`}>
@@ -558,15 +646,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.npcs = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">NPC Tracker</span>
+                <span className="campaign-edit-count">{editNpcs.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editNpcs.length === 0 && <p className="campaign-helper-text">No NPCs added yet.</p>}
                 {editNpcs.map((npc, idx) => (
                   <div className="campaign-edit-item" key={`npc-${idx}`}>
@@ -612,15 +701,16 @@ function CampaignDMView({ campaign, setCampaign }) {
 
           {isEditing && (
             <section
-              className="campaign-section-panel"
+              className="campaign-section-panel campaign-edit-panel"
               ref={(node) => { editSectionRefs.current.loot = node; }}
             >
               <div className="campaign-details-header">
                 <span className="campaign-details-icon">✦</span>
                 <span className="campaign-details-heading">Loot Tracker</span>
+                <span className="campaign-edit-count">{editLoot.length}</span>
                 <span className="campaign-details-icon">✦</span>
               </div>
-              <div className="campaign-edit-list">
+              <div className="campaign-edit-list campaign-edit-list-scroll">
                 {editLoot.length === 0 && <p className="campaign-helper-text">No loot added yet.</p>}
                 {editLoot.map((item, idx) => (
                   <div className="campaign-edit-item" key={`loot-${idx}`}>
@@ -680,9 +770,13 @@ function CampaignDMView({ campaign, setCampaign }) {
               dm={dm}
               players={players}
               sessions={sessions}
+              sessionsLoading={sessionsLoading}
               isDM
               onStartEditing={startEditing}
               onSessionsChanged={refetchSessions}
+              onJoinCodeUpdate={handleJoinCodeUpdate}
+              joinCodeSaving={joinCodeSaving}
+              joinCodeError={joinCodeError}
             />
           )}
 
@@ -745,6 +839,24 @@ function CampaignDMView({ campaign, setCampaign }) {
                 {deleting ? "Deleting…" : "Yes, Delete"}
               </button>
               <button className="btn-cancel" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {memberToRemove && (
+        <div className="campaign-modal-overlay">
+          <div className="campaign-modal-box">
+            <div className="campaign-modal-icon">⚠</div>
+            <h3 className="campaign-modal-title">Remove Player?</h3>
+            <p className="campaign-modal-body">
+              <strong style={{ color: "var(--gold-light)" }}>{memberToRemove.userId?.username || "This player"}</strong> will lose access to <strong style={{ color: "var(--gold-light)" }}>{campaign.title}</strong>.
+            </p>
+            {removeMemberError && <p className="campaign-error-text">{removeMemberError}</p>}
+            <div className="campaign-btn-row">
+              <button className="btn-delete" onClick={handleRemoveMember} disabled={removingMember}>
+                {removingMember ? "Removing..." : "Remove Player"}
+              </button>
+              <button className="btn-cancel" onClick={() => setMemberToRemove(null)} disabled={removingMember}>Cancel</button>
             </div>
           </div>
         </div>

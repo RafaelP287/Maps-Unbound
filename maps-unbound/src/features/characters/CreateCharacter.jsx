@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext.jsx";
 import Gate from "../../shared/Gate.jsx";
+import { clearCachePrefix } from "../../shared/dataCache.js";
 import {
   ABILITY_FIELDS,
   ALIGNMENT_OPTIONS,
@@ -196,7 +197,8 @@ function CreateCharacter() {
         throw new Error(errorData.error || errorData.message || "Failed to save character.");
       }
 
-      navigate("/characters");
+      clearCachePrefix("characters:list:");
+      navigate("/characters", { replace: true });
     } catch (error) {
       setSubmitError(error.message);
     } finally {

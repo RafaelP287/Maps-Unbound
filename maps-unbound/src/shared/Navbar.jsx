@@ -1,12 +1,18 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isLoggedIn, loading } = useAuth();
+  const [profileImageBroken, setProfileImageBroken] = useState(false);
 
-  const handleLogout = () => { logout(); navigate("/"); };
+  const handleLogout = () => { logout(); navigate("/", { replace: true }); };
+
+  useEffect(() => {
+    setProfileImageBroken(false);
+  }, [user?.profileImageUrl]);
 
   if (loading) return null;
 
@@ -38,9 +44,18 @@ function Navbar() {
 
             <Link to="/profile" className="nav-user-link">
               <span style={avatarStyle}>
-                {user.username[0].toUpperCase()}
+                {user.profileImageUrl && !profileImageBroken ? (
+                  <img
+                    src={user.profileImageUrl}
+                    alt=""
+                    style={avatarImgStyle}
+                    onError={() => setProfileImageBroken(true)}
+                  />
+                ) : (
+                  user.username?.[0]?.toUpperCase() || "A"
+                )}
               </span>
-              {user.username[0].toUpperCase() + user.username.slice(1)}
+              {(user.username?.[0]?.toUpperCase() || "A") + (user.username?.slice(1) || "")}
             </Link>
 
             <button className="nav-logout-btn" onClick={handleLogout}>
@@ -49,9 +64,6 @@ function Navbar() {
           </>
         ) : (
           <>
-            <Link to="/ruleset" className={isActive("/ruleset")}>
-              Compendium
-            </Link>
             <Link to="/login" className="nav-signin-btn">
               Enter the Realm
             </Link>
@@ -124,6 +136,14 @@ const avatarStyle = {
   fontFamily: "'Cinzel', serif",
   color: "var(--gold)",
   flexShrink: 0,
+  overflow: "hidden",
+};
+
+const avatarImgStyle = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
 };
 
 export default Navbar;
