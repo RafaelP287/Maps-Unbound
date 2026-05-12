@@ -76,6 +76,25 @@ function SessionDMView() {
         token,
         isCombatActive: isCombatState,
     });
+    const initiativeCombatants = liveCombat.combatants.length > 0
+        ? liveCombat.combatants
+        : turns.map((turn, index) => ({
+            id: turn.id || `${turn.kind || "combatant"}-${turn.name || "unknown"}-${index}`,
+            kind: turn.kind || "Player",
+            name: turn.name || "Unknown",
+            hp: turn.hp,
+            maxHp: turn.maxHp ?? turn.hp,
+            initiative: turn.initiative,
+            portraitUrl: turn.portraitUrl || "",
+            hiddenFromMap: Boolean(turn.hiddenFromMap),
+            hiddenFromInitiative: Boolean(turn.hiddenFromInitiative),
+        }));
+    const initiativeActiveIndex = liveCombat.combatants.length > 0
+        ? liveCombat.activeIndex
+        : Math.max(0, turns.findIndex((turn) => turn.isActive));
+    const initiativeRound = liveCombat.combatants.length > 0
+        ? liveCombat.round
+        : combatRound + 1;
 
     const orderedSessions = useMemo(() => {
         return [...sessions].sort((a, b) => {
@@ -908,10 +927,10 @@ function SessionDMView() {
                 combatStrip={
                     isCombatState ? (
                         <InitiativeStrip
-                            combatants={liveCombat.combatants}
-                            activeIndex={liveCombat.activeIndex}
-                            round={liveCombat.round}
-                            onNextTurn={liveCombat.nextTurn}
+                            combatants={initiativeCombatants}
+                            activeIndex={initiativeActiveIndex}
+                            round={initiativeRound}
+                            onNextTurn={liveCombat.combatants.length > 0 ? liveCombat.nextTurn : handleAdvanceTurn}
                             onSelectCombatant={(c) => setSelectedCombatant(c)}
                             isDM={true}
                         />

@@ -69,6 +69,7 @@ function SessionPlayerView() {
     isCombatActive: true,
   });
   const hasLiveCombat = liveCombat.combat?.status === "active" && liveCombat.combatants.length > 0;
+  const liveCombatActiveId = liveCombat.combatants[liveCombat.activeIndex]?.id || "";
 
   const liveCombatTurns = hasLiveCombat
     ? liveCombat.combatants
@@ -79,8 +80,8 @@ function SessionPlayerView() {
           kind: combatant.kind || "Player",
           hp: combatant.hp,
           initiative: combatant.initiative,
-          isActive: index === liveCombat.activeIndex,
-          isNext: index === ((liveCombat.activeIndex + 1) % liveCombat.combatants.length),
+          isActive: combatant.id === liveCombatActiveId,
+          isNext: index === ((liveCombat.combatants.findIndex((entry) => entry.id === liveCombatActiveId) + 1) % liveCombat.combatants.length),
         }))
     : [];
 
@@ -139,6 +140,21 @@ function SessionPlayerView() {
     : Array.isArray(liveSessionState?.turns) && liveSessionState.turns.length > 0
     ? liveSessionState.combatRound || 0
     : Math.max(0, Number(liveEncounter?.round || 1) - 1);
+  const initiativeCombatants = hasLiveCombat
+    ? liveCombat.combatants
+    : liveTurns.map((turn, index) => ({
+        id: turn.id || `${turn.kind || "combatant"}-${turn.name || "unknown"}-${index}`,
+        kind: turn.kind || "Player",
+        name: turn.name || "Unknown",
+        hp: turn.hp,
+        maxHp: turn.maxHp ?? turn.hp,
+        initiative: turn.initiative,
+        portraitUrl: turn.portraitUrl || "",
+        hiddenFromInitiative: Boolean(turn.hiddenFromInitiative),
+      }));
+  const initiativeActiveIndex = hasLiveCombat
+    ? liveCombat.activeIndex
+    : Math.max(0, liveTurns.findIndex((turn) => turn.isActive));
   const orderedSessions = [...sessions].sort((a, b) => {
     const aNumber = Number.isFinite(a?.sessionNumber) ? a.sessionNumber : Number.POSITIVE_INFINITY;
     const bNumber = Number.isFinite(b?.sessionNumber) ? b.sessionNumber : Number.POSITIVE_INFINITY;
@@ -432,13 +448,13 @@ function SessionPlayerView() {
         sceneName={liveSessionState?.sceneName || (socketConnected ? "Live" : "Offline")}
         players={sessionParticipants}
         role="player"
-        isCombatState={hasLiveCombat || Boolean(liveSessionState?.isCombatState)}
+        isCombatState={initiativeCombatants.length > 0 || Boolean(liveSessionState?.isCombatState)}
         combatStrip={
-          hasLiveCombat ? (
+          initiativeCombatants.length > 0 ? (
             <InitiativeStrip
-              combatants={liveCombat.combatants}
-              activeIndex={liveCombat.activeIndex}
-              round={liveCombat.round}
+              combatants={initiativeCombatants}
+              activeIndex={initiativeActiveIndex}
+              round={hasLiveCombat ? liveCombat.round : displayedRound}
               isDM={false}
             />
           ) : null
