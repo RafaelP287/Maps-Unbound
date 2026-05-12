@@ -162,10 +162,15 @@ function Maps({
                 }
                 // We DO have a map to load — show the overlay now.
                 setAutoLoading(true);
-                const newest = list.reduce((best, m) =>
-                    new Date(m.updatedAt) > new Date(best.updatedAt) ? m : best
-                );
-                const full = await getMap(newest._id);
+                const explicitId = sessionStorage.getItem("maps-unbound-open");
+                sessionStorage.removeItem("maps-unbound-open");
+                const target = explicitId
+                    ? list.find((m) => m._id === explicitId)
+                    : list.reduce((best, m) =>
+                        new Date(m.updatedAt) > new Date(best.updatedAt) ? m : best
+                      );
+                if (!target) return;
+                const full = await getMap(target._id);
                 bridge.loadMap(full._id, full.name, full.json);
             } catch (err) {
                 console.warn("Auto-load most recent map failed:", err.message);
